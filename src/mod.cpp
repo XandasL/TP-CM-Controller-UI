@@ -889,8 +889,15 @@ void replace_picture_texture(J2DPicture* picture, const ResTIMG* texture) {
 constexpr u64 kTpOverlayUserInfo = 0x5450434D4F564C59ULL; // "TPCMOVLY"
 constexpr u64 kTpOverlayTagMask  = 0x5450434D00000000ULL;
 
-// Defined later with the other menu-pane helpers.
-J2DPicture* first_picture_recursive(J2DPane* root);
+J2DPicture* tp_find_first_picture(J2DPane* root) {
+    if (root == nullptr) return nullptr;
+    if (J2DPicture* pic = as_picture(root)) return pic;
+    for (J2DPane* child = root->getFirstChildPane(); child != nullptr;
+         child = child->getNextChildPane()) {
+        if (J2DPicture* pic = tp_find_first_picture(child)) return pic;
+    }
+    return nullptr;
+}
 
 bool is_tp_overlay(J2DPane* pane) {
     return pane != nullptr && pane->getUserInfo() == kTpOverlayUserInfo;
@@ -927,7 +934,7 @@ J2DPicture* ensure_tp_overlay(J2DPane* root, const ResTIMG* texture) {
         return overlay;
     }
 
-    J2DPicture* source = first_picture_recursive(root);
+    J2DPicture* source = tp_find_first_picture(root);
     if (source == nullptr) return nullptr;
 
     const u64 tag = root->mInfoTag ^ kTpOverlayTagMask;
