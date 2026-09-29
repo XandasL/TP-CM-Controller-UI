@@ -810,6 +810,14 @@ JUtility::TColor s_twilitShoulderSavedWhite{};
 JUtility::TColor s_twilitShoulderSavedCorners[4]{};
 bool s_twilitShoulderPatched = false;
 
+J2DScreen* s_twilitRingZScreen = nullptr;
+J2DPicture* s_twilitRingZFace = nullptr;
+const ResTIMG* s_twilitRingZSavedTexture = nullptr;
+JUtility::TColor s_twilitRingZSavedBlack{};
+JUtility::TColor s_twilitRingZSavedWhite{};
+JUtility::TColor s_twilitRingZSavedCorners[4]{};
+bool s_twilitRingZPatched = false;
+
 ResourceBuffer s_cross = RESOURCE_BUFFER_INIT;
 ResourceBuffer s_circle = RESOURCE_BUFFER_INIT;
 ResourceBuffer s_square = RESOURCE_BUFFER_INIT;
@@ -998,6 +1006,19 @@ void prepare_external_button_copy(J2DPane* root, const ResTIMG* texture) {
     const JUtility::TColor neutralWhite(255, 255, 255, 255);
     face->setBlackWhite(neutralBlack, neutralWhite);
     face->setCornerColor(neutralWhite);
+
+    // Twilit Essentials copies the source pane bounds and later uses them as the
+    // draw size for the hint icon. Vanilla X/Y/A/B layers do not all have the
+    // same aspect ratio, which stretched our replacement artwork. Normalize the
+    // copied face to a square while keeping its original center.
+    const JGeometry::TBox2<f32>& b = face->getBounds();
+    const f32 cx = (b.i.x + b.f.x) * 0.5f;
+    const f32 cy = (b.i.y + b.f.y) * 0.5f;
+    f32 side = b.getWidth() < b.getHeight() ? b.getWidth() : b.getHeight();
+    if (side < 1.0f) side = 24.0f;
+    face->move(cx - side * 0.5f, cy - side * 0.5f);
+    face->resize(side, side);
+
     make_picture_copy_layer_transparent(root, face);
 }
 
@@ -1037,9 +1058,10 @@ void patch_twilit_game_image_source(J2DScreen* screen) {
     prepare_external_button_copy(screen->search(MULTI_CHAR('xbtn_n')), resource_timg(s_triangle));
     prepare_external_button_copy(screen->search(MULTI_CHAR('ybtn_n')), resource_timg(s_square));
 
-    // Twilit Essentials creates a standalone zbtn_n screen for the third item
-    // slot in the Item Wheel. In our mapping GC Z is R1 / RB.
-    prepare_external_button_copy(screen->search(MULTI_CHAR('zbtn_n')), resource_timg(s_r1));
+    // Do NOT touch zbtn_n here. Twilit Essentials owns the live HUD Z pane and
+    // rewrites it every frame; changing it at resource-load time makes R1/Z race
+    // between two textures. The standalone Item Wheel Z prompt is handled only
+    // for the duration of its J2DScreen::draw below.
 }
 
 void after_screen_set_priority_name(ModContext*, void* args, void* retval, void*) {
@@ -1064,12 +1086,15 @@ HookAction before_picture_draw_sized(ModContext*, void* args, void*, void*) {
     // Twilit Essentials draws its Bottles/Tunics page shoulder prompt manually
     // from the original Z texture at 26 px high. Detect that private picture once,
     // then map left -> L2/LT and right -> R2/RT using this mod's own resources.
-    if (s_twilitShoulderPicture == nullptr && s_twilitVanillaZTexture != nullptr &&
-        current == s_twilitVanillaZTexture && h >= 24.0f && h <= 28.0f) {
-        s_twilitShoulderPicture = pic;
+    if (s_twilitShoulderPicture == nullptr && h >= 24.0f && h <= 28.0f) {
+        // Primary path: exact original Z texture. Fallback: Twilit draws the left
+        // page button mirrored, which is unique to this private shoulder prompt.
+        if ((s_twilitVanillaZTexture != nullptr && current == s_twilitVanillaZTexture) || mirrorX) {
+            s_twilitShoulderPicture = pic;
+        }
     }
 
-    if (pic != s_twilitShoulderPicture) return HOOK_CONTINUE;
+    if (pic != s_twilitShoulderPicture || h < 24.0f || h > 28.0f) return HOOK_CONTINUE;
 
     s_twilitShoulderSavedTexture = current;
     s_twilitShoulderSavedBlack = pic->getBlack();
@@ -1107,6 +1132,72 @@ void after_picture_draw_sized(ModContext*, void* args, void*, void*) {
     pic->setCornerColor(s_twilitShoulderSavedCorners[0], s_twilitShoulderSavedCorners[1],
                         s_twilitShoulderSavedCorners[2], s_twilitShoulderSavedCorners[3]);
     s_twilitShoulderPatched = false;
+}
+
+
+void patch_twilit_ring_z_before_draw(J2DScreen* screen) {
+    if (screen == nullptr) return;
+
+    J2DPane* zRoot = screen->search(MULTI_CHAR('zbtn_n'));
+    J2DPane* aRoot = screen->search(MULTI_CHAR('abtn_n'));
+    if (zRoot == nullptr || aRoot == nullptr) return;
+
+    // Twilit's Item Wheel prompt screen hides the entire resource tree and then
+    // reveals only zbtn_n. The game's normal HUD has A visible, so this cleanly
+    // separates the standalone prompt without relying on load order or mod IDs.
+    if (!zRoot->isVisible() || aRoot->isVisible()) return;
+
+    J2DPicture* face = nullptr;
+    J2DPane* stack[32];
+    int top = 0;
+    stack[top++] = zRoot;
+    while (top > 0 && face == nullptr) {
+        J2DPane* node = stack[--top];
+        if (J2DPicture* p = as_picture(node)) {
+            face = p;
+            break;
+        }
+        for (J2DPane* child = node->getFirstChildPane(); child != nullptr;
+             child = child->getNextChildPane()) {
+            if (top < 32) stack[top++] = child;
+        }
+    }
+    if (face == nullptr || face->getTexture(0) == nullptr) return;
+
+    s_twilitRingZScreen = screen;
+    s_twilitRingZFace = face;
+    s_twilitRingZSavedTexture = face->getTexture(0)->getTexInfo();
+    s_twilitRingZSavedBlack = face->getBlack();
+    s_twilitRingZSavedWhite = face->getWhite();
+    for (int i = 0; i < 4; ++i) s_twilitRingZSavedCorners[i] = face->corner(i);
+
+    const ResTIMG* r1 = resource_timg(s_r1);
+    if (r1 == nullptr) return;
+    replace_picture_texture(face, r1);
+    const JUtility::TColor neutralBlack(0, 0, 0, 0);
+    const JUtility::TColor neutralWhite(255, 255, 255, 255);
+    face->setBlackWhite(neutralBlack, neutralWhite);
+    face->setCornerColor(neutralWhite);
+
+    // Suppress the old Z letter/glow layers only while this private screen draws.
+    make_picture_copy_layer_transparent(zRoot, face);
+    s_twilitRingZPatched = true;
+}
+
+void restore_twilit_ring_z_after_draw(J2DScreen* screen) {
+    if (!s_twilitRingZPatched || screen == nullptr || screen != s_twilitRingZScreen ||
+        s_twilitRingZFace == nullptr) {
+        return;
+    }
+    if (s_twilitRingZSavedTexture != nullptr) {
+        replace_picture_texture(s_twilitRingZFace, s_twilitRingZSavedTexture);
+    }
+    s_twilitRingZFace->setBlackWhite(s_twilitRingZSavedBlack, s_twilitRingZSavedWhite);
+    s_twilitRingZFace->setCornerColor(s_twilitRingZSavedCorners[0], s_twilitRingZSavedCorners[1],
+                                     s_twilitRingZSavedCorners[2], s_twilitRingZSavedCorners[3]);
+    s_twilitRingZPatched = false;
+    s_twilitRingZScreen = nullptr;
+    s_twilitRingZFace = nullptr;
 }
 
 
@@ -3530,6 +3621,7 @@ int classify_current_pikari() {
 
 HookAction before_screen_draw(ModContext* ctx, void* args, void* retval, void* userdata) {
     J2DScreen* screen = mods::arg<J2DScreen*>(args, 0);
+    patch_twilit_ring_z_before_draw(screen);
     begin_menu_prompt_draw(screen);
     apply_known_menu_buttons(screen);
     prepare_menu_ornament_before_draw(screen);
@@ -3585,8 +3677,9 @@ HookAction before_screen_draw(ModContext* ctx, void* args, void* retval, void* u
 
 void after_screen_draw(ModContext*, void* args, void*, void*) {
     if (args == nullptr) return;
-    restore_world_icons(mods::arg<J2DScreen*>(args,0));
     J2DScreen* screen = mods::arg<J2DScreen*>(args, 0);
+    restore_twilit_ring_z_after_draw(screen);
+    restore_world_icons(screen);
     restore_shared_menu_ornament_after_draw(screen);
     restore_menu_prompt_after_draw(screen);
 }
