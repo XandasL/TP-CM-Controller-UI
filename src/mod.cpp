@@ -889,6 +889,9 @@ void replace_picture_texture(J2DPicture* picture, const ResTIMG* texture) {
 constexpr u64 kTpOverlayUserInfo = 0x5450434D4F564C59ULL; // "TPCMOVLY"
 constexpr u64 kTpOverlayTagMask  = 0x5450434D00000000ULL;
 
+// Defined later with the other menu-pane helpers.
+J2DPicture* first_picture_recursive(J2DPane* root);
+
 bool is_tp_overlay(J2DPane* pane) {
     return pane != nullptr && pane->getUserInfo() == kTpOverlayUserInfo;
 }
