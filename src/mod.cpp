@@ -3831,8 +3831,8 @@ ModResult mod_initialize(ModError* error) {
     // scale is stored as percent to use Dusklight's native integer steppers.
     struct R { const char* n; int64_t d; ConfigVarHandle* h; };
     R vars[]={
-        {"worldR1X",0,&g_worldR1X},
-        {"worldR1Y",-80,&g_worldR1Y},
+        {"worldR1X",80,&g_worldR1X},
+        {"worldR1Y",180,&g_worldR1Y},
         {"worldR1Scale",100,&g_worldR1Scale},
         {"worldAnalogScale",100,&g_worldAnalogScale},
         {"worldDpadScale",100,&g_worldDpadScale},
@@ -3840,8 +3840,8 @@ ModResult mod_initialize(ModError* error) {
         {"WorldPortalTextScale",75,&g_WorldPortalTextScale},
         {"WorldMoveTextScale",75,&g_WorldMoveTextScale},
         {"WorldReturnTextScale",75,&g_WorldReturnTextScale},
-        {"worldArrowX",210,&g_worldArrowX},{"worldArrowY",0,&g_worldArrowY},
-        {"worldAnalogX",150,&g_worldAnalogX},{"worldAnalogY",-10,&g_worldAnalogY},{"worldDpadX",-190,&g_worldDpadX},{"worldDpadY",0,&g_worldDpadY},
+        {"worldArrowX",-225,&g_worldArrowX},{"worldArrowY",-230,&g_worldArrowY},
+        {"worldAnalogX",180,&g_worldAnalogX},{"worldAnalogY",680,&g_worldAnalogY},{"worldDpadX",260,&g_worldDpadX},{"worldDpadY",220,&g_worldDpadY},
         {"WorldPortalTextX",-130,&g_WorldPortalTextX},{"WorldPortalTextY",0,&g_WorldPortalTextY},
         {"WorldMoveTextX",270,&g_WorldMoveTextX},{"WorldMoveTextY",20,&g_WorldMoveTextY},
         {"WorldReturnTextX",0,&g_WorldReturnTextX},{"WorldReturnTextY",20,&g_WorldReturnTextY},
