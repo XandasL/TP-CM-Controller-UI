@@ -810,6 +810,9 @@ const ResTIMG* s_twilitVanillaBTexture = nullptr;
 const ResTIMG* s_twilitVanillaXTexture = nullptr;
 const ResTIMG* s_twilitVanillaYTexture = nullptr;
 
+const ResTIMG* s_twilitButtonLayerTex[4][8] = {};
+int s_twilitButtonLayerCount[4] = {0, 0, 0, 0};
+
 J2DPicture* s_twilitManualPromptPicture = nullptr;
 const ResTIMG* s_twilitManualPromptSavedTexture = nullptr;
 JUtility::TColor s_twilitManualPromptSavedBlack{};
@@ -1087,14 +1090,52 @@ void patch_twilit_game_image_source(J2DScreen* screen) {
         }
     };
 
-    // Cache only. Do not mutate zelda_game_image.blo here: Twilit Essentials
-    // reuses this layout as a source for radial wheels, Boss Rush UI and several
-    // private screens. Changing its panes globally can corrupt unrelated artwork.
+    auto cache_button_layers = [screen](int idx, u64 tag) {
+        if (idx < 0 || idx >= 4 || s_twilitButtonLayerCount[idx] != 0) return;
+        J2DPane* root = screen->search(tag);
+        if (root == nullptr) return;
+
+        // Match Twilit Essentials' collect_picture_panes traversal order closely:
+        // depth-first through the group, preserving every picture layer.
+        J2DPane* stack[64];
+        int top = 0;
+        stack[top++] = root;
+        while (top > 0 && s_twilitButtonLayerCount[idx] < 8) {
+            J2DPane* node = stack[--top];
+            if (J2DPicture* p = as_picture(node)) {
+                if (p->getTexture(0) != nullptr) {
+                    s_twilitButtonLayerTex[idx][s_twilitButtonLayerCount[idx]++] =
+                        p->getTexture(0)->getTexInfo();
+                }
+            }
+
+            // Push children in reverse sibling order so the first child is
+            // visited first after the stack pop.
+            J2DPane* children[32];
+            int childCount = 0;
+            for (J2DPane* child = node->getFirstChildPane(); child != nullptr;
+                 child = child->getNextChildPane()) {
+                if (childCount < 32) children[childCount++] = child;
+            }
+            for (int i = childCount - 1; i >= 0; --i) {
+                if (top < 64) stack[top++] = children[i];
+            }
+        }
+    };
+
+    // Cache only. Never mutate zelda_game_image.blo: Twilit Essentials reuses
+    // this shared layout for radial wheels, Boss Rush and private screens.
     cache_face_texture(MULTI_CHAR('abtn_n'), &s_twilitVanillaATexture);
     cache_face_texture(MULTI_CHAR('bbtn_n'), &s_twilitVanillaBTexture);
     cache_face_texture(MULTI_CHAR('xbtn_n'), &s_twilitVanillaXTexture);
     cache_face_texture(MULTI_CHAR('ybtn_n'), &s_twilitVanillaYTexture);
     cache_face_texture(MULTI_CHAR('zbtn_n'), &s_twilitVanillaZTexture);
+
+    // Twilit Quick Access uses A, Y, X, B in this exact order.
+    cache_button_layers(0, MULTI_CHAR('abtn_n'));
+    cache_button_layers(1, MULTI_CHAR('ybtn_n'));
+    cache_button_layers(2, MULTI_CHAR('xbtn_n'));
+    cache_button_layers(3, MULTI_CHAR('bbtn_n'));
 }
 
 void after_screen_set_priority_name(ModContext*, void* args, void* retval, void*) {
@@ -1116,41 +1157,66 @@ HookAction before_picture_draw_sized(ModContext*, void* args, void*, void*) {
     const f32 h = mods::arg<f32>(args, 4);
     const bool mirrorX = mods::arg<bool>(args, 5);
 
-    // Twilit Essentials manually draws A/B/X/Y copies in Quick Access and related
-    // menus. Replace only those exact vanilla button textures for this one draw.
-    // This avoids mutating the shared zelda_game_image.blo resource used by its
-    // radial wheels and Boss Rush UI.
-    const ResTIMG* replacementPrompt = nullptr;
-    if (current == s_twilitVanillaATexture) replacementPrompt = resource_timg(s_cross);
-    else if (current == s_twilitVanillaBTexture) replacementPrompt = resource_timg(s_circle);
-    else if (current == s_twilitVanillaXTexture) replacementPrompt = resource_timg(s_triangle);
-    else if (current == s_twilitVanillaYTexture) replacementPrompt = resource_timg(s_square);
-
-    if (replacementPrompt != nullptr &&
-        mods::arg<f32>(args, 3) >= 8.0f && mods::arg<f32>(args, 3) <= 26.0f &&
-        h >= 8.0f && h <= 26.0f) {
-        s_twilitManualPromptPicture = pic;
-        s_twilitManualPromptSavedTexture = current;
-        s_twilitManualPromptSavedBlack = pic->getBlack();
-        s_twilitManualPromptSavedWhite = pic->getWhite();
-        for (int i = 0; i < 4; ++i) {
-            s_twilitManualPromptSavedCorners[i] = pic->corner(i);
+    // Twilit Essentials clones every layer of the vanilla A/Y/X/B button groups.
+    // Replacing only one texture while leaving the remaining vanilla layers active
+    // caused the mixed/stacked icons seen in v6. Identify the whole copied group:
+    // draw our modern icon on layer 0 and suppress the remaining layers.
+    int twilitButtonIdx = -1;
+    int twilitLayerIdx = -1;
+    for (int bi = 0; bi < 4 && twilitButtonIdx < 0; ++bi) {
+        for (int li = 0; li < s_twilitButtonLayerCount[bi]; ++li) {
+            if (current == s_twilitButtonLayerTex[bi][li]) {
+                twilitButtonIdx = bi;
+                twilitLayerIdx = li;
+                break;
+            }
         }
-        s_twilitManualPromptPatched = true;
+    }
 
-        replace_picture_texture(pic, replacementPrompt);
-        const JUtility::TColor neutralBlack(0, 0, 0, 0);
-        const JUtility::TColor neutralWhite(255, 255, 255, 255);
-        pic->setBlackWhite(neutralBlack, neutralWhite);
-        pic->setCornerColor(neutralWhite);
+    const f32 drawW = mods::arg<f32>(args, 3);
+    const bool smallManualButton =
+        drawW >= 6.0f && drawW <= 32.0f && h >= 6.0f && h <= 32.0f;
 
-        const f32 oldW = mods::arg<f32>(args, 3);
-        const f32 oldH = h;
-        constexpr f32 target = 24.0f;
-        mods::arg_ref<f32>(args, 1) -= (target - oldW) * 0.5f;
-        mods::arg_ref<f32>(args, 2) -= (target - oldH) * 0.5f;
-        mods::arg_ref<f32>(args, 3) = target;
-        mods::arg_ref<f32>(args, 4) = target;
+    if (twilitButtonIdx >= 0 && smallManualButton) {
+        if (twilitLayerIdx > 0) {
+            // Twilit will immediately draw these shadow/letter/highlight layers
+            // after layer 0. They belong to the old GC art and must not sit over
+            // our single modern prompt texture.
+            return HOOK_SKIP_ORIGINAL;
+        }
+
+        const ResTIMG* replacementPrompt = nullptr;
+        switch (twilitButtonIdx) {
+        case 0: replacementPrompt = resource_timg(s_cross); break;    // GC A
+        case 1: replacementPrompt = resource_timg(s_square); break;   // GC Y
+        case 2: replacementPrompt = resource_timg(s_triangle); break; // GC X
+        case 3: replacementPrompt = resource_timg(s_circle); break;   // GC B
+        default: break;
+        }
+
+        if (replacementPrompt != nullptr) {
+            s_twilitManualPromptPicture = pic;
+            s_twilitManualPromptSavedTexture = current;
+            s_twilitManualPromptSavedBlack = pic->getBlack();
+            s_twilitManualPromptSavedWhite = pic->getWhite();
+            for (int i = 0; i < 4; ++i) {
+                s_twilitManualPromptSavedCorners[i] = pic->corner(i);
+            }
+            s_twilitManualPromptPatched = true;
+
+            replace_picture_texture(pic, replacementPrompt);
+            const JUtility::TColor neutralBlack(0, 0, 0, 0);
+            const JUtility::TColor neutralWhite(255, 255, 255, 255);
+            pic->setBlackWhite(neutralBlack, neutralWhite);
+            pic->setCornerColor(neutralWhite);
+
+            // One consistent visible box for all four hints.
+            constexpr f32 target = 22.0f;
+            mods::arg_ref<f32>(args, 1) -= (target - drawW) * 0.5f;
+            mods::arg_ref<f32>(args, 2) -= (target - h) * 0.5f;
+            mods::arg_ref<f32>(args, 3) = target;
+            mods::arg_ref<f32>(args, 4) = target;
+        }
     }
 
     // Twilit Essentials draws its Bottles/Tunics page shoulder prompt manually
