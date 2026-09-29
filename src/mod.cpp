@@ -873,12 +873,118 @@ bool load_button_texture(const char* path, ResourceBuffer* out) {
            out->data != nullptr && out->size >= 0x20;
 }
 
+// Any pane/material mutation performed from J2DScreen::draw must be draw-local.
+// Twilit Essentials reuses/copies vanilla J2D resources for its radial UI, so
+// leaving controller textures, visibility or material colors attached after a
+// menu draw can contaminate the next radial-menu instance.
+struct DrawLocalPaneState {
+    J2DPane* pane = nullptr;
+    bool visible = false;
+    u8 alpha = 255;
+    JGeometry::TBox2<f32> bounds{};
+    f32 tx = 0.0f, ty = 0.0f, sx = 1.0f, sy = 1.0f, rotation = 0.0f;
+    bool picture = false;
+    u8 textureCount = 0;
+    const ResTIMG* textures[8]{};
+    JUtility::TColor black{};
+    JUtility::TColor white{};
+    JUtility::TColor corners[4]{};
+};
+
+DrawLocalPaneState s_drawLocalState[256];
+int s_drawLocalStateCount = 0;
+J2DScreen* s_drawLocalScreen = nullptr;
+
+void begin_draw_local_state(J2DScreen* screen) {
+    s_drawLocalScreen = screen;
+    s_drawLocalStateCount = 0;
+}
+
+void capture_draw_local_pane(J2DPane* pane) {
+    if (pane == nullptr || s_drawLocalScreen == nullptr) return;
+    for (int i = 0; i < s_drawLocalStateCount; ++i) {
+        if (s_drawLocalState[i].pane == pane) return;
+    }
+    if (s_drawLocalStateCount >= (int)(sizeof(s_drawLocalState) / sizeof(s_drawLocalState[0]))) return;
+
+    DrawLocalPaneState& st = s_drawLocalState[s_drawLocalStateCount++];
+    st.pane = pane;
+    st.visible = pane->isVisible();
+    st.alpha = pane->getAlpha();
+    st.bounds = pane->getBounds();
+    st.tx = pane->getTranslateX();
+    st.ty = pane->getTranslateY();
+    st.sx = pane->getScaleX();
+    st.sy = pane->getScaleY();
+    st.rotation = pane->getRotateZ();
+
+    if (J2DPicture* pic = as_picture(pane)) {
+        st.picture = true;
+        st.textureCount = pic->getTextureCount();
+        if (st.textureCount > 8) st.textureCount = 8;
+        for (u8 i = 0; i < st.textureCount; ++i) {
+            if (pic->getTexture(i) != nullptr)
+                st.textures[i] = pic->getTexture(i)->getTexInfo();
+        }
+        st.black = pic->getBlack();
+        st.white = pic->getWhite();
+        for (int i = 0; i < 4; ++i) st.corners[i] = pic->corner(i);
+    }
+}
+
+void capture_draw_local_tree(J2DPane* root) {
+    if (root == nullptr || s_drawLocalScreen == nullptr) return;
+    J2DPane* stack[128];
+    int top = 0;
+    stack[top++] = root;
+    while (top > 0) {
+        J2DPane* node = stack[--top];
+        capture_draw_local_pane(node);
+        for (J2DPane* child = node->getFirstChildPane(); child != nullptr;
+             child = child->getNextChildPane()) {
+            if (top < 128) stack[top++] = child;
+        }
+    }
+}
+
+void restore_draw_local_state(J2DScreen* screen) {
+    if (screen == nullptr || screen != s_drawLocalScreen) return;
+
+    for (int i = s_drawLocalStateCount - 1; i >= 0; --i) {
+        DrawLocalPaneState& st = s_drawLocalState[i];
+        if (st.pane == nullptr) continue;
+
+        st.pane->place(st.bounds);
+        st.pane->translate(st.tx, st.ty);
+        st.pane->scale(st.sx, st.sy);
+        st.pane->rotate(st.rotation);
+        st.pane->setAlpha(st.alpha);
+        if (st.visible) st.pane->show();
+        else st.pane->hide();
+
+        if (st.picture) {
+            J2DPicture* pic = static_cast<J2DPicture*>(st.pane);
+            const u8 liveCount = pic->getTextureCount();
+            const u8 restoreCount = st.textureCount < liveCount ? st.textureCount : liveCount;
+            for (u8 tex = 0; tex < restoreCount; ++tex) {
+                if (st.textures[tex] != nullptr) pic->changeTexture(st.textures[tex], tex);
+            }
+            pic->setBlackWhite(st.black, st.white);
+            pic->setCornerColor(st.corners[0], st.corners[1], st.corners[2], st.corners[3]);
+        }
+    }
+
+    s_drawLocalStateCount = 0;
+    s_drawLocalScreen = nullptr;
+}
+
 void replace_picture_texture(J2DPicture* picture, const ResTIMG* texture) {
     if (picture == nullptr || texture == nullptr) return;
-    const u8 count = picture->getTextureCount();
-    for (u8 i = 0; i < count; ++i) picture->changeTexture(texture, i);
-    if (picture->getTextureCount() != 0 && picture->getTexture(0) != nullptr)
-        picture->setTexCoord(picture->getTexture(0), BIND15, MIRROR0, false);
+    capture_draw_local_pane(picture);
+
+    // Controller art replaces the visible face only. Do not overwrite every
+    // material slot: secondary slots may be masks/overlays reused by other UI.
+    if (picture->getTextureCount() != 0) picture->changeTexture(texture, 0);
 }
 
 void apply_picture_flip(J2DPicture* picture, bool flipH, bool flipV) {
@@ -1935,6 +2041,7 @@ J2DPicture* first_picture_recursive(J2DPane* root) {
 
 void apply_menu_button_texture(J2DPane* root, const ResTIMG* texture) {
     if (root == nullptr || texture == nullptr) return;
+    capture_draw_local_tree(root);
 
     // The file-select A/B roots contain the vanilla button artwork as several
     // layered J2DPictures. Replacing only child #0 leaves the letter/base above
@@ -2886,6 +2993,7 @@ void adjust_world_arrows(J2DScreen* screen) {
 
 void fit_world_icon(J2DPicture* pic,const ResTIMG* texture,float side) {
     if (pic==nullptr || texture==nullptr || s_worldIconGeometryCount>=3) return;
+    capture_draw_local_pane(pic);
     auto& st=s_worldIconGeometry[s_worldIconGeometryCount++];
     st={pic,pic->getBounds(),pic->getTranslateX(),pic->getTranslateY(),
         pic->getScaleX(),pic->getScaleY(),pic->getRotateZ()};
@@ -2942,6 +3050,7 @@ void replace_world_map_dpad(J2DPane* pane, const ResTIMG* texture, J2DPicture*& 
             pic->setCornerColor(white);
             fit_world_icon(pic,texture,22.0f*cfg_scale(g_worldDpadScale,1.0f));
         } else {
+            capture_draw_local_pane(pic);
             pic->hide();
         }
     }
@@ -3450,6 +3559,7 @@ int classify_current_pikari() {
 
 HookAction before_screen_draw(ModContext* ctx, void* args, void* retval, void* userdata) {
     J2DScreen* screen = mods::arg<J2DScreen*>(args, 0);
+    begin_draw_local_state(screen);
     begin_menu_prompt_draw(screen);
     apply_known_menu_buttons(screen);
     prepare_menu_ornament_before_draw(screen);
@@ -3506,6 +3616,7 @@ HookAction before_screen_draw(ModContext* ctx, void* args, void* retval, void* u
 void after_screen_draw(ModContext*, void* args, void*, void*) {
     if (args == nullptr) return;
     J2DScreen* screen = mods::arg<J2DScreen*>(args, 0);
+    restore_draw_local_state(screen);
     restore_item_wheel_temp_state(screen);
     restore_world_icons(screen);
     restore_shared_menu_ornament_after_draw(screen);
