@@ -900,6 +900,10 @@ void begin_draw_local_state(J2DScreen* screen) {
     s_drawLocalStateCount = 0;
 }
 
+bool draw_local_capture_enabled() {
+    return s_drawLocalScreen != nullptr;
+}
+
 void capture_draw_local_pane(J2DPane* pane) {
     if (pane == nullptr || s_drawLocalScreen == nullptr) return;
     for (int i = 0; i < s_drawLocalStateCount; ++i) {
@@ -980,7 +984,7 @@ void restore_draw_local_state(J2DScreen* screen) {
 
 void replace_picture_texture(J2DPicture* picture, const ResTIMG* texture) {
     if (picture == nullptr || texture == nullptr) return;
-    capture_draw_local_pane(picture);
+    if (draw_local_capture_enabled()) capture_draw_local_pane(picture);
 
     // Controller art replaces the visible face only. Do not overwrite every
     // material slot: secondary slots may be masks/overlays reused by other UI.
@@ -2041,7 +2045,7 @@ J2DPicture* first_picture_recursive(J2DPane* root) {
 
 void apply_menu_button_texture(J2DPane* root, const ResTIMG* texture) {
     if (root == nullptr || texture == nullptr) return;
-    capture_draw_local_tree(root);
+    if (draw_local_capture_enabled()) capture_draw_local_tree(root);
 
     // The file-select A/B roots contain the vanilla button artwork as several
     // layered J2DPictures. Replacing only child #0 leaves the letter/base above
@@ -2993,7 +2997,7 @@ void adjust_world_arrows(J2DScreen* screen) {
 
 void fit_world_icon(J2DPicture* pic,const ResTIMG* texture,float side) {
     if (pic==nullptr || texture==nullptr || s_worldIconGeometryCount>=3) return;
-    capture_draw_local_pane(pic);
+    if (draw_local_capture_enabled()) capture_draw_local_pane(pic);
     auto& st=s_worldIconGeometry[s_worldIconGeometryCount++];
     st={pic,pic->getBounds(),pic->getTranslateX(),pic->getTranslateY(),
         pic->getScaleX(),pic->getScaleY(),pic->getRotateZ()};
@@ -3050,7 +3054,7 @@ void replace_world_map_dpad(J2DPane* pane, const ResTIMG* texture, J2DPicture*& 
             pic->setCornerColor(white);
             fit_world_icon(pic,texture,22.0f*cfg_scale(g_worldDpadScale,1.0f));
         } else {
-            capture_draw_local_pane(pic);
+            if (draw_local_capture_enabled()) capture_draw_local_pane(pic);
             pic->hide();
         }
     }
@@ -3559,7 +3563,25 @@ int classify_current_pikari() {
 
 HookAction before_screen_draw(ModContext* ctx, void* args, void* retval, void* userdata) {
     J2DScreen* screen = mods::arg<J2DScreen*>(args, 0);
-    begin_draw_local_state(screen);
+
+    // Do not arm the generic snapshot on nested/auxiliary J2DScreen draws.
+    // World-map and item-wheel layouts already have dedicated restoration paths;
+    // arming a second global snapshot there can capture transient pane trees that
+    // are mutated/rebuilt during the same draw and cause invalid restores/crashes.
+    const PromptMapKind mapKind = prompt_map_kind(screen);
+    const bool isItemWheel =
+        screen != nullptr &&
+        screen->search(MULTI_CHAR('fyx_tex')) != nullptr &&
+        screen->search(MULTI_CHAR('x_btn_n')) != nullptr &&
+        screen->search(MULTI_CHAR('y_btn_n')) != nullptr;
+
+    if (mapKind == PromptMapKind::None && !isItemWheel)
+        begin_draw_local_state(screen);
+    else {
+        s_drawLocalScreen = nullptr;
+        s_drawLocalStateCount = 0;
+    }
+
     begin_menu_prompt_draw(screen);
     apply_known_menu_buttons(screen);
     prepare_menu_ornament_before_draw(screen);
