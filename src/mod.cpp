@@ -1067,7 +1067,21 @@ void patch_twilit_game_image_source(J2DScreen* screen) {
         if (out == nullptr || *out != nullptr) return;
         J2DPane* root = screen->search(tag);
         if (root == nullptr) return;
-        J2DPicture* face = first_picture_recursive(root);
+        J2DPicture* face = nullptr;
+        J2DPane* stack[32];
+        int top = 0;
+        stack[top++] = root;
+        while (top > 0 && face == nullptr) {
+            J2DPane* node = stack[--top];
+            if (J2DPicture* p = as_picture(node)) {
+                face = p;
+                break;
+            }
+            for (J2DPane* child = node->getFirstChildPane(); child != nullptr;
+                 child = child->getNextChildPane()) {
+                if (top < 32) stack[top++] = child;
+            }
+        }
         if (face != nullptr && face->getTexture(0) != nullptr) {
             *out = face->getTexture(0)->getTexInfo();
         }
