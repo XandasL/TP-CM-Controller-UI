@@ -881,118 +881,6 @@ void replace_picture_texture(J2DPicture* picture, const ResTIMG* texture) {
         picture->setTexCoord(picture->getTexture(0), BIND15, MIRROR0, false);
 }
 
-// Compatibility path for menu UI.
-// Never call changeTexture() on a vanilla/menu J2DPicture here: changeTexture()
-// stores the new TIMG into the pane's existing JUTTexture, and those texture
-// objects can be shared/reused by other mods (notably radial/menu extensions).
-// Instead we add a private child/sibling picture owned by this mod.
-constexpr u64 kTpOverlayUserInfo = 0x5450434D4F564C59ULL; // "TPCMOVLY"
-constexpr u64 kTpOverlayTagMask  = 0x5450434D00000000ULL;
-
-J2DPicture* tp_find_first_picture(J2DPane* root) {
-    if (root == nullptr) return nullptr;
-    if (J2DPicture* pic = as_picture(root)) return pic;
-    for (J2DPane* child = root->getFirstChildPane(); child != nullptr;
-         child = child->getNextChildPane()) {
-        if (J2DPicture* pic = tp_find_first_picture(child)) return pic;
-    }
-    return nullptr;
-}
-
-bool is_tp_overlay(J2DPane* pane) {
-    return pane != nullptr && pane->getUserInfo() == kTpOverlayUserInfo;
-}
-
-J2DPicture* direct_tp_overlay(J2DPane* root) {
-    if (root == nullptr) return nullptr;
-    for (J2DPane* child = root->getFirstChildPane(); child != nullptr;
-         child = child->getNextChildPane()) {
-        if (is_tp_overlay(child)) return as_picture(child);
-    }
-    return nullptr;
-}
-
-void neutralize_tp_overlay(J2DPicture* pic) {
-    if (pic == nullptr) return;
-    const JUtility::TColor black(0, 0, 0, 0);
-    const JUtility::TColor white(255, 255, 255, 255);
-    pic->setBlackWhite(black, white);
-    pic->setCornerColor(white);
-    pic->setAlpha(255);
-    pic->show();
-}
-
-J2DPicture* ensure_tp_overlay(J2DPane* root, const ResTIMG* texture) {
-    if (root == nullptr || texture == nullptr) return nullptr;
-
-    if (J2DPicture* overlay = direct_tp_overlay(root)) {
-        if (overlay->getTextureCount() == 0) overlay->append(texture, 1.0f);
-        else overlay->changeTexture(texture, 0); // our private texture object only
-        if (overlay->getTexture(0) != nullptr)
-            overlay->setTexCoord(overlay->getTexture(0), BIND15, MIRROR0, false);
-        neutralize_tp_overlay(overlay);
-        return overlay;
-    }
-
-    J2DPicture* source = tp_find_first_picture(root);
-    if (source == nullptr) return nullptr;
-
-    const u64 tag = root->mInfoTag ^ kTpOverlayTagMask;
-    J2DPicture* overlay = JKR_NEW J2DPicture(tag, source->getBounds(), texture, nullptr);
-    if (overlay == nullptr) return nullptr;
-    overlay->setUserInfo(kTpOverlayUserInfo);
-    neutralize_tp_overlay(overlay);
-
-    J2DPane* first = root->getFirstChildPane();
-    if (first != nullptr) root->insertChild(first, overlay);
-    else root->appendChild(overlay);
-    return overlay;
-}
-
-J2DPicture* ensure_tp_picture_overlay(J2DPicture* source, const ResTIMG* texture, u64 seedTag) {
-    if (source == nullptr || texture == nullptr) return nullptr;
-    J2DPane* parent = source->getParentPane();
-    if (parent == nullptr) return nullptr;
-
-    const u64 tag = seedTag ^ kTpOverlayTagMask;
-    for (J2DPane* child = parent->getFirstChildPane(); child != nullptr;
-         child = child->getNextChildPane()) {
-        if (child->mInfoTag == tag && is_tp_overlay(child)) {
-            J2DPicture* overlay = as_picture(child);
-            if (overlay == nullptr) return nullptr;
-            if (overlay->getTextureCount() == 0) overlay->append(texture, 1.0f);
-            else overlay->changeTexture(texture, 0);
-            if (overlay->getTexture(0) != nullptr)
-                overlay->setTexCoord(overlay->getTexture(0), BIND15, MIRROR0, false);
-            neutralize_tp_overlay(overlay);
-            return overlay;
-        }
-    }
-
-    J2DPicture* overlay = JKR_NEW J2DPicture(tag, source->getBounds(), texture, nullptr);
-    if (overlay == nullptr) return nullptr;
-    overlay->setUserInfo(kTpOverlayUserInfo);
-    neutralize_tp_overlay(overlay);
-    parent->insertChild(source, overlay);
-    return overlay;
-}
-
-void hide_non_overlay_pictures(J2DPane* root, J2DPicture* keep) {
-    if (root == nullptr) return;
-    J2DPane* stack[96];
-    int top = 0;
-    stack[top++] = root;
-    while (top > 0) {
-        J2DPane* node = stack[--top];
-        for (J2DPane* child = node->getFirstChildPane(); child != nullptr;
-             child = child->getNextChildPane()) {
-            if (top < 96) stack[top++] = child;
-            J2DPicture* pic = as_picture(child);
-            if (pic != nullptr && pic != keep && !is_tp_overlay(pic)) pic->hide();
-        }
-    }
-}
-
 void apply_picture_flip(J2DPicture* picture, bool flipH, bool flipV) {
     if (picture == nullptr) return;
 
@@ -1014,6 +902,7 @@ void apply_full_button(J2DPane* root, const ResTIMG* texture) {
     J2DPicture* face = picture_child(root, 0);
     if (face == nullptr) return;
 
+    replace_picture_texture(face, texture);
 
     // IMPORTANTE: A/B/X/Y vanilla usam modulacoes de cor diferentes.
     // Se apenas trocarmos a textura, o Cross azul herda o verde do A,
@@ -2044,16 +1933,131 @@ J2DPicture* first_picture_recursive(J2DPane* root) {
     return nullptr;
 }
 
+// Menu compatibility rule: never store our TIMG into a vanilla JUTTexture.
+// Queue independent draw-only pictures and only hide vanilla layers for the
+// duration of the current J2DScreen::draw. This keeps other mods' layouts and
+// materials completely untouched.
+struct MenuOverlayRequest {
+    J2DScreen* screen = nullptr;
+    J2DPicture* anchor = nullptr;
+    const ResTIMG* texture = nullptr;
+};
+
+struct MenuOverlayVisibility {
+    J2DScreen* screen = nullptr;
+    J2DPane* pane = nullptr;
+    bool visible = false;
+};
+
+MenuOverlayRequest s_menuOverlayReq[96];
+int s_menuOverlayReqCount = 0;
+MenuOverlayVisibility s_menuOverlayVis[256];
+int s_menuOverlayVisCount = 0;
+
+void menu_overlay_begin(J2DScreen* screen) {
+    if (screen == nullptr) return;
+    // A screen may be drawn more than once in one frame. Only discard stale
+    // requests when starting a new screen draw after the previous one restored.
+    if (s_menuOverlayReqCount == 0 && s_menuOverlayVisCount == 0) return;
+}
+
+void menu_overlay_capture_visibility(J2DScreen* screen, J2DPane* pane) {
+    if (screen == nullptr || pane == nullptr) return;
+    for (int i=0;i<s_menuOverlayVisCount;++i)
+        if (s_menuOverlayVis[i].pane==pane) return;
+    if (s_menuOverlayVisCount >= (int)(sizeof(s_menuOverlayVis)/sizeof(s_menuOverlayVis[0]))) return;
+    s_menuOverlayVis[s_menuOverlayVisCount++]={screen,pane,pane->isVisible()};
+}
+
+void menu_overlay_hide_tree(J2DScreen* screen, J2DPane* root, J2DPicture* anchor) {
+    if (screen == nullptr || root == nullptr) return;
+    J2DPane* stack[96]; int top=0; stack[top++]=root;
+    while(top>0) {
+        J2DPane* node=stack[--top];
+        for(J2DPane* child=node->getFirstChildPane(); child!=nullptr; child=child->getNextChildPane()) {
+            if(top<96) stack[top++]=child;
+            if(J2DPicture* pic=as_picture(child)) {
+                menu_overlay_capture_visibility(screen,pic);
+                pic->hide();
+            }
+        }
+    }
+    if(anchor!=nullptr) {
+        menu_overlay_capture_visibility(screen,anchor);
+        anchor->hide();
+    }
+}
+
+void menu_overlay_queue(J2DScreen* screen, J2DPicture* anchor, const ResTIMG* texture) {
+    if (screen==nullptr || anchor==nullptr || texture==nullptr) return;
+    for(int i=0;i<s_menuOverlayReqCount;++i) {
+        if(s_menuOverlayReq[i].screen==screen && s_menuOverlayReq[i].anchor==anchor) {
+            s_menuOverlayReq[i].texture=texture;
+            return;
+        }
+    }
+    if(s_menuOverlayReqCount >= (int)(sizeof(s_menuOverlayReq)/sizeof(s_menuOverlayReq[0]))) return;
+    s_menuOverlayReq[s_menuOverlayReqCount++]={screen,anchor,texture};
+}
+
+void menu_overlay_queue_root(J2DScreen* screen, J2DPane* root, const ResTIMG* texture) {
+    if(screen==nullptr || root==nullptr || texture==nullptr) return;
+    J2DPicture* anchor=first_picture_recursive(root);
+    if(anchor==nullptr) return;
+    menu_overlay_hide_tree(screen,root,anchor);
+    menu_overlay_queue(screen,anchor,texture);
+}
+
+void menu_overlay_queue_exact(J2DScreen* screen, J2DPicture* anchor, const ResTIMG* texture) {
+    if(screen==nullptr || anchor==nullptr || texture==nullptr) return;
+    menu_overlay_capture_visibility(screen,anchor);
+    anchor->hide();
+    menu_overlay_queue(screen,anchor,texture);
+}
+
+void menu_overlay_draw_and_restore(J2DScreen* screen) {
+    if(screen==nullptr) return;
+
+    // Draw after the vanilla screen using a short-lived private J2DPicture.
+    // Its JUTTexture is never shared with the game's BLO materials.
+    for(int i=0;i<s_menuOverlayReqCount;++i) {
+        auto& req=s_menuOverlayReq[i];
+        if(req.screen!=screen || req.anchor==nullptr || req.texture==nullptr) continue;
+        const auto& b=req.anchor->getGlbBounds();
+        const float w=b.getWidth(), h=b.getHeight();
+        if(w<=0.0f || h<=0.0f) continue;
+        J2DPicture pic(req.texture);
+        const JUtility::TColor black(0,0,0,0), white(255,255,255,255);
+        pic.setBlackWhite(black,white);
+        pic.setCornerColor(white);
+        pic.setAlpha(req.anchor->getAlpha());
+        pic.draw(b.i.x,b.i.y,w,h,false,false,false);
+    }
+
+    for(int i=s_menuOverlayVisCount-1;i>=0;--i) {
+        auto& st=s_menuOverlayVis[i];
+        if(st.screen!=screen || st.pane==nullptr) continue;
+        if(st.visible) st.pane->show(); else st.pane->hide();
+    }
+
+    int wr=0;
+    for(int i=0;i<s_menuOverlayReqCount;++i)
+        if(s_menuOverlayReq[i].screen!=screen) s_menuOverlayReq[wr++]=s_menuOverlayReq[i];
+    s_menuOverlayReqCount=wr;
+    wr=0;
+    for(int i=0;i<s_menuOverlayVisCount;++i)
+        if(s_menuOverlayVis[i].screen!=screen) s_menuOverlayVis[wr++]=s_menuOverlayVis[i];
+    s_menuOverlayVisCount=wr;
+}
+
 void apply_menu_button_texture(J2DPane* root, const ResTIMG* texture) {
     if (root == nullptr || texture == nullptr) return;
-
-    // Use a private overlay instead of mutating the vanilla JUTTexture/material.
-    // The overlay is inserted first so first_picture_recursive(root) resolves to
-    // our picture for all existing layout/size helpers.
-    J2DPicture* overlay = ensure_tp_overlay(root, texture);
-    if (overlay == nullptr) return;
-    hide_non_overlay_pictures(root, overlay);
-    overlay->show();
+    J2DScreen* screen = nullptr;
+    for (J2DPane* p=root; p!=nullptr; p=p->getParentPane()) {
+        if (p->getTypeID()==17) { screen=static_cast<J2DScreen*>(p); break; }
+    }
+    if (screen==nullptr) return;
+    menu_overlay_queue_root(screen,root,texture);
 }
 
 // Item Wheel changes must be draw-local. Twilit Essentials keeps/copies UI
@@ -2182,11 +2186,13 @@ void apply_item_wheel_icon_texture(J2DPane* root, const ResTIMG* texture,
                                    ItemWheelIconBase& state,
                                    ConfigVarHandle xh, ConfigVarHandle yh, ConfigVarHandle sh) {
     if (root == nullptr || texture == nullptr) return;
-    J2DPicture* source = first_picture_recursive(root);
-    if (source == nullptr) return;
-    J2DPicture* face = is_tp_overlay(source) ? source : ensure_tp_overlay(root, texture);
+    J2DPicture* face = first_picture_recursive(root);
     if (face == nullptr) return;
-    hide_non_overlay_pictures(root, face);
+    J2DScreen* screen=nullptr;
+    for(J2DPane* p=root;p!=nullptr;p=p->getParentPane()) {
+        if(p->getTypeID()==17) { screen=static_cast<J2DScreen*>(p); break; }
+    }
+    if(screen!=nullptr) menu_overlay_queue_root(screen,root,texture);
 
     const auto& cur = face->getBounds();
     if (!state.captured || state.picture != face) {
@@ -2205,11 +2211,6 @@ void apply_item_wheel_icon_texture(J2DPane* root, const ResTIMG* texture,
         state.captured = true;
     }
 
-    const JUtility::TColor neutralBlack(0, 0, 0, 0);
-    const JUtility::TColor neutralWhite(255, 255, 255, 255);
-    face->setBlackWhite(neutralBlack, neutralWhite);
-    face->setCornerColor(neutralWhite);
-    face->setAlpha(255);
 
     // Always rebuild from the captured square baseline. This prevents slider
     // changes and repeated Item Wheel draws from accumulating transforms.
@@ -2246,6 +2247,11 @@ void apply_item_wheel_shoulder_texture(J2DPane* root, const ResTIMG* texture,
     if (root == nullptr || texture == nullptr) return;
     J2DPicture* face = first_picture_recursive(root);
     if (face == nullptr) return;
+    J2DScreen* screen=nullptr;
+    for(J2DPane* p=root;p!=nullptr;p=p->getParentPane()) {
+        if(p->getTypeID()==17) { screen=static_cast<J2DScreen*>(p); break; }
+    }
+    if(screen!=nullptr) menu_overlay_queue_root(screen,root,texture);
 
     const auto& cur = face->getBounds();
     if (!state.captured || state.picture != face) {
@@ -2266,11 +2272,6 @@ void apply_item_wheel_shoulder_texture(J2DPane* root, const ResTIMG* texture,
         state.captured = true;
     }
 
-    const JUtility::TColor neutralBlack(0, 0, 0, 0);
-    const JUtility::TColor neutralWhite(255, 255, 255, 255);
-    face->setBlackWhite(neutralBlack, neutralWhite);
-    face->setCornerColor(neutralWhite);
-    face->setAlpha(255);
 
     const float dx = cfg_pos(xh, 0.0f);
     const float dy = cfg_pos(yh, 0.0f);
@@ -2304,11 +2305,9 @@ void apply_item_wheel_exact_picture(J2DScreen* screen, u64 faceTag,
                                     ConfigVarHandle xh, ConfigVarHandle yh, ConfigVarHandle sh) {
     if (screen == nullptr || texture == nullptr) return;
     J2DPane* pane = screen->search(faceTag);
-    J2DPicture* source = as_picture(pane);
-    if (source == nullptr) return;
-    J2DPicture* face = ensure_tp_picture_overlay(source, texture, faceTag);
+    J2DPicture* face = as_picture(pane);
     if (face == nullptr) return;
-    source->hide();
+    menu_overlay_queue_exact(screen,face,texture);
 
     const auto& cur = face->getBounds();
     if (!state.captured || state.picture != face) {
@@ -2325,11 +2324,6 @@ void apply_item_wheel_exact_picture(J2DScreen* screen, u64 faceTag,
         state.captured = true;
     }
 
-    const JUtility::TColor neutralBlack(0, 0, 0, 0);
-    const JUtility::TColor neutralWhite(255, 255, 255, 255);
-    face->setBlackWhite(neutralBlack, neutralWhite);
-    face->setCornerColor(neutralWhite);
-    face->setAlpha(255);
     face->show();
 
     const float dx = cfg_pos(xh, 0.0f), dy = cfg_pos(yh, 0.0f), sc = cfg_scale(sh, 1.0f);
@@ -2879,7 +2873,7 @@ void prepare_menu_ornament_before_draw(J2DScreen* screen) {
         for (J2DPane* child=node->getFirstChildPane(); child!=nullptr; child=child->getNextChildPane()) {
             if (top<192) stack[top++]=child;
             J2DPicture* pic=as_picture(child);
-            if (pic==nullptr || is_tp_overlay(pic) || pic==aFace || pic==bFace || pic==cFace) continue;
+            if (pic==nullptr || pic==aFace || pic==bFace || pic==cFace) continue;
             if (worldMap && !world_map_ornament_picture(pic,worldControls,aRoot,bRoot,worldZ)) continue;
             if (s_menuOrnamentStateCount>=128) continue;
             auto& st=s_menuOrnamentState[s_menuOrnamentStateCount++];
@@ -2893,15 +2887,12 @@ void prepare_menu_ornament_before_draw(J2DScreen* screen) {
                 // This keeps the existing ornament toggle/X/Y/Scale controls shared by
                 // Collection-family menus and the dedicated map prompt layout.
                 if (customOrnamentHost==nullptr && customOrnament!=nullptr) {
-                    J2DPicture* overlay=ensure_tp_picture_overlay(pic,customOrnament,pic->mInfoTag);
-                    if (overlay!=nullptr) {
-                        customOrnamentHost=overlay;
-                        pic->hide();
-                        if (MenuOrnamentBase* base=ornament_base(overlay)) {
-                            overlay->translate(base->x+ox,base->y+oy);
-                            overlay->resize(128.0f,128.0f);
-                            overlay->scale(os,os);
-                        }
+                    customOrnamentHost=pic;
+                    menu_overlay_queue_exact(screen,pic,customOrnament);
+                    if (MenuOrnamentBase* base=ornament_base(pic)) {
+                        pic->translate(base->x+ox,base->y+oy);
+                        pic->resize(128.0f,128.0f);
+                        pic->scale(os,os);
                     }
                 } else if (customOrnamentHost!=pic) {
                     pic->hide();
@@ -3092,8 +3083,8 @@ void fit_world_icon(J2DPicture* pic,const ResTIMG* texture,float side) {
     const auto& fitted=pic->getBounds();
     pic->translate(cx-(fitted.i.x+fitted.getWidth()*0.5f),
                    cy-(fitted.i.y+fitted.getHeight()*0.5f));
-    // UVs must be rebuilt after resizing the native glyph.
-    replace_picture_texture(pic,texture);
+    // Artwork itself is drawn independently after the screen; only geometry
+    // is borrowed from this hidden vanilla anchor.
 }
 
 void restore_world_icons(J2DScreen* screen) {
@@ -3184,6 +3175,7 @@ void apply_known_menu_buttons(J2DScreen* screen) {
     };
 
     const PromptMapKind mapKind=prompt_map_kind(screen);
+    if (mapKind!=PromptMapKind::None) begin_world_map_temp_state(screen,mapKind);
     if (mapKind==PromptMapKind::World) {
         s_worldIconScreen=screen;
         s_worldIconGeometryCount=0;
@@ -3244,7 +3236,7 @@ void apply_known_menu_buttons(J2DScreen* screen) {
         screen->search(MULTI_CHAR('g_rbtn_n')) != nullptr) {
         if (const ResTIMG* l2 = resource_timg(s_l2)) {
             J2DPane* root = screen->search(MULTI_CHAR('g_lbtn_n'));
-            apply_menu_button_texture(root, l2);
+            apply_menu_button_texture(root,l2);
             if (J2DPicture* face = first_picture_recursive(root)) {
                 const auto& b = face->getBounds();
                 const float h = b.getHeight();
@@ -3252,15 +3244,13 @@ void apply_known_menu_buttons(J2DScreen* screen) {
                 const float w = h * aspect;
                 const float cx = b.i.x + b.getWidth() * 0.5f;
                 set_bounds(face, cx - w * 0.5f, b.i.y, w, h);
-                const JUtility::TColor black(0,0,0,0), white(255,255,255,255);
-                face->setBlackWhite(black, white); face->setCornerColor(white); face->setAlpha(255); face->show();
             }
             if (J2DPane* p = screen->search(MULTI_CHAR('g_lbtn1'))) p->hide();
             if (J2DPane* p = screen->search(MULTI_CHAR('g_lbtn2'))) p->hide();
         }
         if (const ResTIMG* r2 = resource_timg(s_r2)) {
             J2DPane* root = screen->search(MULTI_CHAR('g_rbtn_n'));
-            apply_menu_button_texture(root, r2);
+            apply_menu_button_texture(root,r2);
             if (J2DPicture* face = first_picture_recursive(root)) {
                 const auto& b = face->getBounds();
                 const float h = b.getHeight();
@@ -3268,8 +3258,6 @@ void apply_known_menu_buttons(J2DScreen* screen) {
                 const float w = h * aspect;
                 const float cx = b.i.x + b.getWidth() * 0.5f;
                 set_bounds(face, cx - w * 0.5f, b.i.y, w, h);
-                const JUtility::TColor black(0,0,0,0), white(255,255,255,255);
-                face->setBlackWhite(black, white); face->setCornerColor(white); face->setAlpha(255); face->show();
             }
             if (J2DPane* p = screen->search(MULTI_CHAR('g_btn_t'))) p->hide();
         }
@@ -3290,6 +3278,7 @@ void apply_known_menu_buttons(J2DScreen* screen) {
         // Snapshot the original vanilla Item Wheel panes before changing any
         // textures, bounds or visibility. Everything is restored in the POST
         // J2DScreen::draw hook so Twilit Essentials never inherits our edits.
+        begin_item_wheel_temp_state(screen);
         if (const ResTIMG* triangle = resource_timg(s_triangle))
             apply_item_wheel_icon_texture(screen->search(MULTI_CHAR('x_btn_n')), triangle, s_wheelSquareBase, g_wheelSquareX, g_wheelSquareY, g_wheelSquareScale);
         if (const ResTIMG* square = resource_timg(s_square))
@@ -3372,13 +3361,8 @@ void apply_known_menu_buttons(J2DScreen* screen) {
         };
         for (u64 tag : analogTags) {
             J2DPane* pane = screen->search(tag);
-            J2DPicture* source = as_picture(pane);
-            if (source != nullptr) {
-                if (J2DPicture* overlay = ensure_tp_picture_overlay(source, analog, tag)) {
-                    source->hide();
-                    overlay->show();
-                }
-            }
+            J2DPicture* pic = as_picture(pane);
+            if (pic != nullptr) menu_overlay_queue_exact(screen,pic,analog);
         }
     }
 }
@@ -3697,7 +3681,10 @@ HookAction before_screen_draw(ModContext* ctx, void* args, void* retval, void* u
 void after_screen_draw(ModContext*, void* args, void*, void*) {
     if (args == nullptr) return;
     J2DScreen* screen = mods::arg<J2DScreen*>(args, 0);
+    menu_overlay_draw_and_restore(screen);
+    restore_item_wheel_temp_state(screen);
     restore_world_icons(screen);
+    restore_world_map_temp_state(screen);
     restore_shared_menu_ornament_after_draw(screen);
     restore_menu_prompt_after_draw(screen);
 }
