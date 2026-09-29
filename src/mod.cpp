@@ -1120,11 +1120,20 @@ HookAction before_picture_draw_sized(ModContext*, void* args, void*, void*) {
     const ResTIMG* triangleTex = resource_timg(s_triangle);
     if ((current == crossTex || current == circleTex ||
          current == squareTex || current == triangleTex) &&
-        mods::arg<f32>(args, 3) >= 10.0f && mods::arg<f32>(args, 3) <= 21.0f &&
-        h >= 10.0f && h <= 21.0f) {
+        mods::arg<f32>(args, 3) >= 8.0f && mods::arg<f32>(args, 3) <= 24.5f &&
+        h >= 8.0f && h <= 24.5f) {
         const f32 oldW = mods::arg<f32>(args, 3);
         const f32 oldH = h;
-        constexpr f32 target = 24.0f;
+
+        // Equalize the *visible* size rather than only the texture canvas size.
+        // Square fills more of its source canvas; the other three need a little
+        // extra room to look the same size in Twilit Essentials' hint rows.
+        f32 target = 30.0f;
+        if (current == squareTex) target = 27.0f;
+        else if (current == triangleTex) target = 31.0f;
+        else if (current == crossTex) target = 31.0f;
+        else if (current == circleTex) target = 30.0f;
+
         mods::arg_ref<f32>(args, 1) -= (target - oldW) * 0.5f;
         mods::arg_ref<f32>(args, 2) -= (target - oldH) * 0.5f;
         mods::arg_ref<f32>(args, 3) = target;
@@ -1158,9 +1167,14 @@ HookAction before_picture_draw_sized(ModContext*, void* args, void*, void*) {
         pic->setBlackWhite(neutralBlack, neutralWhite);
         pic->setCornerColor(neutralWhite);
         // Preserve the requested height but fix width to the replacement aspect ratio.
+        // Keep the icon centered inside Twilit Essentials' original button rect so
+        // L2/R2 do not drift horizontally when replacing the much wider vanilla Z art.
         if (replacement->height != 0) {
-            mods::arg_ref<f32>(args, 3) =
+            const f32 oldW = mods::arg<f32>(args, 3);
+            const f32 newW =
                 h * static_cast<f32>(replacement->width) / static_cast<f32>(replacement->height);
+            mods::arg_ref<f32>(args, 1) -= (newW - oldW) * 0.5f;
+            mods::arg_ref<f32>(args, 3) = newW;
         }
         // Our L2/R2 artwork is already authored in its final orientation.
         mods::arg_ref<bool>(args, 5) = false;
