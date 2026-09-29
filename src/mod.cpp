@@ -3488,6 +3488,263 @@ void apply_known_menu_buttons(J2DScreen* screen) {
 }
 
 
+// v0.11.20 brightness test, based directly on the stable v0.11.19 implementation.
+// Replace only the contextual GameCube R artwork after its layout is created.
+// No code from the experimental v0.11.07-v0.11.18 chain is carried over.
+void after_meter_button_screen_init(ModContext*, void* args, void*, void*) {
+    dMeterButton_c* self = args != nullptr ? mods::arg<dMeterButton_c*>(args, 0) : nullptr;
+    if (self == nullptr || self->mpButtonScreen == nullptr) return;
+
+    // Fishing uses these exact faces in zelda_game_image_button_info.blo.
+    // Change only artwork; directional arrows and the combined-prompt plus
+    // sign are separate panes and remain under native visibility control.
+    struct FishingFace { u64 tag; const ResTIMG* texture; };
+    const FishingFace fishingFaces[] = {
+        {MULTI_CHAR('c_btn'), resource_timg(s_r3)},
+        {MULTI_CHAR('as_btn1'), resource_timg(s_analog)},
+        {MULTI_CHAR('as_btn3'), resource_timg(s_analog)},
+        {MULTI_CHAR('b_btn1'), resource_timg(s_circle)},
+    };
+    for (const FishingFace& entry : fishingFaces) {
+        J2DPicture* face = as_picture(self->mpButtonScreen->search(entry.tag));
+        if (face == nullptr || entry.texture == nullptr || entry.texture->height == 0) continue;
+        replace_picture_texture(face, entry.texture);
+        face->setBlackWhite(JUtility::TColor(0, 0, 0, 0), JUtility::TColor(255, 255, 255, 255));
+        face->setCornerColor(JUtility::TColor(255, 255, 255, 255));
+        const auto box = face->getBounds();
+        const float sx = face->getScaleX(), sy = face->getScaleY();
+        if (sx > 0.0001f && sy > 0.0001f) {
+            const float width = box.getHeight() * sy / sx * float(entry.texture->width) / float(entry.texture->height);
+            face->move(box.i.x + (box.getWidth() - width) * 0.5f, box.i.y);
+            face->resize(width, box.getHeight());
+            face->rotate(0.0f);
+        }
+    }
+    const u64 fishingOldLayers[] = {
+        MULTI_CHAR('as_btn'), MULTI_CHAR('as_btn2'),
+        MULTI_CHAR('as_btn4'), MULTI_CHAR('as_btn5'),
+        MULTI_CHAR('b_btn_l1'), MULTI_CHAR('b_btn_t1'),
+    };
+    for (u64 tag : fishingOldLayers)
+        if (J2DPane* old = self->mpButtonScreen->search(tag)) old->hide();
+    // Contextual Midna jump Z prompt: preserve the portrait and root animation.
+    J2DPicture* jumpFace = as_picture(self->mpButtonScreen->search(MULTI_CHAR('zbtn')));
+    const ResTIMG* r1 = resource_timg(s_r1);
+    if (jumpFace != nullptr && r1 != nullptr && r1->height != 0) {
+        replace_picture_texture(jumpFace, r1);
+        jumpFace->setBlackWhite(JUtility::TColor(0, 0, 0, 0),
+                               JUtility::TColor(255, 255, 255, 255));
+        jumpFace->setCornerColor(JUtility::TColor(255, 255, 255, 255));
+        const auto bounds = jumpFace->getBounds();
+        const float sx = jumpFace->getScaleX();
+        const float sy = jumpFace->getScaleY();
+        if (sx > 0.0001f && sy > 0.0001f) {
+            const float aspect = float(r1->width) / float(r1->height);
+            const float height = bounds.getWidth() * sx / (aspect * sy);
+            jumpFace->move(bounds.i.x, bounds.i.y + (bounds.getHeight() - height) * 0.5f);
+            jumpFace->resize(bounds.getWidth(), height);
+            jumpFace->rotate(0.0f);
+        }
+        J2DPane* root = self->mpButtonScreen->search(MULTI_CHAR('zbtn_n'));
+        J2DPane* portrait = self->mpButtonScreen->search(MULTI_CHAR('midona'));
+        J2DPane* stack[64];
+        int count = 0;
+        if (root != nullptr) stack[count++] = root;
+        while (count > 0) {
+            J2DPane* node = stack[--count];
+            for (J2DPane* child = node->getFirstChildPane(); child != nullptr;
+                 child = child->getNextChildPane()) {
+                if (child == portrait) continue;
+                if (count < 64) stack[count++] = child;
+                if (child == jumpFace || as_picture(child) == nullptr) continue;
+                bool preserve = false;
+                for (J2DPane* p = jumpFace->getParentPane(); p != nullptr; p = p->getParentPane())
+                    if (p == child) preserve = true;
+                for (J2DPane* p = portrait; p != nullptr; p = p->getParentPane())
+                    if (p == child) preserve = true;
+                if (!preserve) child->hide();
+            }
+        }
+        // Native screenInitButton explicitly enables this old Z highlight.
+        if (J2DPane* oldLight = self->mpButtonScreen->search(MULTI_CHAR('z_btnl')))
+            oldLight->hide();
+    }
+    // Bottom contextual Y prompt (Wolf Dig), separate from the main HUD.
+    // Replace the face only; retain its parent alpha and prompt animation.
+    J2DPicture* digFace = as_picture(self->mpButtonScreen->search(MULTI_CHAR('y_btn')));
+    const ResTIMG* square = resource_timg(s_square);
+    if (digFace != nullptr && square != nullptr) {
+        // Only the contextual Y button's artwork subtree. The label and
+        // other prompts live outside ybtn_n and retain their native behavior.
+        J2DPane* root = self->mpButtonScreen->search(MULTI_CHAR('ybtn_n'));
+        J2DPane* stack[64];
+        int count = 0;
+        if (root != nullptr) stack[count++] = root;
+        while (count > 0) {
+            J2DPane* node = stack[--count];
+            for (J2DPane* child = node->getFirstChildPane(); child != nullptr;
+                 child = child->getNextChildPane()) {
+                if (count < 64) stack[count++] = child;
+                if (child == digFace || as_picture(child) == nullptr) continue;
+                bool containsFace = false;
+                for (J2DPane* parent = digFace->getParentPane(); parent != nullptr;
+                     parent = parent->getParentPane()) {
+                    if (parent == child) { containsFace = true; break; }
+                }
+                if (!containsFace) child->hide();
+            }
+        }
+        replace_picture_texture(digFace, square);
+        digFace->setBlackWhite(JUtility::TColor(0, 0, 0, 0),
+                              JUtility::TColor(255, 255, 255, 255));
+        digFace->setCornerColor(JUtility::TColor(255, 255, 255, 255));
+        const JGeometry::TBox2<f32> bounds = digFace->getBounds();
+        // Fit a circle to the original slot height, keeping its center.
+        // Compensate any local nonuniform scale without changing parent layout.
+        const float sx = digFace->getScaleX();
+        const float sy = digFace->getScaleY();
+        if (sx > 0.0001f && sy > 0.0001f) {
+            const float width = bounds.getHeight() * sy / sx;
+            digFace->move(bounds.i.x + (bounds.getWidth() - width) * 0.5f, bounds.i.y);
+            digFace->resize(width, bounds.getHeight());
+            digFace->rotate(0.0f);
+        }
+    }
+    const ResTIMG* r2 = resource_timg(s_r2);
+    J2DPicture* base = as_picture(self->mpButtonScreen->search(MULTI_CHAR('r_btn_b')));
+    J2DPane* rightPiece = self->mpButtonScreen->search(MULTI_CHAR('r_btn_r'));
+    J2DPane* leftPiece = self->mpButtonScreen->search(MULTI_CHAR('r_btn_l'));
+    if (base == nullptr || r2 == nullptr) return;
+
+    // Change only the primary image. Leave the rest of the material/layout state alone.
+    if (base->getTextureCount() != 0) {
+        base->changeTexture(r2, 0);
+        if (base->getTexture(0) != nullptr)
+            base->setTexCoord(base->getTexture(0), BIND15, MIRROR0, false);
+    }
+
+    // v0.11.20: neutralize the original GameCube R picture tint so the R2
+    // keeps the brightness/colors authored in its texture. Pane alpha and the
+    // game's prompt/glow animation remain untouched.
+    const JUtility::TColor neutralBlack(0, 0, 0, 0);
+    const JUtility::TColor neutralWhite(255, 255, 255, 255);
+    base->setBlackWhite(neutralBlack, neutralWhite);
+    base->setCornerColor(neutralWhite);
+
+    // Preserve the R2 artwork's 4:3 aspect ratio inside the original 55x36 slot.
+    const JGeometry::TBox2<f32> box = base->getBounds();
+    const float oldW = box.getWidth();
+    const float oldH = box.getHeight();
+    const float newW = oldH * (4.0f / 3.0f);
+    base->move(box.i.x + (oldW - newW) * 0.5f, box.i.y);
+    base->resize(newW, oldH);
+
+    // Remove the two pieces that draw the original GameCube R glyph.
+    if (rightPiece != nullptr) rightPiece->hide();
+    if (leftPiece != nullptr) leftPiece->hide();
+
+    // v0.11.27: Start/S prompt used by BUTTON_STATUS_CANT_SKIP (0x4D).
+    // dMeterButton_c owns this as sbtn_n; a_btn2 is the picture used for
+    // BUTTON_S_e sizing/rendering. Replace only that picture with the
+    // user-supplied PlayStation Options artwork, preserving Start behavior.
+    const ResTIMG* options = resource_timg(s_options);
+    J2DPane* sRoot = self->mpButtonScreen->search(MULTI_CHAR('sbtn_n'));
+    J2DPicture* startFace = as_picture(self->mpButtonScreen->search(MULTI_CHAR('a_btn2')));
+    if (sRoot != nullptr && startFace != nullptr && options != nullptr) {
+        if (startFace->getTextureCount() != 0) {
+            startFace->changeTexture(options, 0);
+            if (startFace->getTexture(0) != nullptr)
+                startFace->setTexCoord(startFace->getTexture(0), BIND15, MIRROR0, false);
+        }
+        startFace->setBlackWhite(neutralBlack, neutralWhite);
+        startFace->setCornerColor(neutralWhite);
+        startFace->show();
+
+        // Remove only the two original GameCube Start artwork layers identified
+        // by the v0.11.26 sbtn_n tree diagnostic. Keep sbtn_n itself and a_btn2
+        // intact so the original positioning/alpha animation and Start behavior remain.
+        if (J2DPane* oldStartLight = self->mpButtonScreen->search(MULTI_CHAR('a_btn_l2')))
+            oldStartLight->hide();
+        if (J2DPane* oldStartGlyph = self->mpButtonScreen->search(MULTI_CHAR('a_btn_t1')))
+            oldStartGlyph->hide();
+    }
+}
+
+// The white Wolf glows are not x_light/y_light themselves. They are the
+// emphasized-button Pikari drawn by dMeterButton_c::draw().  Control the two
+// emphasis slots directly, then restore them after drawing so Preview never
+// mutates the game's persistent button state.
+HookAction before_meter_button_draw(ModContext*, void* args, void*, void*) {
+    s_activeMeterButton = args != nullptr ? mods::arg<dMeterButton_c*>(args, 0) : nullptr;
+    if (s_activeMeterButton == nullptr) return HOOK_CONTINUE;
+
+    s_meterButtonGlowState.valid = true;
+    for (int i=0;i<2;++i) {
+        s_meterButtonGlowState.frame[i] = s_activeMeterButton->field_0x2e8[i];
+        s_meterButtonGlowState.button[i] = s_activeMeterButton->field_0x4be[i];
+
+        if (s_activeMeterButton->field_0x4be[i] == dMeterButton_c::BUTTON_X_e &&
+            !cfg_bool(g_wolfXGlowEnabled,true))
+            s_activeMeterButton->field_0x2e8[i] = 0.0f;
+        if (s_activeMeterButton->field_0x4be[i] == dMeterButton_c::BUTTON_Y_e &&
+            !cfg_bool(g_wolfYGlowEnabled,true))
+            s_activeMeterButton->field_0x2e8[i] = 0.0f;
+    }
+
+    if (cfg_bool(g_wolfGlowPreview,false)) {
+        // dMeterButton has exactly two emphasis/Pikari slots. Preview borrows
+        // them for X and Y for this draw only, then the post-hook restores all
+        // original values.
+        s_activeMeterButton->field_0x4be[0] = dMeterButton_c::BUTTON_X_e;
+        s_activeMeterButton->field_0x4be[1] = dMeterButton_c::BUTTON_Y_e;
+        s_activeMeterButton->field_0x2e8[0] = cfg_bool(g_wolfXGlowEnabled,true) ? 18.0f : 0.0f;
+        s_activeMeterButton->field_0x2e8[1] = cfg_bool(g_wolfYGlowEnabled,true) ? 18.0f : 0.0f;
+    }
+    return HOOK_CONTINUE;
+}
+
+void after_meter_button_draw(ModContext*, void*, void*, void*) {
+    if (s_activeMeterButton != nullptr && s_meterButtonGlowState.valid) {
+        for (int i=0;i<2;++i) {
+            s_activeMeterButton->field_0x2e8[i] = s_meterButtonGlowState.frame[i];
+            s_activeMeterButton->field_0x4be[i] = s_meterButtonGlowState.button[i];
+        }
+    }
+    s_meterButtonGlowState.valid = false;
+    s_activeMeterButton = nullptr;
+}
+
+int classify_current_pikari() {
+    dMeter2Draw_c* meter = s_activeMeter != nullptr ? s_activeMeter : s_meterInstance;
+    if (meter == nullptr || meter->mpPikariParent == nullptr) return 0;
+    J2DPane* p = meter->mpPikariParent->getPanePtr();
+    if (p == nullptr) return 0;
+
+    const float px = p->getTranslateX();
+    const float py = p->getTranslateY();
+
+    if (meter->mpBTextA != nullptr) {
+        Vec a = meter->mpBTextA->getGlobalVtxCenter(false, 0);
+        if (fabsf(px - a.x) < 1.0f && fabsf(py - a.y) < 1.0f) return 1;
+    }
+    if (meter->mpBTextB != nullptr) {
+        Vec b = meter->mpBTextB->getGlobalVtxCenter(false, 0);
+        if (fabsf(px - b.x) < 1.0f && fabsf(py - b.y) < 1.0f) return 2;
+    }
+    // Contextual X/Y (Wolf: Senses/Dig) Pikari is anchored to b_text_x /
+    // b_text_y through mpBTextXY[], not to the emphasized-button overlay.
+    if (meter->mpBTextXY[0] != nullptr) {
+        Vec x = meter->mpBTextXY[0]->getGlobalVtxCenter(false, 0);
+        if (fabsf(px - x.x) < 1.5f && fabsf(py - x.y) < 1.5f) return 3;
+    }
+    if (meter->mpBTextXY[1] != nullptr) {
+        Vec y = meter->mpBTextXY[1]->getGlobalVtxCenter(false, 0);
+        if (fabsf(px - y.x) < 1.5f && fabsf(py - y.y) < 1.5f) return 4;
+    }
+    return 0;
+}
+
+
 struct RingHiddenPaneState {
     J2DPane* pane = nullptr;
     bool visible = false;
