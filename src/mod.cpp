@@ -1,5 +1,6 @@
 #include "global.h"
 #include <cmath>
+#include <cstring>
 #include <dolphin/dvd.h>
 #include "d/d_meter2_draw.h"
 #include "d/d_meter_button.h"
@@ -12,6 +13,7 @@
 #include "d/d_pane_class.h"
 #include "JSystem/J2DGraph/J2DPane.h"
 #include "JSystem/J2DGraph/J2DPicture.h"
+#include "JSystem/J2DGraph/J2DScreen.h"
 #include "mods/service.hpp"
 #include "mods/svc/hook.h"
 #include "mods/svc/hook.hpp"
@@ -762,6 +764,8 @@ DEFINE_HOOK(&J2DScreen::draw, ScreenDrawHook);
 DEFINE_HOOK(&dDlst_FileSel_c::draw, FileSelDrawHook);
 DEFINE_HOOK(&COutFont_c::createPane, OutFontCreatePaneHook);
 DEFINE_HOOK(&COutFont_c::drawFont, OutFontDrawFontHook);
+DEFINE_HOOK(static_cast<bool (J2DScreen::*)(char const*, u32, JKRArchive*)>(&J2DScreen::setPriority), ScreenSetPriorityNameHook);
+DEFINE_HOOK(static_cast<void (J2DPicture::*)(f32, f32, f32, f32, bool, bool, bool)>(&J2DPicture::draw), PictureDrawSizedHook);
 
 // Compatibility pass for mods that also touch the vanilla HUD, notably
 // Twilit Essentials. Its compatibility hooks use +/-100 priorities; run our
@@ -797,6 +801,14 @@ struct MeterButtonGlowState {
 };
 MeterButtonGlowState s_meterButtonGlowState;
 bool s_logged = false;
+
+const ResTIMG* s_twilitVanillaZTexture = nullptr;
+J2DPicture* s_twilitShoulderPicture = nullptr;
+const ResTIMG* s_twilitShoulderSavedTexture = nullptr;
+JUtility::TColor s_twilitShoulderSavedBlack{};
+JUtility::TColor s_twilitShoulderSavedWhite{};
+JUtility::TColor s_twilitShoulderSavedCorners[4]{};
+bool s_twilitShoulderPatched = false;
 
 ResourceBuffer s_cross = RESOURCE_BUFFER_INIT;
 ResourceBuffer s_circle = RESOURCE_BUFFER_INIT;
@@ -936,6 +948,165 @@ void apply_full_button(J2DPane* root, const ResTIMG* texture) {
     // XY0 possui uma picture aninhada dentro da primeira picture.
     // Ela tambem carrega material/transform vanilla e deve permanecer oculta.
     if (J2DPane* nested = child_at(face, 0)) nested->hide();
+}
+
+
+void make_picture_copy_layer_transparent(J2DPane* root, J2DPicture* keep) {
+    if (root == nullptr) return;
+    J2DPane* stack[64];
+    int top = 0;
+    stack[top++] = root;
+    const JUtility::TColor transparent(255, 255, 255, 0);
+    while (top > 0) {
+        J2DPane* node = stack[--top];
+        for (J2DPane* child = node->getFirstChildPane(); child != nullptr;
+             child = child->getNextChildPane()) {
+            if (top < 64) stack[top++] = child;
+            J2DPicture* pic = as_picture(child);
+            if (pic == nullptr || pic == keep) continue;
+            // Twilit Essentials copies texture + black/white + corner colors from
+            // zelda_game_image.blo into its custom prompt pictures. It does not copy
+            // pane visibility, so alpha-zero corner colors are the reliable way to
+            // prevent the vanilla letter/highlight layers from being redrawn.
+            pic->setBlackWhite(JUtility::TColor(0, 0, 0, 0), transparent);
+            pic->setCornerColor(transparent);
+        }
+    }
+}
+
+void prepare_external_button_copy(J2DPane* root, const ResTIMG* texture) {
+    if (root == nullptr || texture == nullptr) return;
+    J2DPicture* face = nullptr;
+    J2DPane* stack[64];
+    int top = 0;
+    stack[top++] = root;
+    while (top > 0 && face == nullptr) {
+        J2DPane* node = stack[--top];
+        if (J2DPicture* p = as_picture(node)) {
+            face = p;
+            break;
+        }
+        for (J2DPane* child = node->getFirstChildPane(); child != nullptr;
+             child = child->getNextChildPane()) {
+            if (top < 64) stack[top++] = child;
+        }
+    }
+    if (face == nullptr) return;
+
+    replace_picture_texture(face, texture);
+    const JUtility::TColor neutralBlack(0, 0, 0, 0);
+    const JUtility::TColor neutralWhite(255, 255, 255, 255);
+    face->setBlackWhite(neutralBlack, neutralWhite);
+    face->setCornerColor(neutralWhite);
+    make_picture_copy_layer_transparent(root, face);
+}
+
+void patch_twilit_game_image_source(J2DScreen* screen) {
+    if (screen == nullptr) return;
+
+    // Cache the original Z texture before replacing anything. Twilit Essentials
+    // reuses it as the source image for its custom L/R page buttons.
+    if (s_twilitVanillaZTexture == nullptr) {
+        if (J2DPane* zRoot = screen->search(MULTI_CHAR('zbtn_n'))) {
+            J2DPicture* zFace = nullptr;
+            J2DPane* stack[32];
+            int top = 0;
+            stack[top++] = zRoot;
+            while (top > 0 && zFace == nullptr) {
+                J2DPane* node = stack[--top];
+                if (J2DPicture* p = as_picture(node)) {
+                    zFace = p;
+                    break;
+                }
+                for (J2DPane* child = node->getFirstChildPane(); child != nullptr;
+                     child = child->getNextChildPane()) {
+                    if (top < 32) stack[top++] = child;
+                }
+            }
+            if (zFace != nullptr && zFace->getTexture(0) != nullptr) {
+                s_twilitVanillaZTexture = zFace->getTexture(0)->getTexInfo();
+            }
+        }
+    }
+
+    // These are exactly the groups copied by Twilit Essentials' Quick Access
+    // customization hints. Apply our prompt pack at source so its copied buttons
+    // inherit our artwork instead of the vanilla GameCube faces.
+    prepare_external_button_copy(screen->search(MULTI_CHAR('abtn_n')), resource_timg(s_cross));
+    prepare_external_button_copy(screen->search(MULTI_CHAR('bbtn_n')), resource_timg(s_circle));
+    prepare_external_button_copy(screen->search(MULTI_CHAR('xbtn_n')), resource_timg(s_triangle));
+    prepare_external_button_copy(screen->search(MULTI_CHAR('ybtn_n')), resource_timg(s_square));
+
+    // Twilit Essentials creates a standalone zbtn_n screen for the third item
+    // slot in the Item Wheel. In our mapping GC Z is R1 / RB.
+    prepare_external_button_copy(screen->search(MULTI_CHAR('zbtn_n')), resource_timg(s_r1));
+}
+
+void after_screen_set_priority_name(ModContext*, void* args, void* retval, void*) {
+    if (args == nullptr || retval == nullptr || !*static_cast<bool*>(retval)) return;
+    J2DScreen* screen = mods::arg<J2DScreen*>(args, 0);
+    const char* name = mods::arg<const char*>(args, 1);
+    if (screen == nullptr || name == nullptr) return;
+    if (std::strcmp(name, "zelda_game_image.blo") == 0) {
+        patch_twilit_game_image_source(screen);
+    }
+}
+
+HookAction before_picture_draw_sized(ModContext*, void* args, void*, void*) {
+    if (args == nullptr) return HOOK_CONTINUE;
+    J2DPicture* pic = mods::arg<J2DPicture*>(args, 0);
+    if (pic == nullptr || pic->getTexture(0) == nullptr) return HOOK_CONTINUE;
+
+    const ResTIMG* current = pic->getTexture(0)->getTexInfo();
+    const f32 h = mods::arg<f32>(args, 4);
+    const bool mirrorX = mods::arg<bool>(args, 5);
+
+    // Twilit Essentials draws its Bottles/Tunics page shoulder prompt manually
+    // from the original Z texture at 26 px high. Detect that private picture once,
+    // then map left -> L2/LT and right -> R2/RT using this mod's own resources.
+    if (s_twilitShoulderPicture == nullptr && s_twilitVanillaZTexture != nullptr &&
+        current == s_twilitVanillaZTexture && h >= 24.0f && h <= 28.0f) {
+        s_twilitShoulderPicture = pic;
+    }
+
+    if (pic != s_twilitShoulderPicture) return HOOK_CONTINUE;
+
+    s_twilitShoulderSavedTexture = current;
+    s_twilitShoulderSavedBlack = pic->getBlack();
+    s_twilitShoulderSavedWhite = pic->getWhite();
+    for (int i = 0; i < 4; ++i) s_twilitShoulderSavedCorners[i] = pic->corner(i);
+    s_twilitShoulderPatched = true;
+
+    const ResTIMG* replacement = mirrorX ? resource_timg(s_l2) : resource_timg(s_r2);
+    if (replacement != nullptr) {
+        replace_picture_texture(pic, replacement);
+        const JUtility::TColor neutralBlack(0, 0, 0, 0);
+        const JUtility::TColor neutralWhite(255, 255, 255, 255);
+        pic->setBlackWhite(neutralBlack, neutralWhite);
+        pic->setCornerColor(neutralWhite);
+        // Preserve the requested height but fix width to the replacement aspect ratio.
+        if (replacement->height != 0) {
+            mods::arg_ref<f32>(args, 3) =
+                h * static_cast<f32>(replacement->width) / static_cast<f32>(replacement->height);
+        }
+        // Our L2/R2 artwork is already authored in its final orientation.
+        mods::arg_ref<bool>(args, 5) = false;
+    }
+    return HOOK_CONTINUE;
+}
+
+void after_picture_draw_sized(ModContext*, void* args, void*, void*) {
+    if (!s_twilitShoulderPatched || args == nullptr) return;
+    J2DPicture* pic = mods::arg<J2DPicture*>(args, 0);
+    if (pic != s_twilitShoulderPicture) return;
+
+    if (s_twilitShoulderSavedTexture != nullptr) {
+        replace_picture_texture(pic, s_twilitShoulderSavedTexture);
+    }
+    pic->setBlackWhite(s_twilitShoulderSavedBlack, s_twilitShoulderSavedWhite);
+    pic->setCornerColor(s_twilitShoulderSavedCorners[0], s_twilitShoulderSavedCorners[1],
+                        s_twilitShoulderSavedCorners[2], s_twilitShoulderSavedCorners[3]);
+    s_twilitShoulderPatched = false;
 }
 
 
@@ -1864,9 +2035,19 @@ void after_meter_draw(ModContext*, void* args, void*, void*) {
     // instead of its mpItemB container.
 // Midna v0.9.8: leave the vanilla root alone and transform only its pictures.
     if (meter->mpButtonMidona != nullptr) {
-        adjust_midna_pictures(meter->mpButtonMidona->getPanePtr(),
-            cfg_pos(g_midnaX,7.0f), cfg_pos(g_midnaY,-18.0f),
-            cfg_scale(g_midnaScale,1.0f));
+        J2DPane* midnaRoot = meter->mpButtonMidona->getPanePtr();
+        bool twilitEssentialsMidna = false;
+        if (meter->mpScreen != nullptr && midnaRoot != nullptr) {
+            J2DPane* jujiRoot = meter->mpScreen->search(MULTI_CHAR('juji_n'));
+            // Twilit Essentials reparents midona_n under juji_n for its custom
+            // Z/D-Pad layout. Use the tested compatibility transform from the
+            // user's screenshot only in that layout.
+            twilitEssentialsMidna = (jujiRoot != nullptr && midnaRoot->getParentPane() == jujiRoot);
+        }
+        const float midnaX = twilitEssentialsMidna ? 5.0f : cfg_pos(g_midnaX,7.0f);   // 50/10 px
+        const float midnaY = twilitEssentialsMidna ? 1.0f : cfg_pos(g_midnaY,-18.0f); // 10/10 px
+        const float midnaScale = twilitEssentialsMidna ? 0.65f : cfg_scale(g_midnaScale,1.0f);
+        adjust_midna_pictures(midnaRoot, midnaX, midnaY, midnaScale);
     }
 
     // Espada: o HUD agrupa os elementos de D-pad/espada em mpButtonCrossParent.
@@ -3607,6 +3788,25 @@ ModResult mod_initialize(ModError* error) {
         return mods::set_error(error, crossPre, "failed to install PRE hook for dMeter2Draw_c::drawButtonCross");
     }
     s_buttonCrossHookInstalled = true;
+
+    ModResult setPriorityPost = mods::hook::add_post<ScreenSetPriorityNameHook>(svc_hook, after_screen_set_priority_name);
+    if (setPriorityPost != MOD_OK) {
+        free_resources();
+        return mods::set_error(error, setPriorityPost, "failed to install POST hook for J2DScreen::setPriority(name)");
+    }
+    ModResult pictureDrawPre = mods::hook::add_pre<PictureDrawSizedHook>(svc_hook, before_picture_draw_sized);
+    if (pictureDrawPre != MOD_OK) {
+        mods::hook::uninstall<ScreenSetPriorityNameHook>();
+        free_resources();
+        return mods::set_error(error, pictureDrawPre, "failed to install PRE hook for J2DPicture::draw sized");
+    }
+    ModResult pictureDrawPost = mods::hook::add_post<PictureDrawSizedHook>(svc_hook, after_picture_draw_sized);
+    if (pictureDrawPost != MOD_OK) {
+        mods::hook::uninstall<PictureDrawSizedHook>();
+        mods::hook::uninstall<ScreenSetPriorityNameHook>();
+        free_resources();
+        return mods::set_error(error, pictureDrawPost, "failed to install POST hook for J2DPicture::draw sized");
+    }
 
     ModResult pt = mods::hook::add_pre<PaneTransHook>(svc_hook, before_pane_trans);
     ModResult psd = mods::hook::add_pre<ScreenDrawHook>(before_screen_draw, nullptr);
