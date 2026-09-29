@@ -812,6 +812,7 @@ const ResTIMG* s_twilitVanillaYTexture = nullptr;
 
 const ResTIMG* s_twilitButtonLayerTex[4][8] = {};
 int s_twilitButtonLayerCount[4] = {0, 0, 0, 0};
+const ResTIMG* s_twilitUniqueGlyphTex[4] = {nullptr, nullptr, nullptr, nullptr};
 
 J2DPicture* s_twilitManualPromptPicture = nullptr;
 const ResTIMG* s_twilitManualPromptSavedTexture = nullptr;
@@ -1136,6 +1137,32 @@ void patch_twilit_game_image_source(J2DScreen* screen) {
     cache_button_layers(1, MULTI_CHAR('ybtn_n'));
     cache_button_layers(2, MULTI_CHAR('xbtn_n'));
     cache_button_layers(3, MULTI_CHAR('bbtn_n'));
+
+    // Derive a per-button unique glyph texture. Background/circle layers are
+    // often shared across A/Y/X/B, so using them to identify a button can map B
+    // as Cross or another face. Prefer the last texture that appears only in
+    // one group.
+    for (int bi = 0; bi < 4; ++bi) {
+        if (s_twilitUniqueGlyphTex[bi] != nullptr) continue;
+        for (int li = s_twilitButtonLayerCount[bi] - 1; li >= 0; --li) {
+            const ResTIMG* candidate = s_twilitButtonLayerTex[bi][li];
+            if (candidate == nullptr) continue;
+            bool shared = false;
+            for (int bj = 0; bj < 4 && !shared; ++bj) {
+                if (bj == bi) continue;
+                for (int lj = 0; lj < s_twilitButtonLayerCount[bj]; ++lj) {
+                    if (candidate == s_twilitButtonLayerTex[bj][lj]) {
+                        shared = true;
+                        break;
+                    }
+                }
+            }
+            if (!shared) {
+                s_twilitUniqueGlyphTex[bi] = candidate;
+                break;
+            }
+        }
+    }
 }
 
 void after_screen_set_priority_name(ModContext*, void* args, void* retval, void*) {
@@ -1157,67 +1184,9 @@ HookAction before_picture_draw_sized(ModContext*, void* args, void*, void*) {
     const f32 h = mods::arg<f32>(args, 4);
     const bool mirrorX = mods::arg<bool>(args, 5);
 
-    // Twilit Essentials clones every layer of the vanilla A/Y/X/B button groups.
-    // Replacing only one texture while leaving the remaining vanilla layers active
-    // caused the mixed/stacked icons seen in v6. Identify the whole copied group:
-    // draw our modern icon on layer 0 and suppress the remaining layers.
-    int twilitButtonIdx = -1;
-    int twilitLayerIdx = -1;
-    for (int bi = 0; bi < 4 && twilitButtonIdx < 0; ++bi) {
-        for (int li = 0; li < s_twilitButtonLayerCount[bi]; ++li) {
-            if (current == s_twilitButtonLayerTex[bi][li]) {
-                twilitButtonIdx = bi;
-                twilitLayerIdx = li;
-                break;
-            }
-        }
-    }
-
-    const f32 drawW = mods::arg<f32>(args, 3);
-    const bool smallManualButton =
-        drawW >= 6.0f && drawW <= 32.0f && h >= 6.0f && h <= 32.0f;
-
-    if (twilitButtonIdx >= 0 && smallManualButton) {
-        if (twilitLayerIdx > 0) {
-            // Twilit will immediately draw these shadow/letter/highlight layers
-            // after layer 0. They belong to the old GC art and must not sit over
-            // our single modern prompt texture.
-            return HOOK_SKIP_ORIGINAL;
-        }
-
-        const ResTIMG* replacementPrompt = nullptr;
-        switch (twilitButtonIdx) {
-        case 0: replacementPrompt = resource_timg(s_cross); break;    // GC A
-        case 1: replacementPrompt = resource_timg(s_square); break;   // GC Y
-        case 2: replacementPrompt = resource_timg(s_triangle); break; // GC X
-        case 3: replacementPrompt = resource_timg(s_circle); break;   // GC B
-        default: break;
-        }
-
-        if (replacementPrompt != nullptr) {
-            s_twilitManualPromptPicture = pic;
-            s_twilitManualPromptSavedTexture = current;
-            s_twilitManualPromptSavedBlack = pic->getBlack();
-            s_twilitManualPromptSavedWhite = pic->getWhite();
-            for (int i = 0; i < 4; ++i) {
-                s_twilitManualPromptSavedCorners[i] = pic->corner(i);
-            }
-            s_twilitManualPromptPatched = true;
-
-            replace_picture_texture(pic, replacementPrompt);
-            const JUtility::TColor neutralBlack(0, 0, 0, 0);
-            const JUtility::TColor neutralWhite(255, 255, 255, 255);
-            pic->setBlackWhite(neutralBlack, neutralWhite);
-            pic->setCornerColor(neutralWhite);
-
-            // One consistent visible box for all four hints.
-            constexpr f32 target = 22.0f;
-            mods::arg_ref<f32>(args, 1) -= (target - drawW) * 0.5f;
-            mods::arg_ref<f32>(args, 2) -= (target - h) * 0.5f;
-            mods::arg_ref<f32>(args, 3) = target;
-            mods::arg_ref<f32>(args, 4) = target;
-        }
-    }
+    // Do not replace or suppress Twilit Essentials' A/Y/X/B layers here.
+    // Its shared button resources are also reused by radial wheels and Boss Rush.
+    // We draw our modern prompt as a separate overlay in the POST hook instead.
 
     // Twilit Essentials draws its Bottles/Tunics page shoulder prompt manually
     // from the original Z texture at 26 px high. Detect that private picture once,
@@ -1264,18 +1233,66 @@ HookAction before_picture_draw_sized(ModContext*, void* args, void*, void*) {
 void after_picture_draw_sized(ModContext*, void* args, void*, void*) {
     if (args == nullptr) return;
     J2DPicture* pic = mods::arg<J2DPicture*>(args, 0);
+    if (pic == nullptr || pic->getTexture(0) == nullptr) return;
 
-    if (s_twilitManualPromptPatched && pic == s_twilitManualPromptPicture) {
-        if (s_twilitManualPromptSavedTexture != nullptr) {
-            replace_picture_texture(pic, s_twilitManualPromptSavedTexture);
+    const ResTIMG* current = pic->getTexture(0)->getTexInfo();
+    const f32 drawX = mods::arg<f32>(args, 1);
+    const f32 drawY = mods::arg<f32>(args, 2);
+    const f32 drawW = mods::arg<f32>(args, 3);
+    const f32 drawH = mods::arg<f32>(args, 4);
+
+    // Overlay our prompt only when Twilit draws the unique glyph layer for one
+    // of its A/Y/X/B hint buttons. We do not alter or suppress Twilit's textures.
+    // Drawing after the original group leaves radial wheels/Boss Rush untouched
+    // while our opaque modern button face covers the small vanilla prompt below.
+    if (drawW >= 4.0f && drawW <= 32.0f && drawH >= 4.0f && drawH <= 32.0f) {
+        int overlayIdx = -1;
+        for (int bi = 0; bi < 4; ++bi) {
+            if (current != nullptr && current == s_twilitUniqueGlyphTex[bi]) {
+                overlayIdx = bi;
+                break;
+            }
         }
-        pic->setBlackWhite(s_twilitManualPromptSavedBlack, s_twilitManualPromptSavedWhite);
-        pic->setCornerColor(s_twilitManualPromptSavedCorners[0],
-                            s_twilitManualPromptSavedCorners[1],
-                            s_twilitManualPromptSavedCorners[2],
-                            s_twilitManualPromptSavedCorners[3]);
-        s_twilitManualPromptPatched = false;
-        s_twilitManualPromptPicture = nullptr;
+
+        if (overlayIdx >= 0) {
+            const ResTIMG* replacement = nullptr;
+            switch (overlayIdx) {
+            case 0: replacement = resource_timg(s_cross); break;    // GC A
+            case 1: replacement = resource_timg(s_square); break;   // GC Y
+            case 2: replacement = resource_timg(s_triangle); break; // GC X
+            case 3: replacement = resource_timg(s_circle); break;   // GC B
+            default: break;
+            }
+
+            if (replacement != nullptr && replacement->width != 0 && replacement->height != 0) {
+                const ResTIMG* savedTex = current;
+                const JUtility::TColor savedBlack = pic->getBlack();
+                const JUtility::TColor savedWhite = pic->getWhite();
+                JUtility::TColor savedCorners[4] = {
+                    pic->corner(0), pic->corner(1), pic->corner(2), pic->corner(3)
+                };
+
+                replace_picture_texture(pic, replacement);
+                const JUtility::TColor neutralBlack(0, 0, 0, 0);
+                const JUtility::TColor neutralWhite(255, 255, 255, 255);
+                pic->setBlackWhite(neutralBlack, neutralWhite);
+                pic->setCornerColor(neutralWhite);
+
+                constexpr f32 target = 22.0f;
+                const f32 cx = drawX + drawW * 0.5f;
+                const f32 cy = drawY + drawH * 0.5f;
+                pic->drawOut(cx - target * 0.5f, cy - target * 0.5f,
+                             target, target,
+                             0.0f, 0.0f,
+                             static_cast<f32>(replacement->width),
+                             static_cast<f32>(replacement->height));
+
+                replace_picture_texture(pic, savedTex);
+                pic->setBlackWhite(savedBlack, savedWhite);
+                pic->setCornerColor(savedCorners[0], savedCorners[1],
+                                    savedCorners[2], savedCorners[3]);
+            }
+        }
     }
 
     if (!s_twilitShoulderPatched || pic != s_twilitShoulderPicture) return;
