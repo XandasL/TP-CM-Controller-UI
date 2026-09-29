@@ -15,18 +15,21 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Extract prepared project
+      - name: Import prepared project
         shell: bash
         run: |
           set -euo pipefail
-          test -f .bootstrap/project.tar.xz
+          if [[ ! -f .bootstrap/project.tar.xz ]]; then
+            echo "Bootstrap archive already consumed; nothing to do."
+            exit 0
+          fi
           mkdir -p extracted
           tar -xJf .bootstrap/project.tar.xz -C extracted
           root="$(find extracted -mindepth 1 -maxdepth 1 -type d | head -n 1)"
           test -n "$root"
+          rm -rf "$root/.github"
           cp -a "$root"/. .
           rm -rf extracted .bootstrap
-          rm -f .github/workflows/bootstrap.yml
 
       - name: Commit imported project
         shell: bash
@@ -35,5 +38,9 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -A
-          git commit -m "Import TP Classic Modern Controller UI multiplatform project"
+          if git diff --cached --quiet; then
+            echo "No changes to commit."
+            exit 0
+          fi
+          git commit -m "Import TP Classic Modern Controller UI project files"
           git push origin HEAD:main
