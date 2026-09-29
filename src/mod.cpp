@@ -825,13 +825,20 @@ J2DPicture* as_picture(J2DPane* pane) {
 struct PictureTexCoordAccess : J2DPicture {
     using Member = JGeometry::TVec2<s16> (J2DPicture::*)[4];
     using TextureMember = JUTTexture* (J2DPicture::*)[2];
+    using TextureNumMember = u8 J2DPicture::*;
     static Member member() { return &PictureTexCoordAccess::field_0x10a; }
     static TextureMember texture_member() { return &PictureTexCoordAccess::mTexture; }
+    static TextureNumMember texture_num_member() { return &PictureTexCoordAccess::mTextureNum; }
 };
 
 JUTTexture*& picture_texture_slot(J2DPicture* pic, int index) {
     const auto member = PictureTexCoordAccess::texture_member();
     return (pic->*member)[index];
+}
+
+u8& picture_texture_count(J2DPicture* pic) {
+    const auto member = PictureTexCoordAccess::texture_num_member();
+    return pic->*member;
 }
 
 void copy_picture_texcoords(J2DPicture* pic, JGeometry::TVec2<s16> out[4]) {
@@ -2098,6 +2105,7 @@ struct ItemWheelTempPaneState {
     const ResTIMG* tex1 = nullptr;
     JUTTexture* originalTexture[2]{};
     JUTTexture* privateTexture[2]{};
+    u8 originalTextureCount = 0;
     JUtility::TColor black{};
     JUtility::TColor white{};
     JUtility::TColor corners[4]{};
@@ -2138,6 +2146,7 @@ void capture_item_wheel_temp_pane(J2DPane* pane) {
         }
         st.privateTexture[0] = nullptr;
         st.privateTexture[1] = nullptr;
+        st.originalTextureCount = pic->getTextureCount();
         st.black = pic->getBlack();
         st.white = pic->getWhite();
         for (int i = 0; i < 4; ++i) st.corners[i] = pic->corner(i);
@@ -2171,24 +2180,20 @@ ItemWheelTempPaneState* item_wheel_temp_state_for(J2DPicture* pic) {
 bool use_private_item_wheel_texture(J2DPicture* pic, const ResTIMG* texture) {
     if (pic == nullptr || texture == nullptr) return false;
     ItemWheelTempPaneState* st = item_wheel_temp_state_for(pic);
-    if (st == nullptr) return false;
+    if (st == nullptr || pic->getTextureCount() == 0) return false;
 
-    const u8 count = pic->getTextureCount() > 2 ? 2 : pic->getTextureCount();
-    if (count == 0) return false;
-
-    // BLO pictures normally point at JUTTexture objects owned by their J2DMaterial.
-    // changeTexture() calls storeTIMG() on that shared object. Even if we later
-    // restore the ResTIMG pointer, other material state (palette/TLUT/GX data) can
-    // already have been disturbed and then reused by later menus. For the Item
-    // Wheel, never mutate those material textures at all: temporarily replace the
-    // picture's texture pointers with private JUTTexture objects owned by us.
-    for (u8 i = 0; i < count; ++i) {
-        if (st->privateTexture[i] == nullptr) {
-            st->privateTexture[i] = JKR_NEW JUTTexture(texture, 0);
-            if (st->privateTexture[i] == nullptr) return false;
-        }
-        picture_texture_slot(pic, i) = st->privateTexture[i];
+    // Use a single private texture stage. Several vanilla wheel glyphs have two
+    // texture stages/blend ratios; feeding our art through those stages can leave
+    // the vanilla-looking mask/letter visible even though our geometry changed.
+    // A one-stage private picture gives us the exact PS/Xbox artwork while still
+    // leaving every original J2DMaterial/JUTTexture object completely untouched.
+    if (st->privateTexture[0] == nullptr) {
+        st->privateTexture[0] = JKR_NEW JUTTexture(texture, 0);
+        if (st->privateTexture[0] == nullptr) return false;
     }
+
+    picture_texture_slot(pic, 0) = st->privateTexture[0];
+    picture_texture_count(pic) = 1;
 
     if (pic->getTexture(0) != nullptr)
         pic->setTexCoord(pic->getTexture(0), BIND15, MIRROR0, false);
@@ -2225,6 +2230,7 @@ void restore_item_wheel_temp_state(J2DScreen* screen) {
             // Restore the exact material texture objects first. The private
             // replacements are deleted only after the picture no longer points
             // at them, so no shared J2DMaterial/JUTTexture is ever modified.
+            picture_texture_count(pic) = st.originalTextureCount;
             for (u8 t = 0; t < 2; ++t) {
                 if (st.privateTexture[t] != nullptr) {
                     picture_texture_slot(pic, t) = st.originalTexture[t];
@@ -3363,8 +3369,13 @@ void apply_known_menu_buttons(J2DScreen* screen) {
         MULTI_CHAR('w_nbbtn'),
     };
 
+    const bool itemWheelScreen =
+        screen->search(MULTI_CHAR('fyx_tex')) != nullptr &&
+        screen->search(MULTI_CHAR('x_btn_n')) != nullptr &&
+        screen->search(MULTI_CHAR('y_btn_n')) != nullptr;
+
     const PromptMapKind mapKind=prompt_map_kind(screen);
-    const bool sharedPrompt = mapKind==PromptMapKind::None &&
+    const bool sharedPrompt = !itemWheelScreen && mapKind==PromptMapKind::None &&
         (screen->search(MULTI_CHAR('atext1_1'))!=nullptr ||
          screen->search(MULTI_CHAR('btext1_1'))!=nullptr);
     if(sharedPrompt) begin_shared_prompt_temp_state(screen);
@@ -3387,7 +3398,7 @@ void apply_known_menu_buttons(J2DScreen* screen) {
     if (mapKind!=PromptMapKind::None) {
         apply_menu_button_texture(map_button_root(screen,mapKind,true),cross);
         apply_menu_button_texture(map_button_root(screen,mapKind,false),circle);
-    } else {
+    } else if (!itemWheelScreen) {
         for (u64 tag : aTags) {
             J2DPane* root = screen->search(tag);
             if (root != nullptr) apply_menu_button_texture(root, cross);
@@ -3459,17 +3470,19 @@ void apply_known_menu_buttons(J2DScreen* screen) {
     }
 
     // Shared Collection/Options/Fishing/Skills/etc. A/B prompt layout.
-    apply_shared_menu_prompt_layout(screen);
-    // Map prompts use mutually exclusive layouts and independent configuration handles.
-    apply_map_menu_prompt_layout(screen);
+    // The item wheel has its own dedicated path below; never let broad menu
+    // aliases touch its panes because Twilit Essentials also anchors UI to them.
+    if (!itemWheelScreen) {
+        apply_shared_menu_prompt_layout(screen);
+        // Map prompts use mutually exclusive layouts and independent configuration handles.
+        apply_map_menu_prompt_layout(screen);
+    }
 
     // Item Wheel / Item Menu (zelda_item_select_icon_message_ver2.blo).
     // Keep this isolated from the gameplay HUD.  The X/Y assignment prompts use
     // dedicated roots in this layout; L/R are shoulder prompts for direct select
     // and bow-item combination.  Only replace artwork, preserving vanilla geometry.
-    if (screen->search(MULTI_CHAR('fyx_tex')) != nullptr &&
-        screen->search(MULTI_CHAR('x_btn_n')) != nullptr &&
-        screen->search(MULTI_CHAR('y_btn_n')) != nullptr) {
+    if (itemWheelScreen) {
         // Snapshot the original vanilla Item Wheel panes before changing any
         // textures, bounds or visibility. Everything is restored in the POST
         // J2DScreen::draw hook so Twilit Essentials never inherits our edits.
