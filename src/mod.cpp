@@ -761,7 +761,6 @@ DEFINE_HOOK(&dMeter2Draw_c::drawButtonXY, ButtonXYDrawHook);
 DEFINE_HOOK(&dMeter2Draw_c::drawButtonCross, ButtonCrossDrawHook);
 DEFINE_HOOK(&CPaneMgr::paneTrans, PaneTransHook);
 DEFINE_HOOK(&J2DScreen::draw, ScreenDrawHook);
-DEFINE_HOOK(&dMenu_Ring_c::_draw, RingControllerOverlayHook);
 DEFINE_HOOK(&dMenu_Collect2D_c::_draw, CollectCompatDrawHook);
 DEFINE_HOOK(&dDlst_FileSel_c::draw, FileSelDrawHook);
 DEFINE_HOOK(&COutFont_c::createPane, OutFontCreatePaneHook);
@@ -3747,149 +3746,7 @@ int classify_current_pikari() {
 }
 
 
-struct RingDrawTarget {
-    J2DPicture* face = nullptr;
-    const ResTIMG* texture = nullptr;
-    ConfigVarHandle x = 0;
-    ConfigVarHandle y = 0;
-    ConfigVarHandle scale = 0;
-    bool shoulder = false;
-    bool maxSquare = false;
-};
-
-RingDrawTarget s_ringDrawTargets[8];
-int s_ringDrawTargetCount = 0;
-dMenu_Ring_c* s_ringDrawOwner = nullptr;
 dMenu_Collect2D_c* s_activeCollect = nullptr;
-
-bool pane_effectively_visible(J2DPane* pane) {
-    if(pane==nullptr) return false;
-    for(J2DPane* p=pane; p!=nullptr; p=p->getParentPane()) {
-        if(!p->isVisible() || p->getAlpha()==0) return false;
-    }
-    return true;
-}
-
-float pane_effective_scale_x(J2DPane* pane) {
-    float out=1.0f;
-    for(J2DPane* p=pane; p!=nullptr; p=p->getParentPane()) out*=p->getScaleX();
-    return fabsf(out);
-}
-float pane_effective_scale_y(J2DPane* pane) {
-    float out=1.0f;
-    for(J2DPane* p=pane; p!=nullptr; p=p->getParentPane()) out*=p->getScaleY();
-    return fabsf(out);
-}
-u8 pane_effective_alpha(J2DPane* pane) {
-    float a=1.0f;
-    for(J2DPane* p=pane; p!=nullptr; p=p->getParentPane())
-        a*=((float)p->getAlpha()/255.0f);
-    if(a<0.0f) a=0.0f;
-    if(a>1.0f) a=1.0f;
-    return (u8)(a*255.0f);
-}
-
-void ring_add_draw_target(J2DPicture* face, const ResTIMG* texture,
-                          ConfigVarHandle x, ConfigVarHandle y, ConfigVarHandle scale,
-                          bool shoulder=false, bool maxSquare=false) {
-    if(face==nullptr || texture==nullptr ||
-       s_ringDrawTargetCount >= (int)(sizeof(s_ringDrawTargets)/sizeof(s_ringDrawTargets[0])))
-        return;
-    s_ringDrawTargets[s_ringDrawTargetCount++] =
-        {face,texture,x,y,scale,shoulder,maxSquare};
-}
-
-void ring_collect_root(J2DScreen* screen, u64 tag, const ResTIMG* texture,
-                       ConfigVarHandle x, ConfigVarHandle y, ConfigVarHandle scale,
-                       bool shoulder=false, bool maxSquare=false) {
-    J2DPane* root=screen!=nullptr ? screen->search(tag) : nullptr;
-    if(root==nullptr) return;
-    J2DPicture* face=first_picture_recursive(root);
-    ring_add_draw_target(face,texture,x,y,scale,shoulder,maxSquare);
-}
-
-void ring_collect_exact(J2DScreen* screen, u64 faceTag,
-                        const ResTIMG* texture,
-                        ConfigVarHandle x, ConfigVarHandle y, ConfigVarHandle scale,
-                        bool shoulder=false, bool maxSquare=true) {
-    if(screen==nullptr) return;
-    ring_add_draw_target(as_picture(screen->search(faceTag)),texture,x,y,scale,shoulder,maxSquare);
-}
-
-void draw_independent_prompt_overlay(J2DPicture* face, const ResTIMG* texture,
-                                     ConfigVarHandle xh, ConfigVarHandle yh, ConfigVarHandle sh,
-                                     bool shoulder, bool maxSquare) {
-    if(face==nullptr || texture==nullptr || !pane_effectively_visible(face)) return;
-
-    const JGeometry::TBox2<f32>& b=face->getGlbBounds();
-    float w=b.getWidth();
-    float h=b.getHeight();
-    if(w<=0.0f || h<=0.0f) return;
-
-    const float sc=cfg_scale(sh,1.0f);
-    float drawW=0.0f, drawH=0.0f;
-    if(shoulder) {
-        drawH=h*sc;
-        const float aspect=texture->height ? (float)texture->width/(float)texture->height : 1.0f;
-        drawW=drawH*aspect;
-    } else {
-        const float side=(maxSquare ? (w>h?w:h) : (w<h?w:h))*sc;
-        drawW=side;
-        drawH=side;
-    }
-
-    const float cx=b.i.x+w*0.5f+cfg_pos(xh,0.0f);
-    const float cy=b.i.y+h*0.5f+cfg_pos(yh,0.0f);
-
-    J2DPicture overlay(texture);
-    const JUtility::TColor black(0,0,0,0), white(255,255,255,255);
-    overlay.setBlackWhite(black,white);
-    overlay.setCornerColor(white);
-    overlay.setAlpha(pane_effective_alpha(face));
-    overlay.draw(cx-drawW*0.5f,cy-drawH*0.5f,drawW,drawH,false,false,false);
-}
-
-HookAction before_ring_controller_overlay(ModContext*, void* args, void*, void*) {
-    dMenu_Ring_c* ring = args != nullptr ? mods::arg<dMenu_Ring_c*>(args,0) : nullptr;
-    s_ringDrawOwner=nullptr;
-    s_ringDrawTargetCount=0;
-    if(ring==nullptr || ring->mpScreen==nullptr || ring->mPlayerIsWolf) return HOOK_CONTINUE;
-
-    s_ringDrawOwner=ring;
-    ring_collect_root(ring->mpScreen,MULTI_CHAR('x_btn_n'),resource_timg(s_triangle),
-                      g_wheelSquareX,g_wheelSquareY,g_wheelSquareScale);
-    ring_collect_root(ring->mpScreen,MULTI_CHAR('y_btn_n'),resource_timg(s_square),
-                      g_wheelTriangleX,g_wheelTriangleY,g_wheelTriangleScale);
-
-    ring_collect_exact(ring->mpScreen,MULTI_CHAR('cbtn1'),resource_timg(s_analog),
-                       g_wheelSelectAnalogX,g_wheelSelectAnalogY,g_wheelSelectAnalogScale);
-    ring_collect_exact(ring->mpScreen,MULTI_CHAR('cbtn4'),resource_timg(s_analog),
-                       g_wheelDirectAnalogX,g_wheelDirectAnalogY,g_wheelDirectAnalogScale);
-
-    ring_collect_root(ring->mpScreen,MULTI_CHAR('l_btn_n'),resource_timg(s_l2),
-                      g_wheelL2X,g_wheelL2Y,g_wheelL2Scale,true);
-    ring_collect_root(ring->mpScreen,MULTI_CHAR('gr_btn_n'),resource_timg(s_r2),
-                      g_wheelR2X,g_wheelR2Y,g_wheelR2Scale,true);
-    ring_collect_root(ring->mpScreen,MULTI_CHAR('r_btn_n'),resource_timg(s_r2),
-                      g_wheelR2X,g_wheelR2Y,g_wheelR2Scale,true);
-    return HOOK_CONTINUE;
-}
-
-void after_ring_controller_overlay(ModContext*, void* args, void*, void*) {
-    dMenu_Ring_c* ring = args != nullptr ? mods::arg<dMenu_Ring_c*>(args,0) : nullptr;
-    if(ring==nullptr || ring!=s_ringDrawOwner) return;
-
-    // Pure overlay path: never hide/show/move/changeTexture on the ring's BLO.
-    // This is intentionally boring because Twilit Essentials reads those exact
-    // panes as anchors while switching Quick Access/menu modes.
-    for(int i=0;i<s_ringDrawTargetCount;++i) {
-        const auto& t=s_ringDrawTargets[i];
-        draw_independent_prompt_overlay(t.face,t.texture,t.x,t.y,t.scale,t.shoulder,t.maxSquare);
-    }
-
-    s_ringDrawOwner=nullptr;
-    s_ringDrawTargetCount=0;
-}
 
 HookAction before_collect_compat_draw(ModContext*, void* args, void*, void*) {
     s_activeCollect = args != nullptr ? mods::arg<dMenu_Collect2D_c*>(args,0) : nullptr;
@@ -3937,7 +3794,8 @@ HookAction before_screen_draw(ModContext* ctx, void* args, void* retval, void* u
 
     if (is_item_wheel_screen(screen) || is_twilit_quick_access_screen(screen)) {
         // Absolute isolation for both the vanilla ring and Twilit Essentials'
-        // private Quick Access wheel. Our ring art is drawn independently later.
+        // private Quick Access wheel. Diagnostic build: TP Classic does not hook
+        // dMenu_Ring_c::_draw at all, so Twilit owns the complete ring lifecycle.
     } else if (collection_draw_active()) {
         // Strong compatibility mode for the whole Collection family, including
         // Letters/Skills/Fishing/Options/Save submenus. Do not touch textures,
@@ -4144,6 +4002,7 @@ ModResult mod_initialize(ModError* error) {
 
     if (svc_log != nullptr)
         svc_log->info(mod_ctx, "TP Classic Modern Controller UI v1.0.0 starting - by XandasLegend");
+        svc_log->info(mod_ctx, "Compatibility diagnostic: vanilla/Twilit item ring fully isolated");
 
     if (svc_hook == nullptr)
         return mods::set_error(error, MOD_ERROR, "HookService unavailable");
@@ -4213,25 +4072,8 @@ ModResult mod_initialize(ModError* error) {
         free_resources();
         return psd;
     }
-    ModResult ringPre = mods::hook::add_pre<RingControllerOverlayHook>(svc_hook, before_ring_controller_overlay);
-    if (ringPre != MOD_OK) {
-        mods::hook::uninstall<PaneTransHook>();
-        mods::hook::uninstall<ScreenDrawHook>();
-        free_resources();
-        return mods::set_error(error, ringPre, "failed to install PRE hook for dMenu_Ring_c::_draw");
-    }
-    ModResult ringPost = mods::hook::add_post<RingControllerOverlayHook>(svc_hook, after_ring_controller_overlay);
-    if (ringPost != MOD_OK) {
-        mods::hook::uninstall<RingControllerOverlayHook>();
-        mods::hook::uninstall<PaneTransHook>();
-        mods::hook::uninstall<ScreenDrawHook>();
-        free_resources();
-        return mods::set_error(error, ringPost, "failed to install POST hook for dMenu_Ring_c::_draw");
-    }
-
     ModResult collectPre = mods::hook::add_pre<CollectCompatDrawHook>(svc_hook, before_collect_compat_draw);
     if (collectPre != MOD_OK) {
-        mods::hook::uninstall<RingControllerOverlayHook>();
         mods::hook::uninstall<PaneTransHook>();
         mods::hook::uninstall<ScreenDrawHook>();
         free_resources();
@@ -4240,7 +4082,6 @@ ModResult mod_initialize(ModError* error) {
     ModResult collectPost = mods::hook::add_post<CollectCompatDrawHook>(svc_hook, after_collect_compat_draw);
     if (collectPost != MOD_OK) {
         mods::hook::uninstall<CollectCompatDrawHook>();
-        mods::hook::uninstall<RingControllerOverlayHook>();
         mods::hook::uninstall<PaneTransHook>();
         mods::hook::uninstall<ScreenDrawHook>();
         free_resources();
@@ -4308,7 +4149,6 @@ MOD_EXPORT ModResult mod_update(ModError*) { return MOD_OK; }
 
 MOD_EXPORT ModResult mod_shutdown(ModError*) {
     mods::hook::uninstall<CollectCompatDrawHook>();
-    mods::hook::uninstall<RingControllerOverlayHook>();
     mods::hook::uninstall<MeterButtonScreenInitHook>();
     if (s_buttonCrossHookInstalled) {
         mods::hook::uninstall<ButtonCrossDrawHook>();
