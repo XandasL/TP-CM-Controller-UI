@@ -1,0 +1,6 @@
+# Bundles are byte-compared across platform builds; keep text files LF everywhere.
+* text=auto eol=lf
+
+# Binary assets.
+*.png binary
+*.bti binary
