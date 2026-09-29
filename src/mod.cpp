@@ -1984,6 +1984,99 @@ void apply_menu_button_texture(J2DPane* root, const ResTIMG* texture) {
     }
 }
 
+// Shared Collection-family A/B prompts are also draw-local. Twilit Essentials
+// extends the vanilla Collection J2DScreen, so leaving our hidden layers or
+// replacement TIMGs attached after draw can affect its added pages on later frames.
+struct SharedPromptTempPaneState {
+    J2DPane* pane=nullptr;
+    bool visible=false;
+    u8 alpha=255;
+    bool picture=false;
+    JGeometry::TBox2<f32> bounds{};
+    f32 tx=0.0f, ty=0.0f, sx=1.0f, sy=1.0f, rotation=0.0f;
+    const ResTIMG* tex0=nullptr;
+    const ResTIMG* tex1=nullptr;
+    JUtility::TColor black{};
+    JUtility::TColor white{};
+    JUtility::TColor corners[4]{};
+    JGeometry::TVec2<s16> texCoords[4]{};
+};
+
+SharedPromptTempPaneState s_sharedPromptTemp[96];
+int s_sharedPromptTempCount=0;
+J2DScreen* s_sharedPromptTempScreen=nullptr;
+
+void capture_shared_prompt_pane(J2DPane* pane) {
+    if(pane==nullptr) return;
+    for(int i=0;i<s_sharedPromptTempCount;++i)
+        if(s_sharedPromptTemp[i].pane==pane) return;
+    if(s_sharedPromptTempCount >= (int)(sizeof(s_sharedPromptTemp)/sizeof(s_sharedPromptTemp[0]))) return;
+
+    auto& st=s_sharedPromptTemp[s_sharedPromptTempCount++];
+    st.pane=pane;
+    st.visible=pane->isVisible();
+    st.alpha=pane->getAlpha();
+    st.tx=pane->getTranslateX(); st.ty=pane->getTranslateY();
+    st.sx=pane->getScaleX(); st.sy=pane->getScaleY();
+    st.rotation=pane->getRotateZ();
+
+    if(J2DPicture* pic=as_picture(pane)) {
+        st.picture=true;
+        st.bounds=pic->getBounds();
+        if(pic->getTexture(0)!=nullptr) st.tex0=pic->getTexture(0)->getTexInfo();
+        if(pic->getTexture(1)!=nullptr) st.tex1=pic->getTexture(1)->getTexInfo();
+        st.black=pic->getBlack(); st.white=pic->getWhite();
+        for(int i=0;i<4;++i) st.corners[i]=pic->corner(i);
+        copy_picture_texcoords(pic,st.texCoords);
+    }
+}
+
+void capture_shared_prompt_tree(J2DPane* root) {
+    if(root==nullptr) return;
+    J2DPane* stack[64]; int top=0; stack[top++]=root;
+    while(top>0) {
+        J2DPane* node=stack[--top];
+        capture_shared_prompt_pane(node);
+        for(J2DPane* child=node->getFirstChildPane(); child!=nullptr; child=child->getNextChildPane())
+            if(top<64) stack[top++]=child;
+    }
+}
+
+void begin_shared_prompt_temp_state(J2DScreen* screen) {
+    s_sharedPromptTempScreen=screen;
+    s_sharedPromptTempCount=0;
+    if(screen==nullptr) return;
+    static const u64 roots[]={
+        MULTI_CHAR('g_abtn_n'),MULTI_CHAR('abtn_n1'),MULTI_CHAR('abtn_n'),
+        MULTI_CHAR('g_bbtn_n'),MULTI_CHAR('bbtn_n1'),MULTI_CHAR('bbtn_n'),
+    };
+    for(u64 tag:roots) capture_shared_prompt_tree(screen->search(tag));
+}
+
+void restore_shared_prompt_temp_state(J2DScreen* screen) {
+    if(screen==nullptr || screen!=s_sharedPromptTempScreen) return;
+    for(int i=s_sharedPromptTempCount-1;i>=0;--i) {
+        auto& st=s_sharedPromptTemp[i];
+        if(st.pane==nullptr) continue;
+        if(st.picture) {
+            J2DPicture* pic=static_cast<J2DPicture*>(st.pane);
+            if(st.tex0!=nullptr && pic->getTextureCount()>0) pic->changeTexture(st.tex0,0);
+            if(st.tex1!=nullptr && pic->getTextureCount()>1) pic->changeTexture(st.tex1,1);
+            pic->mBounds=st.bounds;
+            restore_picture_texcoords(pic,st.texCoords);
+            pic->setBlackWhite(st.black,st.white);
+            pic->setCornerColor(st.corners[0],st.corners[1],st.corners[2],st.corners[3]);
+        }
+        st.pane->translate(st.tx,st.ty);
+        st.pane->scale(st.sx,st.sy);
+        st.pane->rotate(st.rotation);
+        st.pane->setAlpha(st.alpha);
+        if(st.visible) st.pane->show(); else st.pane->hide();
+    }
+    s_sharedPromptTempCount=0;
+    s_sharedPromptTempScreen=nullptr;
+}
+
 // Item Wheel changes must be draw-local. Twilit Essentials keeps/copies UI
 // resources across its radial menus; leaving our texture/bounds/visibility edits
 // on the vanilla Item Wheel after a draw can poison those later copies.
@@ -2672,8 +2765,16 @@ void apply_shared_menu_prompt_layout(J2DScreen* screen) {
 
     static const u64 aIcons[]={MULTI_CHAR('g_abtn_n'),MULTI_CHAR('abtn_n1'),MULTI_CHAR('abtn_n')};
     static const u64 bIcons[]={MULTI_CHAR('g_bbtn_n'),MULTI_CHAR('bbtn_n1'),MULTI_CHAR('bbtn_n')};
-    for (u64 t:aIcons) if (J2DPane* p=screen->search(t)) apply_menu_pane_transform(p,g_menuCrossX,g_menuCrossY,g_menuCrossScale);
-    for (u64 t:bIcons) if (J2DPane* p=screen->search(t)) apply_menu_pane_transform(p,g_menuCircleX,g_menuCircleY,g_menuCircleScale);
+
+    // Some layouts expose both an outer and an inner alias for the same button.
+    // Transforming both multiplies the apparent offset/scale. Pick the first
+    // canonical root exactly like map_button_root() does.
+    J2DPane* aRoot=nullptr;
+    J2DPane* bRoot=nullptr;
+    for (u64 t:aIcons) if ((aRoot=screen->search(t))!=nullptr) break;
+    for (u64 t:bIcons) if ((bRoot=screen->search(t))!=nullptr) break;
+    apply_menu_pane_transform(aRoot,g_menuCrossX,g_menuCrossY,g_menuCrossScale);
+    apply_menu_pane_transform(bRoot,g_menuCircleX,g_menuCircleY,g_menuCircleScale);
 
     if (J2DPane* p=screen->search(MULTI_CHAR('a_text_n'))) apply_menu_pane_transform(p,g_menuConfirmTextX,g_menuConfirmTextY,g_menuConfirmTextScale);
     if (J2DPane* p=screen->search(MULTI_CHAR('b_text_n'))) apply_menu_pane_transform(p,g_menuBackTextX,g_menuBackTextY,g_menuBackTextScale);
@@ -2774,7 +2875,7 @@ J2DPane* pane_common_ancestor(J2DPane* a, J2DPane* b, J2DScreen* screen) {
 }
 
 void capture_menu_ornament_host(J2DPicture* pic) {
-    s_menuOrnamentHost = {};
+    s_menuOrnamentHost.pane = nullptr;
     if (pic==nullptr) return;
     auto& st=s_menuOrnamentHost;
     st.pane=pic;
@@ -2918,12 +3019,11 @@ void prepare_menu_ornament_before_draw(J2DScreen* screen) {
         }
     }
 
-    move_ornament_behind_prompts(customOrnamentHost,screen);
+    // Keep the original pane order intact for compatibility with Collection extensions.
 }
 
 void restore_shared_menu_ornament_after_draw(J2DScreen* screen) {
     if (screen==nullptr || screen!=s_menuOrnamentScreen) return;
-    restore_ornament_order();
     restore_menu_ornament_host();
 
     // Always restore every visibility bit we touched. The previous code left
@@ -3114,7 +3214,9 @@ void restore_world_icons(J2DScreen* screen) {
     }
     while (s_worldIconGeometryCount>0) {
         const auto& st=s_worldIconGeometry[--s_worldIconGeometryCount];
-        st.pane->place(st.bounds);
+        // place() also adjusts descendants. On the map that can make the
+        // confirm/back groups drift a little farther every draw.
+        st.pane->mBounds=st.bounds;
         st.pane->translate(st.x,st.y);
         st.pane->scale(st.sx,st.sy);
         st.pane->rotate(st.rotation);
@@ -3194,6 +3296,10 @@ void apply_known_menu_buttons(J2DScreen* screen) {
     };
 
     const PromptMapKind mapKind=prompt_map_kind(screen);
+    const bool sharedPrompt = mapKind==PromptMapKind::None &&
+        (screen->search(MULTI_CHAR('atext1_1'))!=nullptr ||
+         screen->search(MULTI_CHAR('btext1_1'))!=nullptr);
+    if(sharedPrompt) begin_shared_prompt_temp_state(screen);
     if (mapKind!=PromptMapKind::None) begin_world_map_temp_state(screen,mapKind);
     if (mapKind==PromptMapKind::World) {
         s_worldIconScreen=screen;
@@ -3714,6 +3820,7 @@ void after_screen_draw(ModContext*, void* args, void*, void*) {
     restore_world_map_temp_state(screen);
     restore_shared_menu_ornament_after_draw(screen);
     restore_menu_prompt_after_draw(screen);
+    restore_shared_prompt_temp_state(screen);
 }
 
 ModResult mod_initialize(ModError* error) {
