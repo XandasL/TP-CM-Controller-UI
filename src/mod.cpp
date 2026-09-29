@@ -805,6 +805,17 @@ MeterButtonGlowState s_meterButtonGlowState;
 bool s_logged = false;
 
 const ResTIMG* s_twilitVanillaZTexture = nullptr;
+const ResTIMG* s_twilitVanillaATexture = nullptr;
+const ResTIMG* s_twilitVanillaBTexture = nullptr;
+const ResTIMG* s_twilitVanillaXTexture = nullptr;
+const ResTIMG* s_twilitVanillaYTexture = nullptr;
+
+J2DPicture* s_twilitManualPromptPicture = nullptr;
+const ResTIMG* s_twilitManualPromptSavedTexture = nullptr;
+JUtility::TColor s_twilitManualPromptSavedBlack{};
+JUtility::TColor s_twilitManualPromptSavedWhite{};
+JUtility::TColor s_twilitManualPromptSavedCorners[4]{};
+bool s_twilitManualPromptPatched = false;
 J2DPicture* s_twilitShoulderPicture = nullptr;
 const ResTIMG* s_twilitShoulderSavedTexture = nullptr;
 JUtility::TColor s_twilitShoulderSavedBlack{};
@@ -1052,43 +1063,24 @@ void prepare_external_button_copy(J2DPane* root, const ResTIMG* texture) {
 void patch_twilit_game_image_source(J2DScreen* screen) {
     if (screen == nullptr) return;
 
-    // Cache the original Z texture before replacing anything. Twilit Essentials
-    // reuses it as the source image for its custom L/R page buttons.
-    if (s_twilitVanillaZTexture == nullptr) {
-        if (J2DPane* zRoot = screen->search(MULTI_CHAR('zbtn_n'))) {
-            J2DPicture* zFace = nullptr;
-            J2DPane* stack[32];
-            int top = 0;
-            stack[top++] = zRoot;
-            while (top > 0 && zFace == nullptr) {
-                J2DPane* node = stack[--top];
-                if (J2DPicture* p = as_picture(node)) {
-                    zFace = p;
-                    break;
-                }
-                for (J2DPane* child = node->getFirstChildPane(); child != nullptr;
-                     child = child->getNextChildPane()) {
-                    if (top < 32) stack[top++] = child;
-                }
-            }
-            if (zFace != nullptr && zFace->getTexture(0) != nullptr) {
-                s_twilitVanillaZTexture = zFace->getTexture(0)->getTexInfo();
-            }
+    auto cache_face_texture = [screen](u64 tag, const ResTIMG** out) {
+        if (out == nullptr || *out != nullptr) return;
+        J2DPane* root = screen->search(tag);
+        if (root == nullptr) return;
+        J2DPicture* face = first_picture_recursive(root);
+        if (face != nullptr && face->getTexture(0) != nullptr) {
+            *out = face->getTexture(0)->getTexInfo();
         }
-    }
+    };
 
-    // These are exactly the groups copied by Twilit Essentials' Quick Access
-    // customization hints. Apply our prompt pack at source so its copied buttons
-    // inherit our artwork instead of the vanilla GameCube faces.
-    prepare_external_button_copy(screen->search(MULTI_CHAR('abtn_n')), resource_timg(s_cross));
-    prepare_external_button_copy(screen->search(MULTI_CHAR('bbtn_n')), resource_timg(s_circle));
-    prepare_external_button_copy(screen->search(MULTI_CHAR('xbtn_n')), resource_timg(s_triangle));
-    prepare_external_button_copy(screen->search(MULTI_CHAR('ybtn_n')), resource_timg(s_square));
-
-    // Do NOT touch zbtn_n here. Twilit Essentials owns the live HUD Z pane and
-    // rewrites it every frame; changing it at resource-load time makes R1/Z race
-    // between two textures. The standalone Item Wheel Z prompt is handled only
-    // for the duration of its J2DScreen::draw below.
+    // Cache only. Do not mutate zelda_game_image.blo here: Twilit Essentials
+    // reuses this layout as a source for radial wheels, Boss Rush UI and several
+    // private screens. Changing its panes globally can corrupt unrelated artwork.
+    cache_face_texture(MULTI_CHAR('abtn_n'), &s_twilitVanillaATexture);
+    cache_face_texture(MULTI_CHAR('bbtn_n'), &s_twilitVanillaBTexture);
+    cache_face_texture(MULTI_CHAR('xbtn_n'), &s_twilitVanillaXTexture);
+    cache_face_texture(MULTI_CHAR('ybtn_n'), &s_twilitVanillaYTexture);
+    cache_face_texture(MULTI_CHAR('zbtn_n'), &s_twilitVanillaZTexture);
 }
 
 void after_screen_set_priority_name(ModContext*, void* args, void* retval, void*) {
@@ -1110,30 +1102,37 @@ HookAction before_picture_draw_sized(ModContext*, void* args, void*, void*) {
     const f32 h = mods::arg<f32>(args, 4);
     const bool mirrorX = mods::arg<bool>(args, 5);
 
-    // Twilit Quick Access manually draws copies of A/B/X/Y at ~18 px. That
-    // looked too small after our square normalization. Enlarge only manual
-    // draws using this mod's four face textures; normal J2DScreen HUD rendering
-    // does not pass through this sized draw path.
-    const ResTIMG* crossTex = resource_timg(s_cross);
-    const ResTIMG* circleTex = resource_timg(s_circle);
-    const ResTIMG* squareTex = resource_timg(s_square);
-    const ResTIMG* triangleTex = resource_timg(s_triangle);
-    if ((current == crossTex || current == circleTex ||
-         current == squareTex || current == triangleTex) &&
-        mods::arg<f32>(args, 3) >= 8.0f && mods::arg<f32>(args, 3) <= 24.5f &&
-        h >= 8.0f && h <= 24.5f) {
+    // Twilit Essentials manually draws A/B/X/Y copies in Quick Access and related
+    // menus. Replace only those exact vanilla button textures for this one draw.
+    // This avoids mutating the shared zelda_game_image.blo resource used by its
+    // radial wheels and Boss Rush UI.
+    const ResTIMG* replacementPrompt = nullptr;
+    if (current == s_twilitVanillaATexture) replacementPrompt = resource_timg(s_cross);
+    else if (current == s_twilitVanillaBTexture) replacementPrompt = resource_timg(s_circle);
+    else if (current == s_twilitVanillaXTexture) replacementPrompt = resource_timg(s_triangle);
+    else if (current == s_twilitVanillaYTexture) replacementPrompt = resource_timg(s_square);
+
+    if (replacementPrompt != nullptr &&
+        mods::arg<f32>(args, 3) >= 8.0f && mods::arg<f32>(args, 3) <= 26.0f &&
+        h >= 8.0f && h <= 26.0f) {
+        s_twilitManualPromptPicture = pic;
+        s_twilitManualPromptSavedTexture = current;
+        s_twilitManualPromptSavedBlack = pic->getBlack();
+        s_twilitManualPromptSavedWhite = pic->getWhite();
+        for (int i = 0; i < 4; ++i) {
+            s_twilitManualPromptSavedCorners[i] = pic->corner(i);
+        }
+        s_twilitManualPromptPatched = true;
+
+        replace_picture_texture(pic, replacementPrompt);
+        const JUtility::TColor neutralBlack(0, 0, 0, 0);
+        const JUtility::TColor neutralWhite(255, 255, 255, 255);
+        pic->setBlackWhite(neutralBlack, neutralWhite);
+        pic->setCornerColor(neutralWhite);
+
         const f32 oldW = mods::arg<f32>(args, 3);
         const f32 oldH = h;
-
-        // Equalize the *visible* size rather than only the texture canvas size.
-        // Square fills more of its source canvas; the other three need a little
-        // extra room to look the same size in Twilit Essentials' hint rows.
-        f32 target = 30.0f;
-        if (current == squareTex) target = 27.0f;
-        else if (current == triangleTex) target = 31.0f;
-        else if (current == crossTex) target = 31.0f;
-        else if (current == circleTex) target = 30.0f;
-
+        constexpr f32 target = 24.0f;
         mods::arg_ref<f32>(args, 1) -= (target - oldW) * 0.5f;
         mods::arg_ref<f32>(args, 2) -= (target - oldH) * 0.5f;
         mods::arg_ref<f32>(args, 3) = target;
@@ -1183,9 +1182,23 @@ HookAction before_picture_draw_sized(ModContext*, void* args, void*, void*) {
 }
 
 void after_picture_draw_sized(ModContext*, void* args, void*, void*) {
-    if (!s_twilitShoulderPatched || args == nullptr) return;
+    if (args == nullptr) return;
     J2DPicture* pic = mods::arg<J2DPicture*>(args, 0);
-    if (pic != s_twilitShoulderPicture) return;
+
+    if (s_twilitManualPromptPatched && pic == s_twilitManualPromptPicture) {
+        if (s_twilitManualPromptSavedTexture != nullptr) {
+            replace_picture_texture(pic, s_twilitManualPromptSavedTexture);
+        }
+        pic->setBlackWhite(s_twilitManualPromptSavedBlack, s_twilitManualPromptSavedWhite);
+        pic->setCornerColor(s_twilitManualPromptSavedCorners[0],
+                            s_twilitManualPromptSavedCorners[1],
+                            s_twilitManualPromptSavedCorners[2],
+                            s_twilitManualPromptSavedCorners[3]);
+        s_twilitManualPromptPatched = false;
+        s_twilitManualPromptPicture = nullptr;
+    }
+
+    if (!s_twilitShoulderPatched || pic != s_twilitShoulderPicture) return;
 
     if (s_twilitShoulderSavedTexture != nullptr) {
         replace_picture_texture(pic, s_twilitShoulderSavedTexture);
