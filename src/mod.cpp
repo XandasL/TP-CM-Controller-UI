@@ -2803,7 +2803,7 @@ void restore_menu_ornament_host() {
     st.pane->setAlpha(st.alpha);
     st.pane->setBlackWhite(st.black,st.white);
     st.pane->setCornerColor(st.corners[0],st.corners[1],st.corners[2],st.corners[3]);
-    s_menuOrnamentHost={};
+    s_menuOrnamentHost.pane=nullptr;
 }
 
 bool is_prompt_map_screen(J2DScreen* screen) {
@@ -2871,7 +2871,7 @@ void prepare_menu_ornament_before_draw(J2DScreen* screen) {
     s_menuOrnamentStateCount=0;
     s_menuOrnamentScreen=screen;
     s_menuOrnamentIsMap=map;
-    s_menuOrnamentHost={};
+    s_menuOrnamentHost.pane=nullptr;
 
     J2DPane* stack[96]; int top=0; stack[top++]=scope;
     while(top>0) {
