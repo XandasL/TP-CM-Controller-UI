@@ -1246,7 +1246,7 @@ HookAction before_meter_draw(ModContext*, void* args, void*, void*) {
 // for this test build, X/Y and enable/disable are the verified controls.
 // Scale remains in the UI but is applied conservatively through the anchor.
 
-void tag_to_text(u64 tag, char out[9]);
+static void tag_to_text(u64 tag, char out[9]);
 
 HookAction before_pane_trans(ModContext*, void* args, void*, void*) {
     if (args == nullptr || s_activeMeter == nullptr) return HOOK_CONTINUE;
