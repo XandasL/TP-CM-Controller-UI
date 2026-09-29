@@ -2218,22 +2218,18 @@ void apply_item_wheel_icon_texture(J2DPane* root, const ResTIMG* texture,
     J2DPicture* face = first_picture_recursive(root);
     if (face == nullptr) return;
 
-    const auto& cur = face->getBounds();
-    if (!state.captured || state.picture != face) {
-        const float w = cur.getWidth();
-        const float h = cur.getHeight();
-        const float side = (w < h ? w : h);
-        const float cx = cur.i.x + w * 0.5f;
-        const float cy = cur.i.y + h * 0.5f;
-        state.picture = face;
-        state.base.i.x = cx - side * 0.5f;
-        state.base.i.y = cy - side * 0.5f;
-        state.base.f.x = cx + side * 0.5f;
-        state.base.f.y = cy + side * 0.5f;
-        state.lastDx = state.lastDy = 0.0f;
-        state.lastScale = 1.0f;
-        state.captured = true;
-    }
+    // Rebuild from the live vanilla/local geometry on every draw. The wheel is
+    // destroyed and recreated whenever the item menu closes; the allocator can
+    // reuse the same J2DPicture address, so pointer-based cached baselines can
+    // accidentally survive into a new wheel instance and compound each reopen.
+    const JGeometry::TBox2<f32> base = face->mBounds;
+    const float baseTx = face->getTranslateX();
+    const float baseTy = face->getTranslateY();
+    const float w = base.getWidth();
+    const float h = base.getHeight();
+    const float side = (w < h ? w : h);
+    const float localCx = base.i.x + w * 0.5f;
+    const float localCy = base.i.y + h * 0.5f;
 
     replace_picture_texture(face, texture);
     const JUtility::TColor neutralBlack(0, 0, 0, 0);
@@ -2242,20 +2238,29 @@ void apply_item_wheel_icon_texture(J2DPane* root, const ResTIMG* texture,
     face->setCornerColor(neutralWhite);
     face->setAlpha(255);
 
-    // Always rebuild from the captured square baseline. This prevents slider
-    // changes and repeated Item Wheel draws from accumulating transforms.
     const float dx = cfg_pos(xh, 0.0f);
     const float dy = cfg_pos(yh, 0.0f);
     const float sc = cfg_scale(sh, 1.0f);
-    const float bw = state.base.getWidth();
-    const float bh = state.base.getHeight();
-    const float nw = bw * sc;
-    const float nh = bh * sc;
-    const float cx = state.base.i.x + bw * 0.5f + dx;
-    const float cy = state.base.i.y + bh * 0.5f + dy;
-    set_bounds(face, cx - nw * 0.5f, cy - nh * 0.5f, nw, nh);
-    state.lastDx = dx; state.lastDy = dy; state.lastScale = sc;
+    const float fitted = side * sc;
+
+    // Never use move()/resize()/place() for the draw-local wheel replacement:
+    // place() adjusts child translations, which is exactly the kind of state
+    // that can accumulate across repeated wheel opens. Change only local bounds
+    // and local translation, then restore the complete subtree after draw.
+    face->mBounds.i.x = localCx - fitted * 0.5f;
+    face->mBounds.i.y = localCy - fitted * 0.5f;
+    face->mBounds.f.x = localCx + fitted * 0.5f;
+    face->mBounds.f.y = localCy + fitted * 0.5f;
+    face->translate(baseTx + dx, baseTy + dy);
+    if (face->getTexture(0) != nullptr)
+        face->setTexCoord(face->getTexture(0), BIND15, MIRROR0, false);
     face->show();
+
+    // Keep the legacy state object only for ABI/source compatibility with the
+    // existing call sites. It is intentionally not used as a persistent base.
+    state.picture = face;
+    state.base = base;
+    state.captured = false;
 
     J2DPane* stack[64];
     int top = 0;
@@ -2270,7 +2275,6 @@ void apply_item_wheel_icon_texture(J2DPane* root, const ResTIMG* texture,
     }
 }
 
-
 void apply_item_wheel_shoulder_texture(J2DPane* root, const ResTIMG* texture,
                                        ItemWheelIconBase& state,
                                        ConfigVarHandle xh, ConfigVarHandle yh, ConfigVarHandle sh) {
@@ -2278,24 +2282,15 @@ void apply_item_wheel_shoulder_texture(J2DPane* root, const ResTIMG* texture,
     J2DPicture* face = first_picture_recursive(root);
     if (face == nullptr) return;
 
-    const auto& cur = face->getBounds();
-    if (!state.captured || state.picture != face) {
-        const float vanillaW = cur.getWidth();
-        const float vanillaH = cur.getHeight();
-        const float cx = cur.i.x + vanillaW * 0.5f;
-        const float cy = cur.i.y + vanillaH * 0.5f;
-        const float aspect = texture->height != 0 ? ((float)texture->width / (float)texture->height) : 1.0f;
-
-        // 100% = the original shoulder-button height. Width follows L2/R2 art.
-        const float baseH = vanillaH;
-        const float baseW = baseH * aspect;
-        state.picture = face;
-        state.base.i.x = cx - baseW * 0.5f;
-        state.base.i.y = cy - baseH * 0.5f;
-        state.base.f.x = cx + baseW * 0.5f;
-        state.base.f.y = cy + baseH * 0.5f;
-        state.captured = true;
-    }
+    const JGeometry::TBox2<f32> base = face->mBounds;
+    const float baseTx = face->getTranslateX();
+    const float baseTy = face->getTranslateY();
+    const float vanillaW = base.getWidth();
+    const float vanillaH = base.getHeight();
+    const float localCx = base.i.x + vanillaW * 0.5f;
+    const float localCy = base.i.y + vanillaH * 0.5f;
+    const float aspect = texture->height != 0
+        ? ((float)texture->width / (float)texture->height) : 1.0f;
 
     replace_picture_texture(face, texture);
     const JUtility::TColor neutralBlack(0, 0, 0, 0);
@@ -2307,12 +2302,21 @@ void apply_item_wheel_shoulder_texture(J2DPane* root, const ResTIMG* texture,
     const float dx = cfg_pos(xh, 0.0f);
     const float dy = cfg_pos(yh, 0.0f);
     const float sc = cfg_scale(sh, 1.0f);
-    const float bw = state.base.getWidth(), bh = state.base.getHeight();
-    const float nw = bw * sc, nh = bh * sc;
-    const float cx = state.base.i.x + bw * 0.5f + dx;
-    const float cy = state.base.i.y + bh * 0.5f + dy;
-    set_bounds(face, cx - nw * 0.5f, cy - nh * 0.5f, nw, nh);
+    const float fittedH = vanillaH * sc;
+    const float fittedW = fittedH * aspect;
+
+    face->mBounds.i.x = localCx - fittedW * 0.5f;
+    face->mBounds.i.y = localCy - fittedH * 0.5f;
+    face->mBounds.f.x = localCx + fittedW * 0.5f;
+    face->mBounds.f.y = localCy + fittedH * 0.5f;
+    face->translate(baseTx + dx, baseTy + dy);
+    if (face->getTexture(0) != nullptr)
+        face->setTexCoord(face->getTexture(0), BIND15, MIRROR0, false);
     face->show();
+
+    state.picture = face;
+    state.base = base;
+    state.captured = false;
 
     J2DPane* stack[64];
     int top = 0;
@@ -2339,20 +2343,14 @@ void apply_item_wheel_exact_picture(J2DScreen* screen, u64 faceTag,
     J2DPicture* face = as_picture(pane);
     if (face == nullptr) return;
 
-    const auto& cur = face->getBounds();
-    if (!state.captured || state.picture != face) {
-        const float w = cur.getWidth();
-        const float h = cur.getHeight();
-        const float side = (w > h ? w : h); // preserve a useful 32x32 analog canvas
-        const float cx = cur.i.x + w * 0.5f;
-        const float cy = cur.i.y + h * 0.5f;
-        state.picture = face;
-        state.base.i.x = cx - side * 0.5f;
-        state.base.i.y = cy - side * 0.5f;
-        state.base.f.x = cx + side * 0.5f;
-        state.base.f.y = cy + side * 0.5f;
-        state.captured = true;
-    }
+    const JGeometry::TBox2<f32> base = face->mBounds;
+    const float baseTx = face->getTranslateX();
+    const float baseTy = face->getTranslateY();
+    const float w = base.getWidth();
+    const float h = base.getHeight();
+    const float side = (w > h ? w : h);
+    const float localCx = base.i.x + w * 0.5f;
+    const float localCy = base.i.y + h * 0.5f;
 
     replace_picture_texture(face, texture);
     const JUtility::TColor neutralBlack(0, 0, 0, 0);
@@ -2362,12 +2360,21 @@ void apply_item_wheel_exact_picture(J2DScreen* screen, u64 faceTag,
     face->setAlpha(255);
     face->show();
 
-    const float dx = cfg_pos(xh, 0.0f), dy = cfg_pos(yh, 0.0f), sc = cfg_scale(sh, 1.0f);
-    const float bw = state.base.getWidth(), bh = state.base.getHeight();
-    const float nw = bw * sc, nh = bh * sc;
-    const float cx = state.base.i.x + bw * 0.5f + dx;
-    const float cy = state.base.i.y + bh * 0.5f + dy;
-    set_bounds(face, cx - nw * 0.5f, cy - nh * 0.5f, nw, nh);
+    const float dx = cfg_pos(xh, 0.0f);
+    const float dy = cfg_pos(yh, 0.0f);
+    const float sc = cfg_scale(sh, 1.0f);
+    const float fitted = side * sc;
+    face->mBounds.i.x = localCx - fitted * 0.5f;
+    face->mBounds.i.y = localCy - fitted * 0.5f;
+    face->mBounds.f.x = localCx + fitted * 0.5f;
+    face->mBounds.f.y = localCy + fitted * 0.5f;
+    face->translate(baseTx + dx, baseTy + dy);
+    if (face->getTexture(0) != nullptr)
+        face->setTexCoord(face->getTexture(0), BIND15, MIRROR0, false);
+
+    state.picture = face;
+    state.base = base;
+    state.captured = false;
 
     for (int i = 0; i < hideCount; ++i) {
         J2DPane* other = screen->search(hideTags[i]);
