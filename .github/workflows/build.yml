@@ -70,6 +70,10 @@ jobs:
           name: shared-banner-png
           path: res
 
+      - name: Remove JPG banner source from distributable resources
+        shell: bash
+        run: rm -f res/banner.jpg
+
       - name: Read pinned Dusklight version
         id: dusklight
         shell: bash
