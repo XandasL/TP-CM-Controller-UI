@@ -3821,13 +3821,9 @@ void draw_independent_prompt_overlay(J2DPicture* face, const ResTIMG* texture,
                                      bool shoulder, bool maxSquare) {
     if(face==nullptr || texture==nullptr || !pane_effectively_visible(face)) return;
 
-    CPaneMgr paneMgr;
-    Vec center=paneMgr.getGlobalVtxCenter(face,true,0);
-
-    const float sx=pane_effective_scale_x(face);
-    const float sy=pane_effective_scale_y(face);
-    float w=face->mBounds.getWidth()*sx;
-    float h=face->mBounds.getHeight()*sy;
+    const JGeometry::TBox2<f32>& b=face->getGlbBounds();
+    float w=b.getWidth();
+    float h=b.getHeight();
     if(w<=0.0f || h<=0.0f) return;
 
     const float sc=cfg_scale(sh,1.0f);
@@ -3842,8 +3838,8 @@ void draw_independent_prompt_overlay(J2DPicture* face, const ResTIMG* texture,
         drawH=side;
     }
 
-    const float cx=center.x+cfg_pos(xh,0.0f);
-    const float cy=center.y+cfg_pos(yh,0.0f);
+    const float cx=b.i.x+w*0.5f+cfg_pos(xh,0.0f);
+    const float cy=b.i.y+h*0.5f+cfg_pos(yh,0.0f);
 
     J2DPicture overlay(texture);
     const JUtility::TColor black(0,0,0,0), white(255,255,255,255);
@@ -3904,18 +3900,9 @@ void after_collect_compat_draw(ModContext*, void* args, void*, void*) {
     dMenu_Collect2D_c* c = args != nullptr ? mods::arg<dMenu_Collect2D_c*>(args,0) : nullptr;
     if(c==nullptr || c!=s_activeCollect) return;
 
-    // Draw controller art independently on top of the exact vanilla A/B hosts.
-    // The Collection tree itself stays untouched, including Twilit's cloned pages.
-    if(c->mpButtonAB[0]!=nullptr) {
-        J2DPicture* face=first_picture_recursive(c->mpButtonAB[0]->getPanePtr());
-        draw_independent_prompt_overlay(face,resource_timg(s_cross),
-                                        g_menuCrossX,g_menuCrossY,g_menuCrossScale,false,false);
-    }
-    if(c->mpButtonAB[1]!=nullptr) {
-        J2DPicture* face=first_picture_recursive(c->mpButtonAB[1]->getPanePtr());
-        draw_independent_prompt_overlay(face,resource_timg(s_circle),
-                                        g_menuCircleX,g_menuCircleY,g_menuCircleScale,false,false);
-    }
+    // Compatibility diagnostic: leave the complete Collection family pristine.
+    // Once Twilit remains stable through repeated tab/submenu transitions we can
+    // reintroduce controller art here as independent overlays, one owner at a time.
     s_activeCollect=nullptr;
 }
 
@@ -3926,21 +3913,36 @@ bool is_item_wheel_screen(J2DScreen* screen) {
            screen->search(MULTI_CHAR('y_btn_n'))!=nullptr;
 }
 
-bool is_active_collection_main_screen(J2DScreen* screen) {
-    return s_activeCollect!=nullptr && screen!=nullptr && screen==s_activeCollect->mpScreen;
+bool is_twilit_quick_access_screen(J2DScreen* screen) {
+    // Twilit Essentials creates a private J2DScreen from
+    // zelda_item_select_icon3_center_parts.blo. These four panes form a
+    // reliable signature and are not part of the vanilla item wheel screen.
+    return screen!=nullptr &&
+           screen->search(MULTI_CHAR('center_n'))!=nullptr &&
+           screen->search(MULTI_CHAR('label_n'))!=nullptr &&
+           screen->search(MULTI_CHAR('a_itmn_n'))!=nullptr &&
+           screen->search(MULTI_CHAR('itemn_n'))!=nullptr;
+}
+
+bool collection_draw_active() {
+    // dMenu_Collect2D_c::_draw owns not only the main Collection screen but
+    // also its Letters/Skills/Fishing/Options/Save submenus. While it is active,
+    // never let the generic J2DScreen hook mutate any BLO tree: Twilit's
+    // collection-lib reparents/clones panes across these transitions.
+    return s_activeCollect!=nullptr;
 }
 
 HookAction before_screen_draw(ModContext* ctx, void* args, void* retval, void* userdata) {
     J2DScreen* screen = mods::arg<J2DScreen*>(args, 0);
 
-    if (is_item_wheel_screen(screen)) {
-        // Absolute isolation for the vanilla ring screen. Its art is added later
-        // by the dMenu_Ring_c post hook; no pane/material state is touched here.
-    } else if (is_active_collection_main_screen(screen)) {
-        // Collection keeps only draw-local geometry/text positioning. No texture
-        // replacement and no ornament host mutation are allowed on this screen.
-        begin_menu_prompt_draw(screen);
-        apply_shared_menu_prompt_layout(screen);
+    if (is_item_wheel_screen(screen) || is_twilit_quick_access_screen(screen)) {
+        // Absolute isolation for both the vanilla ring and Twilit Essentials'
+        // private Quick Access wheel. Our ring art is drawn independently later.
+    } else if (collection_draw_active()) {
+        // Strong compatibility mode for the whole Collection family, including
+        // Letters/Skills/Fishing/Options/Save submenus. Do not touch textures,
+        // visibility, pane order, bounds or transforms while Twilit is actively
+        // managing this menu tree.
     } else {
         begin_menu_prompt_draw(screen);
         apply_known_menu_buttons(screen);
