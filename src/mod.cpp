@@ -8,6 +8,7 @@
 #include "d/d_msg_object.h"
 #include "d/d_meter_HIO.h"
 #include "d/d_meter2_info.h"
+#include "d/d_menu_ring.h"
 #include "d/d_item_data.h"
 #include "d/d_pane_class.h"
 #include "JSystem/J2DGraph/J2DPane.h"
@@ -759,6 +760,7 @@ DEFINE_HOOK(&dMeter2Draw_c::drawButtonXY, ButtonXYDrawHook);
 DEFINE_HOOK(&dMeter2Draw_c::drawButtonCross, ButtonCrossDrawHook);
 DEFINE_HOOK(&CPaneMgr::paneTrans, PaneTransHook);
 DEFINE_HOOK(&J2DScreen::draw, ScreenDrawHook);
+DEFINE_HOOK(&dMenu_Ring_c::_draw, RingControllerOverlayHook);
 DEFINE_HOOK(&dDlst_FileSel_c::draw, FileSelDrawHook);
 DEFINE_HOOK(&COutFont_c::createPane, OutFontCreatePaneHook);
 DEFINE_HOOK(&COutFont_c::drawFont, OutFontDrawFontHook);
@@ -3478,364 +3480,176 @@ void apply_known_menu_buttons(J2DScreen* screen) {
         apply_map_menu_prompt_layout(screen);
     }
 
-    // Item Wheel / Item Menu (zelda_item_select_icon_message_ver2.blo).
-    // Keep this isolated from the gameplay HUD.  The X/Y assignment prompts use
-    // dedicated roots in this layout; L/R are shoulder prompts for direct select
-    // and bow-item combination.  Only replace artwork, preserving vanilla geometry.
-    if (itemWheelScreen) {
-        // Snapshot the original vanilla Item Wheel panes before changing any
-        // textures, bounds or visibility. Everything is restored in the POST
-        // J2DScreen::draw hook so Twilit Essentials never inherits our edits.
-        begin_item_wheel_temp_state(screen);
-        if (const ResTIMG* triangle = resource_timg(s_triangle))
-            apply_item_wheel_icon_texture(screen->search(MULTI_CHAR('x_btn_n')), triangle, s_wheelSquareBase, g_wheelSquareX, g_wheelSquareY, g_wheelSquareScale);
-        if (const ResTIMG* square = resource_timg(s_square))
-            apply_item_wheel_icon_texture(screen->search(MULTI_CHAR('y_btn_n')), square, s_wheelTriangleBase, g_wheelTriangleX, g_wheelTriangleY, g_wheelTriangleScale);
+    // Item Wheel controller prompts are handled by the dedicated
+    // dMenu_Ring_c::_draw overlay hook below. Do not mutate the wheel's
+    // J2DScreen/J2DMaterial tree here: Twilit Essentials hooks the same ring
+    // object and reuses those panes as anchors.
 
-        // The pane-tree diagnostic proved these controls are real BLO pictures,
-        // not inline OutFont glyphs. Replace the exact layout artwork directly.
-        if (const ResTIMG* analog = resource_timg(s_analog)) {
-            // Select: cbtn1/cbtn3/cbtn/cbtn2 are the four layered C-stick pictures.
-            const u64 selectHide[] = { MULTI_CHAR('cbtn3'), MULTI_CHAR('cbtn'), MULTI_CHAR('cbtn2') };
-            apply_item_wheel_exact_picture(screen, MULTI_CHAR('cbtn1'), selectHide, 3,
-                                           analog, s_wheelSelectAnalogBase,
-                                           g_wheelSelectAnalogX, g_wheelSelectAnalogY, g_wheelSelectAnalogScale);
-            // Direct Select: cbtn4/cbtn5/cbtn6/cbtn7 are the second C-stick set.
-            const u64 directHide[] = { MULTI_CHAR('cbtn5'), MULTI_CHAR('cbtn6'), MULTI_CHAR('cbtn7') };
-            apply_item_wheel_exact_picture(screen, MULTI_CHAR('cbtn4'), directHide, 3,
-                                           analog, s_wheelDirectAnalogBase,
-                                           g_wheelDirectAnalogX, g_wheelDirectAnalogY, g_wheelDirectAnalogScale);
-        }
-        if (const ResTIMG* l2 = resource_timg(s_l2)) {
-            apply_item_wheel_shoulder_texture(screen->search(MULTI_CHAR('l_btn_n')), l2,
-                                          s_wheelL2Base, g_wheelL2X, g_wheelL2Y, g_wheelL2Scale);
-        }
-        if (const ResTIMG* r2 = resource_timg(s_r2)) {
-            // gr_btn_n is the visible bow-combination group. r_btn_n is kept as
-            // a second dynamic variant so either game state receives R2.
-            apply_item_wheel_shoulder_texture(screen->search(MULTI_CHAR('gr_btn_n')), r2,
-                                          s_wheelR2ComboBase, g_wheelR2X, g_wheelR2Y, g_wheelR2Scale);
-            apply_item_wheel_shoulder_texture(screen->search(MULTI_CHAR('r_btn_n')), r2,
-                                          s_wheelR2AltBase, g_wheelR2X, g_wheelR2Y, g_wheelR2Scale);
-        }
-    }
+}
 
-    // Options menu: the GameCube Z prompt lives under z_gc_n.
-    // Keep the root geometry untouched; only fit the R1 artwork inside the
-    // original 26x18 face while preserving the source texture's 2:1 ratio.
-    const ResTIMG* r1 = resource_timg(s_r1);
-    if (r1 != nullptr) {
-        J2DPane* zRoot = screen->search(MULTI_CHAR('z_gc_n'));
-        if (zRoot != nullptr) {
-            // Keep every original Z pane bound untouched. r1.bti is now a
-            // square 128x128 canvas with the 2.6:1 R1 artwork centered inside,
-            // so the original menu geometry provides the sizing without distortion.
-            apply_menu_button_texture(zRoot, r1);
-            // Preserve the Options root/animation, but size the visible R1 face
-            // from the replacement texture's aspect ratio instead of the narrow Z art.
-            if (J2DPicture* face = first_picture_recursive(zRoot)) {
-                const auto& b = face->getBounds();
-                const float oldW = b.getWidth();
-                const float oldH = b.getHeight();
-                const float cx = b.i.x + oldW * 0.5f;
-                const float cy = b.i.y + oldH * 0.5f;
-                const float aspect = r1->height != 0 ? ((float)r1->width / (float)r1->height) : 2.0f;
-                const float newH = oldH;
-                const float newW = newH * aspect;
-                set_bounds(face, cx - newW * 0.5f, cy - newH * 0.5f, newW, newH);
-            }
-        }
-    }
 
-    // Dungeon map: the "Mover" prompt is the GameCube C-stick control.
-    // dMenu_DmapBg_c builds it under c_btn beside c_text/c_text_s.
-    // Replace only this map C-stick root with the dedicated R3 texture.
-    const ResTIMG* r3 = resource_timg(s_r3);
-    if (r3 != nullptr && screen->search(MULTI_CHAR('c_text')) != nullptr) {
-        J2DPane* cRoot = screen->search(MULTI_CHAR('c_btn'));
-        if (cRoot != nullptr) apply_menu_button_texture(cRoot, r3);
-    }
+struct RingHiddenPaneState {
+    J2DPane* pane = nullptr;
+    bool visible = false;
+};
 
-    // Options help legend: diagnostic v0.10.34 identified these 20x20
-    // pictures are the analog-stick glyphs. Replace only these pictures;
-    // the neighbouring .yaji_* arrow panes remain completely untouched.
-    const ResTIMG* analog = resource_timg(s_analog);
-    if (analog != nullptr && screen->search(MULTI_CHAR('let_area')) != nullptr) {
-        static const u64 analogTags[] = {
-            MULTI_CHAR('wi_juji1'),
-            MULTI_CHAR('wi_juji'),
-            MULTI_CHAR('wi_juji2'),
-            MULTI_CHAR('wi_juji3'),
-        };
-        for (u64 tag : analogTags) {
-            J2DPane* pane = screen->search(tag);
-            J2DPicture* pic = as_picture(pane);
-            if (pic != nullptr) {
-                replace_picture_texture(pic, analog);
-                const JUtility::TColor neutralBlack(0, 0, 0, 0);
-                const JUtility::TColor neutralWhite(255, 255, 255, 255);
-                pic->setBlackWhite(neutralBlack, neutralWhite);
-                pic->setCornerColor(neutralWhite);
-                pic->show();
+RingHiddenPaneState s_ringHidden[96];
+int s_ringHiddenCount = 0;
+dMenu_Ring_c* s_ringOverlayRing = nullptr;
+
+struct RingOverlayTarget {
+    J2DPicture* face = nullptr;
+    const ResTIMG* texture = nullptr;
+    ConfigVarHandle x = 0;
+    ConfigVarHandle y = 0;
+    ConfigVarHandle scale = 0;
+    bool shoulder = false;
+    bool maxSquare = false;
+    bool visible = false;
+};
+
+RingOverlayTarget s_ringOverlayTargets[8];
+int s_ringOverlayTargetCount = 0;
+
+void ring_hide_picture(J2DPicture* pic) {
+    if (pic == nullptr) return;
+    for (int i=0;i<s_ringHiddenCount;++i)
+        if (s_ringHidden[i].pane == pic) return;
+    if (s_ringHiddenCount >= (int)(sizeof(s_ringHidden)/sizeof(s_ringHidden[0]))) return;
+    s_ringHidden[s_ringHiddenCount++] = {pic, pic->isVisible()};
+    pic->hide();
+}
+
+void ring_hide_picture_tree(J2DPane* root, J2DPicture** firstOut = nullptr) {
+    if (root == nullptr) return;
+    J2DPane* stack[96];
+    int top=0;
+    stack[top++]=root;
+    while(top>0) {
+        J2DPane* node=stack[--top];
+        for(J2DPane* child=node->getFirstChildPane(); child!=nullptr; child=child->getNextChildPane()) {
+            if(top<96) stack[top++]=child;
+            if(J2DPicture* pic=as_picture(child)) {
+                if(firstOut!=nullptr && *firstOut==nullptr) *firstOut=pic;
+                ring_hide_picture(pic);
             }
         }
     }
 }
 
-// v0.11.20 brightness test, based directly on the stable v0.11.19 implementation.
-// Replace only the contextual GameCube R artwork after its layout is created.
-// No code from the experimental v0.11.07-v0.11.18 chain is carried over.
-void after_meter_button_screen_init(ModContext*, void* args, void*, void*) {
-    dMeterButton_c* self = args != nullptr ? mods::arg<dMeterButton_c*>(args, 0) : nullptr;
-    if (self == nullptr || self->mpButtonScreen == nullptr) return;
-
-    // Fishing uses these exact faces in zelda_game_image_button_info.blo.
-    // Change only artwork; directional arrows and the combined-prompt plus
-    // sign are separate panes and remain under native visibility control.
-    struct FishingFace { u64 tag; const ResTIMG* texture; };
-    const FishingFace fishingFaces[] = {
-        {MULTI_CHAR('c_btn'), resource_timg(s_r3)},
-        {MULTI_CHAR('as_btn1'), resource_timg(s_analog)},
-        {MULTI_CHAR('as_btn3'), resource_timg(s_analog)},
-        {MULTI_CHAR('b_btn1'), resource_timg(s_circle)},
-    };
-    for (const FishingFace& entry : fishingFaces) {
-        J2DPicture* face = as_picture(self->mpButtonScreen->search(entry.tag));
-        if (face == nullptr || entry.texture == nullptr || entry.texture->height == 0) continue;
-        replace_picture_texture(face, entry.texture);
-        face->setBlackWhite(JUtility::TColor(0, 0, 0, 0), JUtility::TColor(255, 255, 255, 255));
-        face->setCornerColor(JUtility::TColor(255, 255, 255, 255));
-        const auto box = face->getBounds();
-        const float sx = face->getScaleX(), sy = face->getScaleY();
-        if (sx > 0.0001f && sy > 0.0001f) {
-            const float width = box.getHeight() * sy / sx * float(entry.texture->width) / float(entry.texture->height);
-            face->move(box.i.x + (box.getWidth() - width) * 0.5f, box.i.y);
-            face->resize(width, box.getHeight());
-            face->rotate(0.0f);
-        }
-    }
-    const u64 fishingOldLayers[] = {
-        MULTI_CHAR('as_btn'), MULTI_CHAR('as_btn2'),
-        MULTI_CHAR('as_btn4'), MULTI_CHAR('as_btn5'),
-        MULTI_CHAR('b_btn_l1'), MULTI_CHAR('b_btn_t1'),
-    };
-    for (u64 tag : fishingOldLayers)
-        if (J2DPane* old = self->mpButtonScreen->search(tag)) old->hide();
-    // Contextual Midna jump Z prompt: preserve the portrait and root animation.
-    J2DPicture* jumpFace = as_picture(self->mpButtonScreen->search(MULTI_CHAR('zbtn')));
-    const ResTIMG* r1 = resource_timg(s_r1);
-    if (jumpFace != nullptr && r1 != nullptr && r1->height != 0) {
-        replace_picture_texture(jumpFace, r1);
-        jumpFace->setBlackWhite(JUtility::TColor(0, 0, 0, 0),
-                               JUtility::TColor(255, 255, 255, 255));
-        jumpFace->setCornerColor(JUtility::TColor(255, 255, 255, 255));
-        const auto bounds = jumpFace->getBounds();
-        const float sx = jumpFace->getScaleX();
-        const float sy = jumpFace->getScaleY();
-        if (sx > 0.0001f && sy > 0.0001f) {
-            const float aspect = float(r1->width) / float(r1->height);
-            const float height = bounds.getWidth() * sx / (aspect * sy);
-            jumpFace->move(bounds.i.x, bounds.i.y + (bounds.getHeight() - height) * 0.5f);
-            jumpFace->resize(bounds.getWidth(), height);
-            jumpFace->rotate(0.0f);
-        }
-        J2DPane* root = self->mpButtonScreen->search(MULTI_CHAR('zbtn_n'));
-        J2DPane* portrait = self->mpButtonScreen->search(MULTI_CHAR('midona'));
-        J2DPane* stack[64];
-        int count = 0;
-        if (root != nullptr) stack[count++] = root;
-        while (count > 0) {
-            J2DPane* node = stack[--count];
-            for (J2DPane* child = node->getFirstChildPane(); child != nullptr;
-                 child = child->getNextChildPane()) {
-                if (child == portrait) continue;
-                if (count < 64) stack[count++] = child;
-                if (child == jumpFace || as_picture(child) == nullptr) continue;
-                bool preserve = false;
-                for (J2DPane* p = jumpFace->getParentPane(); p != nullptr; p = p->getParentPane())
-                    if (p == child) preserve = true;
-                for (J2DPane* p = portrait; p != nullptr; p = p->getParentPane())
-                    if (p == child) preserve = true;
-                if (!preserve) child->hide();
-            }
-        }
-        // Native screenInitButton explicitly enables this old Z highlight.
-        if (J2DPane* oldLight = self->mpButtonScreen->search(MULTI_CHAR('z_btnl')))
-            oldLight->hide();
-    }
-    // Bottom contextual Y prompt (Wolf Dig), separate from the main HUD.
-    // Replace the face only; retain its parent alpha and prompt animation.
-    J2DPicture* digFace = as_picture(self->mpButtonScreen->search(MULTI_CHAR('y_btn')));
-    const ResTIMG* square = resource_timg(s_square);
-    if (digFace != nullptr && square != nullptr) {
-        // Only the contextual Y button's artwork subtree. The label and
-        // other prompts live outside ybtn_n and retain their native behavior.
-        J2DPane* root = self->mpButtonScreen->search(MULTI_CHAR('ybtn_n'));
-        J2DPane* stack[64];
-        int count = 0;
-        if (root != nullptr) stack[count++] = root;
-        while (count > 0) {
-            J2DPane* node = stack[--count];
-            for (J2DPane* child = node->getFirstChildPane(); child != nullptr;
-                 child = child->getNextChildPane()) {
-                if (count < 64) stack[count++] = child;
-                if (child == digFace || as_picture(child) == nullptr) continue;
-                bool containsFace = false;
-                for (J2DPane* parent = digFace->getParentPane(); parent != nullptr;
-                     parent = parent->getParentPane()) {
-                    if (parent == child) { containsFace = true; break; }
-                }
-                if (!containsFace) child->hide();
-            }
-        }
-        replace_picture_texture(digFace, square);
-        digFace->setBlackWhite(JUtility::TColor(0, 0, 0, 0),
-                              JUtility::TColor(255, 255, 255, 255));
-        digFace->setCornerColor(JUtility::TColor(255, 255, 255, 255));
-        const JGeometry::TBox2<f32> bounds = digFace->getBounds();
-        // Fit a circle to the original slot height, keeping its center.
-        // Compensate any local nonuniform scale without changing parent layout.
-        const float sx = digFace->getScaleX();
-        const float sy = digFace->getScaleY();
-        if (sx > 0.0001f && sy > 0.0001f) {
-            const float width = bounds.getHeight() * sy / sx;
-            digFace->move(bounds.i.x + (bounds.getWidth() - width) * 0.5f, bounds.i.y);
-            digFace->resize(width, bounds.getHeight());
-            digFace->rotate(0.0f);
-        }
-    }
-    const ResTIMG* r2 = resource_timg(s_r2);
-    J2DPicture* base = as_picture(self->mpButtonScreen->search(MULTI_CHAR('r_btn_b')));
-    J2DPane* rightPiece = self->mpButtonScreen->search(MULTI_CHAR('r_btn_r'));
-    J2DPane* leftPiece = self->mpButtonScreen->search(MULTI_CHAR('r_btn_l'));
-    if (base == nullptr || r2 == nullptr) return;
-
-    // Change only the primary image. Leave the rest of the material/layout state alone.
-    if (base->getTextureCount() != 0) {
-        base->changeTexture(r2, 0);
-        if (base->getTexture(0) != nullptr)
-            base->setTexCoord(base->getTexture(0), BIND15, MIRROR0, false);
-    }
-
-    // v0.11.20: neutralize the original GameCube R picture tint so the R2
-    // keeps the brightness/colors authored in its texture. Pane alpha and the
-    // game's prompt/glow animation remain untouched.
-    const JUtility::TColor neutralBlack(0, 0, 0, 0);
-    const JUtility::TColor neutralWhite(255, 255, 255, 255);
-    base->setBlackWhite(neutralBlack, neutralWhite);
-    base->setCornerColor(neutralWhite);
-
-    // Preserve the R2 artwork's 4:3 aspect ratio inside the original 55x36 slot.
-    const JGeometry::TBox2<f32> box = base->getBounds();
-    const float oldW = box.getWidth();
-    const float oldH = box.getHeight();
-    const float newW = oldH * (4.0f / 3.0f);
-    base->move(box.i.x + (oldW - newW) * 0.5f, box.i.y);
-    base->resize(newW, oldH);
-
-    // Remove the two pieces that draw the original GameCube R glyph.
-    if (rightPiece != nullptr) rightPiece->hide();
-    if (leftPiece != nullptr) leftPiece->hide();
-
-    // v0.11.27: Start/S prompt used by BUTTON_STATUS_CANT_SKIP (0x4D).
-    // dMeterButton_c owns this as sbtn_n; a_btn2 is the picture used for
-    // BUTTON_S_e sizing/rendering. Replace only that picture with the
-    // user-supplied PlayStation Options artwork, preserving Start behavior.
-    const ResTIMG* options = resource_timg(s_options);
-    J2DPane* sRoot = self->mpButtonScreen->search(MULTI_CHAR('sbtn_n'));
-    J2DPicture* startFace = as_picture(self->mpButtonScreen->search(MULTI_CHAR('a_btn2')));
-    if (sRoot != nullptr && startFace != nullptr && options != nullptr) {
-        if (startFace->getTextureCount() != 0) {
-            startFace->changeTexture(options, 0);
-            if (startFace->getTexture(0) != nullptr)
-                startFace->setTexCoord(startFace->getTexture(0), BIND15, MIRROR0, false);
-        }
-        startFace->setBlackWhite(neutralBlack, neutralWhite);
-        startFace->setCornerColor(neutralWhite);
-        startFace->show();
-
-        // Remove only the two original GameCube Start artwork layers identified
-        // by the v0.11.26 sbtn_n tree diagnostic. Keep sbtn_n itself and a_btn2
-        // intact so the original positioning/alpha animation and Start behavior remain.
-        if (J2DPane* oldStartLight = self->mpButtonScreen->search(MULTI_CHAR('a_btn_l2')))
-            oldStartLight->hide();
-        if (J2DPane* oldStartGlyph = self->mpButtonScreen->search(MULTI_CHAR('a_btn_t1')))
-            oldStartGlyph->hide();
-    }
+void ring_add_overlay_target(J2DPicture* face, const ResTIMG* texture,
+                             ConfigVarHandle x, ConfigVarHandle y, ConfigVarHandle scale,
+                             bool shoulder=false, bool maxSquare=false) {
+    if(face==nullptr || texture==nullptr ||
+       s_ringOverlayTargetCount >= (int)(sizeof(s_ringOverlayTargets)/sizeof(s_ringOverlayTargets[0])))
+        return;
+    bool wasVisible=false;
+    for(int i=0;i<s_ringHiddenCount;++i)
+        if(s_ringHidden[i].pane==face) { wasVisible=s_ringHidden[i].visible; break; }
+    s_ringOverlayTargets[s_ringOverlayTargetCount++] =
+        {face,texture,x,y,scale,shoulder,maxSquare,wasVisible};
 }
 
-// The white Wolf glows are not x_light/y_light themselves. They are the
-// emphasized-button Pikari drawn by dMeterButton_c::draw().  Control the two
-// emphasis slots directly, then restore them after drawing so Preview never
-// mutates the game's persistent button state.
-HookAction before_meter_button_draw(ModContext*, void* args, void*, void*) {
-    s_activeMeterButton = args != nullptr ? mods::arg<dMeterButton_c*>(args, 0) : nullptr;
-    if (s_activeMeterButton == nullptr) return HOOK_CONTINUE;
+void ring_capture_root(J2DScreen* screen, u64 tag, const ResTIMG* texture,
+                       ConfigVarHandle x, ConfigVarHandle y, ConfigVarHandle scale,
+                       bool shoulder=false, bool maxSquare=false) {
+    J2DPane* root=screen!=nullptr ? screen->search(tag) : nullptr;
+    if(root==nullptr) return;
+    J2DPicture* face=nullptr;
+    ring_hide_picture_tree(root,&face);
+    ring_add_overlay_target(face,texture,x,y,scale,shoulder,maxSquare);
+}
 
-    s_meterButtonGlowState.valid = true;
-    for (int i=0;i<2;++i) {
-        s_meterButtonGlowState.frame[i] = s_activeMeterButton->field_0x2e8[i];
-        s_meterButtonGlowState.button[i] = s_activeMeterButton->field_0x4be[i];
+void ring_capture_exact(J2DScreen* screen, u64 faceTag,
+                        const u64* hideTags, int hideCount,
+                        const ResTIMG* texture,
+                        ConfigVarHandle x, ConfigVarHandle y, ConfigVarHandle scale) {
+    if(screen==nullptr) return;
+    J2DPicture* face=as_picture(screen->search(faceTag));
+    if(face==nullptr) return;
+    ring_hide_picture(face);
+    for(int i=0;i<hideCount;++i)
+        ring_hide_picture(as_picture(screen->search(hideTags[i])));
+    ring_add_overlay_target(face,texture,x,y,scale,false,true);
+}
 
-        if (s_activeMeterButton->field_0x4be[i] == dMeterButton_c::BUTTON_X_e &&
-            !cfg_bool(g_wolfXGlowEnabled,true))
-            s_activeMeterButton->field_0x2e8[i] = 0.0f;
-        if (s_activeMeterButton->field_0x4be[i] == dMeterButton_c::BUTTON_Y_e &&
-            !cfg_bool(g_wolfYGlowEnabled,true))
-            s_activeMeterButton->field_0x2e8[i] = 0.0f;
-    }
+HookAction before_ring_controller_overlay(ModContext*, void* args, void*, void*) {
+    dMenu_Ring_c* ring = args != nullptr ? mods::arg<dMenu_Ring_c*>(args,0) : nullptr;
+    if(ring==nullptr || ring->mpScreen==nullptr || ring->mPlayerIsWolf) return HOOK_CONTINUE;
 
-    if (cfg_bool(g_wolfGlowPreview,false)) {
-        // dMeterButton has exactly two emphasis/Pikari slots. Preview borrows
-        // them for X and Y for this draw only, then the post-hook restores all
-        // original values.
-        s_activeMeterButton->field_0x4be[0] = dMeterButton_c::BUTTON_X_e;
-        s_activeMeterButton->field_0x4be[1] = dMeterButton_c::BUTTON_Y_e;
-        s_activeMeterButton->field_0x2e8[0] = cfg_bool(g_wolfXGlowEnabled,true) ? 18.0f : 0.0f;
-        s_activeMeterButton->field_0x2e8[1] = cfg_bool(g_wolfYGlowEnabled,true) ? 18.0f : 0.0f;
-    }
+    s_ringOverlayRing=ring;
+    s_ringHiddenCount=0;
+    s_ringOverlayTargetCount=0;
+
+    ring_capture_root(ring->mpScreen,MULTI_CHAR('x_btn_n'),resource_timg(s_triangle),
+                      g_wheelSquareX,g_wheelSquareY,g_wheelSquareScale);
+    ring_capture_root(ring->mpScreen,MULTI_CHAR('y_btn_n'),resource_timg(s_square),
+                      g_wheelTriangleX,g_wheelTriangleY,g_wheelTriangleScale);
+
+    static const u64 selectHide[]={MULTI_CHAR('cbtn3'),MULTI_CHAR('cbtn'),MULTI_CHAR('cbtn2')};
+    static const u64 directHide[]={MULTI_CHAR('cbtn5'),MULTI_CHAR('cbtn6'),MULTI_CHAR('cbtn7')};
+    ring_capture_exact(ring->mpScreen,MULTI_CHAR('cbtn1'),selectHide,3,resource_timg(s_analog),
+                       g_wheelSelectAnalogX,g_wheelSelectAnalogY,g_wheelSelectAnalogScale);
+    ring_capture_exact(ring->mpScreen,MULTI_CHAR('cbtn4'),directHide,3,resource_timg(s_analog),
+                       g_wheelDirectAnalogX,g_wheelDirectAnalogY,g_wheelDirectAnalogScale);
+
+    ring_capture_root(ring->mpScreen,MULTI_CHAR('l_btn_n'),resource_timg(s_l2),
+                      g_wheelL2X,g_wheelL2Y,g_wheelL2Scale,true);
+    ring_capture_root(ring->mpScreen,MULTI_CHAR('gr_btn_n'),resource_timg(s_r2),
+                      g_wheelR2X,g_wheelR2Y,g_wheelR2Scale,true);
     return HOOK_CONTINUE;
 }
 
-void after_meter_button_draw(ModContext*, void*, void*, void*) {
-    if (s_activeMeterButton != nullptr && s_meterButtonGlowState.valid) {
-        for (int i=0;i<2;++i) {
-            s_activeMeterButton->field_0x2e8[i] = s_meterButtonGlowState.frame[i];
-            s_activeMeterButton->field_0x4be[i] = s_meterButtonGlowState.button[i];
-        }
+void draw_ring_overlay_picture(const RingOverlayTarget& t) {
+    if(t.face==nullptr || t.texture==nullptr || !t.visible) return;
+    const auto& b=t.face->getGlbBounds();
+    float w=b.getWidth();
+    float h=b.getHeight();
+    if(w<=0.0f || h<=0.0f) return;
+
+    const float dx=cfg_pos(t.x,0.0f);
+    const float dy=cfg_pos(t.y,0.0f);
+    const float sc=cfg_scale(t.scale,1.0f);
+    float drawW=0.0f, drawH=0.0f;
+    if(t.shoulder) {
+        drawH=h*sc;
+        const float aspect=t.texture->height ? (float)t.texture->width/(float)t.texture->height : 1.0f;
+        drawW=drawH*aspect;
+    } else {
+        const float side=(t.maxSquare ? (w>h?w:h) : (w<h?w:h))*sc;
+        drawW=side;
+        drawH=side;
     }
-    s_meterButtonGlowState.valid = false;
-    s_activeMeterButton = nullptr;
+
+    const float cx=b.i.x+w*0.5f+dx;
+    const float cy=b.i.y+h*0.5f+dy;
+    J2DPicture overlay(t.texture);
+    const JUtility::TColor black(0,0,0,0), white(255,255,255,255);
+    overlay.setBlackWhite(black,white);
+    overlay.setCornerColor(white);
+    overlay.setAlpha(255);
+    overlay.draw(cx-drawW*0.5f,cy-drawH*0.5f,drawW,drawH,false,false,false);
 }
 
-int classify_current_pikari() {
-    dMeter2Draw_c* meter = s_activeMeter != nullptr ? s_activeMeter : s_meterInstance;
-    if (meter == nullptr || meter->mpPikariParent == nullptr) return 0;
-    J2DPane* p = meter->mpPikariParent->getPanePtr();
-    if (p == nullptr) return 0;
+void after_ring_controller_overlay(ModContext*, void* args, void*, void*) {
+    dMenu_Ring_c* ring = args != nullptr ? mods::arg<dMenu_Ring_c*>(args,0) : nullptr;
+    if(ring==nullptr || ring!=s_ringOverlayRing) return;
 
-    const float px = p->getTranslateX();
-    const float py = p->getTranslateY();
+    // The vanilla ring has already drawn, so restore its panes before handing
+    // control back to other mods. This leaves Twilit Essentials' ring anchors
+    // exactly as they were before our hook.
+    for(int i=s_ringHiddenCount-1;i>=0;--i) {
+        auto& st=s_ringHidden[i];
+        if(st.pane==nullptr) continue;
+        if(st.visible) st.pane->show(); else st.pane->hide();
+    }
 
-    if (meter->mpBTextA != nullptr) {
-        Vec a = meter->mpBTextA->getGlobalVtxCenter(false, 0);
-        if (fabsf(px - a.x) < 1.0f && fabsf(py - a.y) < 1.0f) return 1;
-    }
-    if (meter->mpBTextB != nullptr) {
-        Vec b = meter->mpBTextB->getGlobalVtxCenter(false, 0);
-        if (fabsf(px - b.x) < 1.0f && fabsf(py - b.y) < 1.0f) return 2;
-    }
-    // Contextual X/Y (Wolf: Senses/Dig) Pikari is anchored to b_text_x /
-    // b_text_y through mpBTextXY[], not to the emphasized-button overlay.
-    if (meter->mpBTextXY[0] != nullptr) {
-        Vec x = meter->mpBTextXY[0]->getGlobalVtxCenter(false, 0);
-        if (fabsf(px - x.x) < 1.5f && fabsf(py - x.y) < 1.5f) return 3;
-    }
-    if (meter->mpBTextXY[1] != nullptr) {
-        Vec y = meter->mpBTextXY[1]->getGlobalVtxCenter(false, 0);
-        if (fabsf(px - y.x) < 1.5f && fabsf(py - y.y) < 1.5f) return 4;
-    }
-    return 0;
+    for(int i=0;i<s_ringOverlayTargetCount;++i)
+        draw_ring_overlay_picture(s_ringOverlayTargets[i]);
+
+    s_ringHiddenCount=0;
+    s_ringOverlayTargetCount=0;
+    s_ringOverlayRing=nullptr;
 }
 
 HookAction before_screen_draw(ModContext* ctx, void* args, void* retval, void* userdata) {
@@ -4108,6 +3922,22 @@ ModResult mod_initialize(ModError* error) {
         free_resources();
         return psd;
     }
+    ModResult ringPre = mods::hook::add_pre<RingControllerOverlayHook>(svc_hook, before_ring_controller_overlay);
+    if (ringPre != MOD_OK) {
+        mods::hook::uninstall<PaneTransHook>();
+        mods::hook::uninstall<ScreenDrawHook>();
+        free_resources();
+        return mods::set_error(error, ringPre, "failed to install PRE hook for dMenu_Ring_c::_draw");
+    }
+    ModResult ringPost = mods::hook::add_post<RingControllerOverlayHook>(svc_hook, after_ring_controller_overlay);
+    if (ringPost != MOD_OK) {
+        mods::hook::uninstall<RingControllerOverlayHook>();
+        mods::hook::uninstall<PaneTransHook>();
+        mods::hook::uninstall<ScreenDrawHook>();
+        free_resources();
+        return mods::set_error(error, ringPost, "failed to install POST hook for dMenu_Ring_c::_draw");
+    }
+
     ModResult psdPost = mods::hook::add_post<ScreenDrawHook>(svc_hook, after_screen_draw);
     if (psdPost != MOD_OK) {
         mods::hook::uninstall<ScreenDrawHook>();
@@ -4168,6 +3998,7 @@ ModResult mod_initialize(ModError* error) {
 MOD_EXPORT ModResult mod_update(ModError*) { return MOD_OK; }
 
 MOD_EXPORT ModResult mod_shutdown(ModError*) {
+    mods::hook::uninstall<RingControllerOverlayHook>();
     mods::hook::uninstall<MeterButtonScreenInitHook>();
     if (s_buttonCrossHookInstalled) {
         mods::hook::uninstall<ButtonCrossDrawHook>();
