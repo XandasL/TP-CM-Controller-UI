@@ -763,6 +763,17 @@ DEFINE_HOOK(&dDlst_FileSel_c::draw, FileSelDrawHook);
 DEFINE_HOOK(&COutFont_c::createPane, OutFontCreatePaneHook);
 DEFINE_HOOK(&COutFont_c::drawFont, OutFontDrawFontHook);
 
+// Compatibility pass for mods that also touch the vanilla HUD, notably
+// Twilit Essentials. Its compatibility hooks use +/-100 priorities; run our
+// visual HUD adjustments later so we consume the layout state produced by it
+// instead of racing it at the default priority.
+constexpr int32_t kTwilitEssentialsCompatPriority = -200;
+inline HookOptions twilit_essentials_compat_order() {
+    HookOptions options = HOOK_OPTIONS_INIT;
+    options.priority = kTwilitEssentialsCompatPriority;
+    return options;
+}
+
 bool s_drawHookInstalled = false;
 bool s_drawPreInstalled = false;
 bool s_paneTransHookInstalled = false;
@@ -3569,7 +3580,8 @@ ModResult mod_initialize(ModError* error) {
         }
     }
 
-    ModResult pre = mods::hook::add_pre<MeterDrawHook>(svc_hook, before_meter_draw);
+    const HookOptions twilitCompatOrder = twilit_essentials_compat_order();
+    ModResult pre = mods::hook::add_pre<MeterDrawHook>(svc_hook, before_meter_draw, &twilitCompatOrder);
     if (pre != MOD_OK) {
         free_resources();
         return mods::set_error(error, pre, "failed to install PRE hook for dMeter2Draw_c::draw");
@@ -3651,7 +3663,7 @@ ModResult mod_initialize(ModError* error) {
     }
     s_paneTransHookInstalled = true;
 
-    ModResult post = mods::hook::add_post<MeterDrawHook>(svc_hook, after_meter_draw);
+    ModResult post = mods::hook::add_post<MeterDrawHook>(svc_hook, after_meter_draw, &twilitCompatOrder);
     if (post != MOD_OK) {
         free_resources();
         return mods::set_error(error, post, "failed to install POST hook for dMeter2Draw_c::draw");
