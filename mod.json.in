@@ -5,5 +5,5 @@
   "author": "XandasLegend",
   "description": "Modern controller prompts, reimagined in the style of Twilight Princess. Supports GameCube, PlayStation and Xbox mappings with customizable HUD, menu, dialogue and map elements.",
   "icon": "res/icon.png",
-  "banner": "res/banner.jpg"
+  "banner": "res/banner.png"
 }
