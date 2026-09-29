@@ -10,10 +10,6 @@
 #include "d/d_meter2_info.h"
 #include "d/d_item_data.h"
 #include "d/d_pane_class.h"
-#include "d/d_menu_ring.h"
-#include "d/d_menu_collect.h"
-#include "d/d_menu_fmap.h"
-#include "d/d_menu_dmap.h"
 #include "JSystem/J2DGraph/J2DPane.h"
 #include "JSystem/J2DGraph/J2DPicture.h"
 #include "mods/service.hpp"
@@ -763,10 +759,6 @@ DEFINE_HOOK(&dMeter2Draw_c::drawButtonXY, ButtonXYDrawHook);
 DEFINE_HOOK(&dMeter2Draw_c::drawButtonCross, ButtonCrossDrawHook);
 DEFINE_HOOK(&CPaneMgr::paneTrans, PaneTransHook);
 DEFINE_HOOK(&J2DScreen::draw, ScreenDrawHook);
-DEFINE_HOOK(&dMenu_Ring_c::_draw, RingMenuDrawHook);
-DEFINE_HOOK(&dMenu_Collect2D_c::_draw, CollectMenuDrawHook);
-DEFINE_HOOK(&dMenu_Fmap_c::_draw, FieldMapDrawHook);
-DEFINE_HOOK(&dMenu_Dmap_c::_draw, DungeonMapDrawHook);
 DEFINE_HOOK(&dDlst_FileSel_c::draw, FileSelDrawHook);
 DEFINE_HOOK(&COutFont_c::createPane, OutFontCreatePaneHook);
 DEFINE_HOOK(&COutFont_c::drawFont, OutFontDrawFontHook);
@@ -774,43 +766,6 @@ DEFINE_HOOK(&COutFont_c::drawFont, OutFontDrawFontHook);
 bool s_drawHookInstalled = false;
 bool s_drawPreInstalled = false;
 bool s_paneTransHookInstalled = false;
-
-// J2DScreen::draw is used by the entire game and by other Dusklight mods.
-// Only allow our broad menu-tag replacement logic while one of the actual
-// vanilla Twilight Princess menu owners is drawing. This keeps the proven
-// menu visuals while preventing Twilit Essentials' private J2DScreens from
-// accidentally matching our vanilla tags.
-int s_vanillaMenuOwnerDepth = 0;
-
-HookAction before_vanilla_menu_owner(ModContext*, void*, void*, void*) {
-    ++s_vanillaMenuOwnerDepth;
-    return HOOK_CONTINUE;
-}
-
-void after_vanilla_menu_owner(ModContext*, void*, void*, void*) {
-    if (s_vanillaMenuOwnerDepth > 0) --s_vanillaMenuOwnerDepth;
-}
-
-bool standalone_screen_owned_by_tp_classic(J2DScreen* screen) {
-    if (screen == nullptr) return false;
-
-    // Howling minigame has a unique signature and is not owned by the pause menu.
-    if (screen->search(MULTI_CHAR('g_ltxt_n')) != nullptr &&
-        screen->search(MULTI_CHAR('gr_txt_n')) != nullptr &&
-        screen->search(MULTI_CHAR('line00')) != nullptr)
-        return true;
-
-    // Initial file select / TV brightness setup are separate draw owners.
-    if (screen->search(MULTI_CHAR('w_n_abtn')) != nullptr ||
-        screen->search(MULTI_CHAR('gcabtn_n')) != nullptr)
-        return true;
-
-    return false;
-}
-
-bool allow_generic_menu_screen(J2DScreen* screen) {
-    return s_vanillaMenuOwnerDepth > 0 || standalone_screen_owned_by_tp_classic(screen);
-}
 dMeter2Draw_c* s_activeMeter = nullptr;
 // Ammo digits are rendered outside mpItemXY, using mItemParams[].num_scale.
 // Save the vanilla number scale before dMeter2Draw_c::draw(), apply the same
@@ -865,6 +820,23 @@ J2DPane* child_at(J2DPane* root, int wantedIndex) {
 J2DPicture* as_picture(J2DPane* pane) {
     if (pane == nullptr || pane->getTypeID() != 18) return nullptr;
     return static_cast<J2DPicture*>(pane);
+}
+
+struct PictureTexCoordAccess : J2DPicture {
+    using Member = JGeometry::TVec2<s16> (J2DPicture::*)[4];
+    static Member member() { return &PictureTexCoordAccess::field_0x10a; }
+};
+
+void copy_picture_texcoords(J2DPicture* pic, JGeometry::TVec2<s16> out[4]) {
+    if (pic == nullptr) return;
+    const auto member = PictureTexCoordAccess::member();
+    for (int i = 0; i < 4; ++i) out[i] = (pic->*member)[i];
+}
+
+void restore_picture_texcoords(J2DPicture* pic, const JGeometry::TVec2<s16> in[4]) {
+    if (pic == nullptr) return;
+    const auto member = PictureTexCoordAccess::member();
+    for (int i = 0; i < 4; ++i) (pic->*member)[i] = in[i];
 }
 
 J2DPicture* picture_child(J2DPane* root, int index) {
@@ -2021,12 +1993,13 @@ struct ItemWheelTempPaneState {
     u8 alpha = 255;
     bool picture = false;
     JGeometry::TBox2<f32> bounds{};
-    f32 tx = 0.0f, ty = 0.0f, sx = 1.0f, sy = 1.0f;
+    f32 tx = 0.0f, ty = 0.0f, sx = 1.0f, sy = 1.0f, rotation = 0.0f;
     const ResTIMG* tex0 = nullptr;
     const ResTIMG* tex1 = nullptr;
     JUtility::TColor black{};
     JUtility::TColor white{};
     JUtility::TColor corners[4]{};
+    JGeometry::TVec2<s16> texCoords[4]{};
 };
 
 ItemWheelTempPaneState s_itemWheelTemp[128];
@@ -2048,6 +2021,7 @@ void capture_item_wheel_temp_pane(J2DPane* pane) {
     st.ty = pane->getTranslateY();
     st.sx = pane->getScaleX();
     st.sy = pane->getScaleY();
+    st.rotation = pane->getRotateZ();
 
     if (J2DPicture* pic = as_picture(pane)) {
         st.picture = true;
@@ -2057,6 +2031,7 @@ void capture_item_wheel_temp_pane(J2DPane* pane) {
         st.black = pic->getBlack();
         st.white = pic->getWhite();
         for (int i = 0; i < 4; ++i) st.corners[i] = pic->corner(i);
+        copy_picture_texcoords(pic, st.texCoords);
     }
 }
 
@@ -2099,21 +2074,30 @@ void restore_item_wheel_temp_state(J2DScreen* screen) {
         ItemWheelTempPaneState& st = s_itemWheelTemp[i];
         if (st.pane == nullptr) continue;
 
-        st.pane->translate(st.tx, st.ty);
-        st.pane->scale(st.sx, st.sy);
-        st.pane->setAlpha(st.alpha);
-        if (st.visible) st.pane->show();
-        else st.pane->hide();
-
         if (st.picture) {
             J2DPicture* pic = static_cast<J2DPicture*>(st.pane);
             if (st.tex0 != nullptr && pic->getTextureCount() > 0) pic->changeTexture(st.tex0, 0);
             if (st.tex1 != nullptr && pic->getTextureCount() > 1) pic->changeTexture(st.tex1, 1);
-            set_bounds(pic, st.bounds.i.x, st.bounds.i.y,
-                       st.bounds.getWidth(), st.bounds.getHeight());
+
+            // Restore the exact local geometry instead of calling move()/place().
+            // Those helpers recalculate translation (and place() can move children),
+            // which was able to accumulate drift across repeated menu opens.
+            pic->mBounds = st.bounds;
+            pic->translate(st.tx, st.ty);
+            pic->scale(st.sx, st.sy);
+            pic->rotate(st.rotation);
+            restore_picture_texcoords(pic, st.texCoords);
             pic->setBlackWhite(st.black, st.white);
             pic->setCornerColor(st.corners[0], st.corners[1], st.corners[2], st.corners[3]);
+        } else {
+            st.pane->translate(st.tx, st.ty);
+            st.pane->scale(st.sx, st.sy);
+            st.pane->rotate(st.rotation);
         }
+
+        st.pane->setAlpha(st.alpha);
+        if (st.visible) st.pane->show();
+        else st.pane->hide();
     }
 
     s_itemWheelTempCount = 0;
@@ -2715,10 +2699,24 @@ void apply_map_menu_prompt_layout(J2DScreen* screen) {
     for (u64 t:bText) if (J2DPane* pane=screen->search(t)) apply_menu_pane_transform(pane,(dungeonMap ? g_dungeonMapBackTextX : g_mapBackTextX),(dungeonMap ? g_dungeonMapBackTextY : g_mapBackTextY),(dungeonMap ? g_dungeonMapBackTextScale : g_mapBackTextScale));
 }
 
-struct MenuOrnamentDrawState { J2DPane* pane=nullptr; bool visible=false; };
-struct MenuOrnamentBase { J2DPane* pane=nullptr; float x=0,y=0,sx=1,sy=1; };
+struct MenuOrnamentDrawState {
+    J2DPicture* pane = nullptr;
+    bool visible = false;
+};
+struct MenuOrnamentHostState {
+    J2DPicture* pane = nullptr;
+    JGeometry::TBox2<f32> bounds{};
+    float x=0.0f, y=0.0f, sx=1.0f, sy=1.0f, rotation=0.0f;
+    u8 alpha=255;
+    const ResTIMG* tex0=nullptr;
+    const ResTIMG* tex1=nullptr;
+    JUtility::TColor black{};
+    JUtility::TColor white{};
+    JUtility::TColor corners[4]{};
+    JGeometry::TVec2<s16> texCoords[4]{};
+};
 MenuOrnamentDrawState s_menuOrnamentState[128];
-MenuOrnamentBase s_menuOrnamentBase[128];
+MenuOrnamentHostState s_menuOrnamentHost;
 int s_menuOrnamentStateCount=0;
 J2DScreen* s_menuOrnamentScreen=nullptr;
 bool s_menuOrnamentIsMap=false;
@@ -2763,14 +2761,49 @@ void restore_ornament_order() {
     }
 }
 
-MenuOrnamentBase* ornament_base(J2DPane* pane) {
-    if (pane==nullptr) return nullptr;
-    for (auto& b:s_menuOrnamentBase) if (b.pane==pane) return &b;
-    for (auto& b:s_menuOrnamentBase) if (b.pane==nullptr) {
-        b.pane=pane; b.x=pane->getTranslateX(); b.y=pane->getTranslateY();
-        b.sx=pane->getScaleX(); b.sy=pane->getScaleY(); return &b;
+J2DPane* pane_common_ancestor(J2DPane* a, J2DPane* b, J2DScreen* screen) {
+    if (a==nullptr || b==nullptr || screen==nullptr) return nullptr;
+    for (J2DPane* pa=a; pa!=nullptr; pa=pa->getParentPane()) {
+        for (J2DPane* pb=b; pb!=nullptr; pb=pb->getParentPane()) {
+            if (pa==pb) return pa;
+            if (pb==screen) break;
+        }
+        if (pa==screen) break;
     }
     return nullptr;
+}
+
+void capture_menu_ornament_host(J2DPicture* pic) {
+    s_menuOrnamentHost = {};
+    if (pic==nullptr) return;
+    auto& st=s_menuOrnamentHost;
+    st.pane=pic;
+    st.bounds=pic->getBounds();
+    st.x=pic->getTranslateX(); st.y=pic->getTranslateY();
+    st.sx=pic->getScaleX(); st.sy=pic->getScaleY();
+    st.rotation=pic->getRotateZ();
+    st.alpha=pic->getAlpha();
+    if (pic->getTexture(0)!=nullptr) st.tex0=pic->getTexture(0)->getTexInfo();
+    if (pic->getTexture(1)!=nullptr) st.tex1=pic->getTexture(1)->getTexInfo();
+    st.black=pic->getBlack(); st.white=pic->getWhite();
+    for(int i=0;i<4;++i) st.corners[i]=pic->corner(i);
+    copy_picture_texcoords(pic,st.texCoords);
+}
+
+void restore_menu_ornament_host() {
+    auto& st=s_menuOrnamentHost;
+    if(st.pane==nullptr) return;
+    if(st.tex0!=nullptr && st.pane->getTextureCount()>0) st.pane->changeTexture(st.tex0,0);
+    if(st.tex1!=nullptr && st.pane->getTextureCount()>1) st.pane->changeTexture(st.tex1,1);
+    st.pane->mBounds=st.bounds;
+    st.pane->translate(st.x,st.y);
+    st.pane->scale(st.sx,st.sy);
+    st.pane->rotate(st.rotation);
+    restore_picture_texcoords(st.pane,st.texCoords);
+    st.pane->setAlpha(st.alpha);
+    st.pane->setBlackWhite(st.black,st.white);
+    st.pane->setCornerColor(st.corners[0],st.corners[1],st.corners[2],st.corners[3]);
+    s_menuOrnamentHost={};
 }
 
 bool is_prompt_map_screen(J2DScreen* screen) {
@@ -2795,13 +2828,14 @@ bool world_map_ornament_picture(J2DPane* pane, J2DPane* controls,
 
 void prepare_menu_ornament_before_draw(J2DScreen* screen) {
     if (screen==nullptr) return;
-    const bool shared = screen->search(MULTI_CHAR('atext1_1'))!=nullptr || screen->search(MULTI_CHAR('btext1_1'))!=nullptr;
+    const bool shared = screen->search(MULTI_CHAR('atext1_1'))!=nullptr ||
+                        screen->search(MULTI_CHAR('btext1_1'))!=nullptr;
     const bool map = is_prompt_map_screen(screen);
     if (!shared && !map) return;
+
     const bool worldMap=prompt_map_kind(screen)==PromptMapKind::World;
     J2DPane* worldControls=worldMap ? screen->search(MULTI_CHAR('cont_n')) : nullptr;
     J2DPane* worldZ=worldMap ? screen->search(MULTI_CHAR('zbtn_n1')) : nullptr;
-    // Unknown layouts must keep their original artwork instead of being blanked.
     if (worldMap && worldControls==nullptr) return;
 
     J2DPane* aRoot=nullptr; J2DPane* bRoot=nullptr; J2DPane* cRoot=nullptr;
@@ -2812,80 +2846,98 @@ void prepare_menu_ornament_before_draw(J2DScreen* screen) {
     if (map) {
         aRoot=map_button_root(screen,prompt_map_kind(screen),true);
         bRoot=map_button_root(screen,prompt_map_kind(screen),false);
+        cRoot=screen->search(MULTI_CHAR('c_btn'));
     }
-    if (map) cRoot=screen->search(MULTI_CHAR('c_btn'));
-    J2DPicture* aFace=first_picture_recursive(aRoot);
-    J2DPicture* bFace=first_picture_recursive(bRoot);
-    J2DPicture* cFace=first_picture_recursive(cRoot);
+
+    // The old implementation walked the entire Collection screen and treated
+    // every visible picture as ornament artwork. Collection extensions (such as
+    // Twilit Essentials pages/tabs) live inside that same vanilla J2DScreen, so
+    // their icons were being hidden or even reused as the ornament texture host.
+    // Restrict the shared-menu pass to the actual A/B prompt container only.
+    J2DPane* scope = worldMap ? worldControls : pane_common_ancestor(aRoot,bRoot,screen);
+    if (scope==nullptr || (!worldMap && scope==screen)) {
+        // Unknown/shared layout: preserve all artwork rather than guessing.
+        return;
+    }
+
     J2DPicture* customOrnamentHost=nullptr;
     const ResTIMG* customOrnament=resource_timg(s_menu_ornament);
-
-    const bool enabled = map ? cfg_bool(g_mapOrnamentEnabled,true) : cfg_bool(g_menuPromptOrnament,true);
+    const bool enabled = map ? cfg_bool(g_mapOrnamentEnabled,true)
+                             : cfg_bool(g_menuPromptOrnament,true);
     const float ox = map ? cfg_pos(g_mapOrnamentX,0.0f) : cfg_pos(g_menuOrnamentX,0.0f);
     const float oy = map ? cfg_pos(g_mapOrnamentY,0.0f) : cfg_pos(g_menuOrnamentY,0.0f);
     const float os = map ? cfg_scale(g_mapOrnamentScale,1.0f) : cfg_scale(g_menuOrnamentScale,1.0f);
-    s_menuOrnamentStateCount=0; s_menuOrnamentScreen=screen; s_menuOrnamentIsMap=map;
 
-    J2DPane* stack[192]; int top=0; stack[top++]=screen;
-    while (top>0) {
+    s_menuOrnamentStateCount=0;
+    s_menuOrnamentScreen=screen;
+    s_menuOrnamentIsMap=map;
+    s_menuOrnamentHost={};
+
+    J2DPane* stack[96]; int top=0; stack[top++]=scope;
+    while(top>0) {
         J2DPane* node=stack[--top];
-        for (J2DPane* child=node->getFirstChildPane(); child!=nullptr; child=child->getNextChildPane()) {
-            if (top<192) stack[top++]=child;
+        for(J2DPane* child=node->getFirstChildPane(); child!=nullptr; child=child->getNextChildPane()) {
+            if(top<96) stack[top++]=child;
             J2DPicture* pic=as_picture(child);
-            if (pic==nullptr || pic==aFace || pic==bFace || pic==cFace) continue;
-            if (worldMap && !world_map_ornament_picture(pic,worldControls,aRoot,bRoot,worldZ)) continue;
-            if (s_menuOrnamentStateCount>=128) continue;
-            auto& st=s_menuOrnamentState[s_menuOrnamentStateCount++];
-            st.pane=pic; st.visible=pic->isVisible();
-            if (!enabled) {
-                if (st.visible) pic->hide();
-            } else if (st.visible) {
-                // The vanilla prompt ornament is assembled from several picture layers.
-                // Reuse the first visible decorative picture as a host for the supplied
-                // custom artwork and temporarily hide the remaining vanilla layers.
-                // This keeps the existing ornament toggle/X/Y/Scale controls shared by
-                // Collection-family menus and the dedicated map prompt layout.
-                if (customOrnamentHost==nullptr && customOrnament!=nullptr) {
-                    customOrnamentHost=pic;
-                    replace_picture_texture(pic,customOrnament);
-                    // Decorative vanilla pictures carry their own dark TEV/corner tint.
-                    // A custom full-color ornament must be rendered neutrally, otherwise
-                    // only the dark silhouette/shadow of the supplied artwork is visible.
-                    const JUtility::TColor neutralBlack(0, 0, 0, 0);
-                    const JUtility::TColor neutralWhite(255, 255, 255, 255);
-                    pic->setBlackWhite(neutralBlack, neutralWhite);
-                    pic->setCornerColor(neutralWhite);
-                    pic->show();
-                    if (MenuOrnamentBase* base=ornament_base(pic)) {
-                        pic->translate(base->x+ox,base->y+oy);
-                        pic->resize(128.0f,128.0f);
-                        pic->scale(os,os);
-                    }
-                } else if (customOrnamentHost!=pic) {
-                    pic->hide();
-                }
+            if(pic==nullptr) continue;
+
+            // Never let ornament handling touch controller-button subtrees.
+            if(pane_is_within(pic,aRoot) || pane_is_within(pic,bRoot) ||
+               pane_is_within(pic,cRoot) || pane_is_within(pic,worldZ))
+                continue;
+            if(worldMap && !world_map_ornament_picture(pic,worldControls,aRoot,bRoot,worldZ))
+                continue;
+            if(s_menuOrnamentStateCount>=128) continue;
+
+            s_menuOrnamentState[s_menuOrnamentStateCount++]={pic,pic->isVisible()};
+            if(!enabled) {
+                if(pic->isVisible()) pic->hide();
+                continue;
+            }
+            if(!pic->isVisible()) continue;
+
+            if(customOrnamentHost==nullptr && customOrnament!=nullptr) {
+                customOrnamentHost=pic;
+                capture_menu_ornament_host(pic);
+                replace_picture_texture(pic,customOrnament);
+                const JUtility::TColor neutralBlack(0,0,0,0);
+                const JUtility::TColor neutralWhite(255,255,255,255);
+                pic->setBlackWhite(neutralBlack,neutralWhite);
+                pic->setCornerColor(neutralWhite);
+                pic->show();
+
+                // Apply the configured draw-time transform from the exact
+                // geometry captured above. It is restored immediately after draw.
+                const auto& base=s_menuOrnamentHost;
+                pic->translate(base.x+ox,base.y+oy);
+                pic->resize(128.0f,128.0f);
+                pic->scale(os,os);
+            } else if(customOrnamentHost!=pic) {
+                pic->hide();
             }
         }
     }
-    // Reorder only after traversal, so every original child is visited once.
+
     move_ornament_behind_prompts(customOrnamentHost,screen);
 }
 
 void restore_shared_menu_ornament_after_draw(J2DScreen* screen) {
     if (screen==nullptr || screen!=s_menuOrnamentScreen) return;
     restore_ornament_order();
-    // Visibility is temporary so the game's own show/hide logic remains authoritative.
-    // Position/scale intentionally persist for enabled ornaments and are reapplied from
-    // the captured vanilla baseline every frame, so sliders never accumulate drift.
-    for (int i=0;i<s_menuOrnamentStateCount;i++) {
+    restore_menu_ornament_host();
+
+    // Always restore every visibility bit we touched. The previous code left
+    // non-host pictures hidden whenever the shared ornament was enabled, which
+    // permanently removed third-party Collection tabs/icons after the first draw.
+    for(int i=s_menuOrnamentStateCount-1;i>=0;--i) {
         auto& st=s_menuOrnamentState[i];
-        if (st.pane!=nullptr && (prompt_map_kind(screen)==PromptMapKind::World ||
-            !(s_menuOrnamentIsMap ? cfg_bool(g_mapOrnamentEnabled,true) : cfg_bool(g_menuPromptOrnament,true)))) {
-            if (st.visible) st.pane->show(); else st.pane->hide();
-        }
+        if(st.pane==nullptr) continue;
+        if(st.visible) st.pane->show(); else st.pane->hide();
         st.pane=nullptr;
     }
-    s_menuOrnamentStateCount=0; s_menuOrnamentScreen=nullptr; s_menuOrnamentIsMap=false;
+    s_menuOrnamentStateCount=0;
+    s_menuOrnamentScreen=nullptr;
+    s_menuOrnamentIsMap=false;
 }
 
 bool world_map_arrow(J2DPane* pane) {
@@ -2921,6 +2973,7 @@ struct WorldMapPictureState {
     JUtility::TColor black{};
     JUtility::TColor white{};
     JUtility::TColor corners[4]{};
+    JGeometry::TVec2<s16> texCoords[4]{};
 };
 
 WorldMapPictureState s_worldMapPictures[96];
@@ -2952,6 +3005,7 @@ void capture_world_map_picture(J2DPicture* pic) {
     st.black = pic->getBlack();
     st.white = pic->getWhite();
     for (int i = 0; i < 4; ++i) st.corners[i] = pic->corner(i);
+    copy_picture_texcoords(pic, st.texCoords);
 }
 
 void capture_world_map_picture_tree(J2DPane* root) {
@@ -2995,13 +3049,11 @@ void restore_world_map_temp_state(J2DScreen* screen) {
         for (u8 t = 0; t < count; ++t) {
             if (st.textures[t] != nullptr) st.pic->changeTexture(st.textures[t], t);
         }
-        if (count > 0 && st.pic->getTexture(0) != nullptr)
-            st.pic->setTexCoord(st.pic->getTexture(0), BIND15, MIRROR0, false);
-
-        st.pic->place(st.bounds);
+        st.pic->mBounds = st.bounds;
         st.pic->translate(st.x, st.y);
         st.pic->scale(st.sx, st.sy);
         st.pic->rotate(st.rotation);
+        restore_picture_texcoords(st.pic, st.texCoords);
         st.pic->setAlpha(st.alpha);
         st.pic->setBlackWhite(st.black, st.white);
         st.pic->setCornerColor(st.corners[0], st.corners[1], st.corners[2], st.corners[3]);
@@ -3601,15 +3653,9 @@ int classify_current_pikari() {
 
 HookAction before_screen_draw(ModContext* ctx, void* args, void* retval, void* userdata) {
     J2DScreen* screen = mods::arg<J2DScreen*>(args, 0);
-
-    // Important compatibility boundary: broad menu tag matching is allowed only
-    // inside concrete vanilla menu draw owners. Other mods can freely create
-    // J2DScreens from the same BLO resources without us rewriting their panes.
-    if (allow_generic_menu_screen(screen)) {
-        begin_menu_prompt_draw(screen);
-        apply_known_menu_buttons(screen);
-        prepare_menu_ornament_before_draw(screen);
-    }
+    begin_menu_prompt_draw(screen);
+    apply_known_menu_buttons(screen);
+    prepare_menu_ornament_before_draw(screen);
 
     dMeter2Draw_c* meter = s_activeMeter != nullptr ? s_activeMeter : s_meterInstance;
     if (meter == nullptr) return HOOK_CONTINUE;
@@ -3868,50 +3914,8 @@ ModResult mod_initialize(ModError* error) {
     s_buttonCrossHookInstalled = true;
 
     ModResult pt = mods::hook::add_pre<PaneTransHook>(svc_hook, before_pane_trans);
-
-    // Scope the generic J2D menu pass to real vanilla menu owners.
-    ModResult ringPre = mods::hook::add_pre<RingMenuDrawHook>(svc_hook, before_vanilla_menu_owner);
-    ModResult ringPost = ringPre == MOD_OK
-        ? mods::hook::add_post<RingMenuDrawHook>(svc_hook, after_vanilla_menu_owner)
-        : ringPre;
-    ModResult collectPre = ringPost == MOD_OK
-        ? mods::hook::add_pre<CollectMenuDrawHook>(svc_hook, before_vanilla_menu_owner)
-        : ringPost;
-    ModResult collectPost = collectPre == MOD_OK
-        ? mods::hook::add_post<CollectMenuDrawHook>(svc_hook, after_vanilla_menu_owner)
-        : collectPre;
-    ModResult fmapPre = collectPost == MOD_OK
-        ? mods::hook::add_pre<FieldMapDrawHook>(svc_hook, before_vanilla_menu_owner)
-        : collectPost;
-    ModResult fmapPost = fmapPre == MOD_OK
-        ? mods::hook::add_post<FieldMapDrawHook>(svc_hook, after_vanilla_menu_owner)
-        : fmapPre;
-    ModResult dmapPre = fmapPost == MOD_OK
-        ? mods::hook::add_pre<DungeonMapDrawHook>(svc_hook, before_vanilla_menu_owner)
-        : fmapPost;
-    ModResult dmapPost = dmapPre == MOD_OK
-        ? mods::hook::add_post<DungeonMapDrawHook>(svc_hook, after_vanilla_menu_owner)
-        : dmapPre;
-    if (dmapPost != MOD_OK) {
-        mods::hook::uninstall<RingMenuDrawHook>();
-        mods::hook::uninstall<CollectMenuDrawHook>();
-        mods::hook::uninstall<FieldMapDrawHook>();
-        mods::hook::uninstall<DungeonMapDrawHook>();
-        mods::hook::uninstall<RingMenuDrawHook>();
-        mods::hook::uninstall<CollectMenuDrawHook>();
-        mods::hook::uninstall<FieldMapDrawHook>();
-        mods::hook::uninstall<DungeonMapDrawHook>();
-        mods::hook::uninstall<PaneTransHook>();
-        free_resources();
-        return mods::set_error(error, dmapPost, "failed to install scoped vanilla menu hooks");
-    }
-
     ModResult psd = mods::hook::add_pre<ScreenDrawHook>(before_screen_draw, nullptr);
     if (psd != MOD_OK) {
-        mods::hook::uninstall<RingMenuDrawHook>();
-        mods::hook::uninstall<CollectMenuDrawHook>();
-        mods::hook::uninstall<FieldMapDrawHook>();
-        mods::hook::uninstall<DungeonMapDrawHook>();
         mods::hook::uninstall<PaneTransHook>();
         free_resources();
         return psd;
@@ -3919,10 +3923,6 @@ ModResult mod_initialize(ModError* error) {
     ModResult psdPost = mods::hook::add_post<ScreenDrawHook>(svc_hook, after_screen_draw);
     if (psdPost != MOD_OK) {
         mods::hook::uninstall<ScreenDrawHook>();
-        mods::hook::uninstall<RingMenuDrawHook>();
-        mods::hook::uninstall<CollectMenuDrawHook>();
-        mods::hook::uninstall<FieldMapDrawHook>();
-        mods::hook::uninstall<DungeonMapDrawHook>();
         mods::hook::uninstall<PaneTransHook>();
         free_resources();
         return psdPost;
@@ -3930,10 +3930,6 @@ ModResult mod_initialize(ModError* error) {
     ModResult fsd = mods::hook::add_pre<FileSelDrawHook>(svc_hook, before_file_select_draw);
     if (fsd != MOD_OK) {
         mods::hook::uninstall<ScreenDrawHook>();
-        mods::hook::uninstall<RingMenuDrawHook>();
-        mods::hook::uninstall<CollectMenuDrawHook>();
-        mods::hook::uninstall<FieldMapDrawHook>();
-        mods::hook::uninstall<DungeonMapDrawHook>();
         mods::hook::uninstall<PaneTransHook>();
         free_resources();
         return fsd;
@@ -3942,10 +3938,6 @@ ModResult mod_initialize(ModError* error) {
     if (mbInitPost != MOD_OK) {
         mods::hook::uninstall<FileSelDrawHook>();
         mods::hook::uninstall<ScreenDrawHook>();
-        mods::hook::uninstall<RingMenuDrawHook>();
-        mods::hook::uninstall<CollectMenuDrawHook>();
-        mods::hook::uninstall<FieldMapDrawHook>();
-        mods::hook::uninstall<DungeonMapDrawHook>();
         mods::hook::uninstall<PaneTransHook>();
         free_resources();
         return mods::set_error(error, mbInitPost, "failed to install POST hook for dMeterButton_c::screenInitButton");
@@ -3955,10 +3947,6 @@ ModResult mod_initialize(ModError* error) {
         mods::hook::uninstall<MeterButtonScreenInitHook>();
         mods::hook::uninstall<FileSelDrawHook>();
         mods::hook::uninstall<ScreenDrawHook>();
-        mods::hook::uninstall<RingMenuDrawHook>();
-        mods::hook::uninstall<CollectMenuDrawHook>();
-        mods::hook::uninstall<FieldMapDrawHook>();
-        mods::hook::uninstall<DungeonMapDrawHook>();
         mods::hook::uninstall<PaneTransHook>();
         free_resources();
         return ofd;
@@ -3970,10 +3958,6 @@ ModResult mod_initialize(ModError* error) {
         mods::hook::uninstall<OutFontCreatePaneHook>();
         mods::hook::uninstall<FileSelDrawHook>();
         mods::hook::uninstall<ScreenDrawHook>();
-        mods::hook::uninstall<RingMenuDrawHook>();
-        mods::hook::uninstall<CollectMenuDrawHook>();
-        mods::hook::uninstall<FieldMapDrawHook>();
-        mods::hook::uninstall<DungeonMapDrawHook>();
         mods::hook::uninstall<PaneTransHook>();
         free_resources();
         return mods::set_error(error, ofDraw, "failed to install PRE hook for COutFont_c::drawFont");
@@ -4010,11 +3994,6 @@ MOD_EXPORT ModResult mod_shutdown(ModError*) {
         mods::hook::uninstall<OutFontCreatePaneHook>();
         mods::hook::uninstall<FileSelDrawHook>();
         mods::hook::uninstall<ScreenDrawHook>();
-        mods::hook::uninstall<RingMenuDrawHook>();
-        mods::hook::uninstall<CollectMenuDrawHook>();
-        mods::hook::uninstall<FieldMapDrawHook>();
-        mods::hook::uninstall<DungeonMapDrawHook>();
-        s_vanillaMenuOwnerDepth = 0;
         mods::hook::uninstall<PaneTransHook>();
         s_paneTransHookInstalled = false;
     }
