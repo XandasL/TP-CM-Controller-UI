@@ -1967,6 +1967,114 @@ void apply_menu_button_texture(J2DPane* root, const ResTIMG* texture) {
     }
 }
 
+// Item Wheel changes must be draw-local. Twilit Essentials keeps/copies UI
+// resources across its radial menus; leaving our texture/bounds/visibility edits
+// on the vanilla Item Wheel after a draw can poison those later copies.
+struct ItemWheelTempPaneState {
+    J2DPane* pane = nullptr;
+    bool visible = false;
+    u8 alpha = 255;
+    bool picture = false;
+    JGeometry::TBox2<f32> bounds{};
+    f32 tx = 0.0f, ty = 0.0f, sx = 1.0f, sy = 1.0f;
+    const ResTIMG* tex0 = nullptr;
+    const ResTIMG* tex1 = nullptr;
+    JUtility::TColor black{};
+    JUtility::TColor white{};
+    JUtility::TColor corners[4]{};
+};
+
+ItemWheelTempPaneState s_itemWheelTemp[128];
+int s_itemWheelTempCount = 0;
+J2DScreen* s_itemWheelTempScreen = nullptr;
+
+void capture_item_wheel_temp_pane(J2DPane* pane) {
+    if (pane == nullptr) return;
+    for (int i = 0; i < s_itemWheelTempCount; ++i) {
+        if (s_itemWheelTemp[i].pane == pane) return;
+    }
+    if (s_itemWheelTempCount >= (int)(sizeof(s_itemWheelTemp)/sizeof(s_itemWheelTemp[0]))) return;
+
+    ItemWheelTempPaneState& st = s_itemWheelTemp[s_itemWheelTempCount++];
+    st.pane = pane;
+    st.visible = pane->isVisible();
+    st.alpha = pane->getAlpha();
+    st.tx = pane->getTranslateX();
+    st.ty = pane->getTranslateY();
+    st.sx = pane->getScaleX();
+    st.sy = pane->getScaleY();
+
+    if (J2DPicture* pic = as_picture(pane)) {
+        st.picture = true;
+        st.bounds = pic->getBounds();
+        if (pic->getTexture(0) != nullptr) st.tex0 = pic->getTexture(0)->getTexInfo();
+        if (pic->getTexture(1) != nullptr) st.tex1 = pic->getTexture(1)->getTexInfo();
+        st.black = pic->getBlack();
+        st.white = pic->getWhite();
+        for (int i = 0; i < 4; ++i) st.corners[i] = pic->corner(i);
+    }
+}
+
+void capture_item_wheel_temp_tree(J2DPane* root) {
+    if (root == nullptr) return;
+    J2DPane* stack[128];
+    int top = 0;
+    stack[top++] = root;
+    while (top > 0) {
+        J2DPane* node = stack[--top];
+        capture_item_wheel_temp_pane(node);
+        for (J2DPane* child = node->getFirstChildPane(); child != nullptr;
+             child = child->getNextChildPane()) {
+            if (top < 128) stack[top++] = child;
+        }
+    }
+}
+
+void begin_item_wheel_temp_state(J2DScreen* screen) {
+    s_itemWheelTempScreen = screen;
+    s_itemWheelTempCount = 0;
+
+    static const u64 roots[] = {
+        MULTI_CHAR('x_btn_n'), MULTI_CHAR('y_btn_n'),
+        MULTI_CHAR('l_btn_n'), MULTI_CHAR('gr_btn_n'), MULTI_CHAR('r_btn_n'),
+    };
+    for (u64 tag : roots) capture_item_wheel_temp_tree(screen->search(tag));
+
+    static const u64 exactPics[] = {
+        MULTI_CHAR('cbtn1'), MULTI_CHAR('cbtn3'), MULTI_CHAR('cbtn'), MULTI_CHAR('cbtn2'),
+        MULTI_CHAR('cbtn4'), MULTI_CHAR('cbtn5'), MULTI_CHAR('cbtn6'), MULTI_CHAR('cbtn7'),
+    };
+    for (u64 tag : exactPics) capture_item_wheel_temp_pane(screen->search(tag));
+}
+
+void restore_item_wheel_temp_state(J2DScreen* screen) {
+    if (screen == nullptr || screen != s_itemWheelTempScreen) return;
+
+    for (int i = s_itemWheelTempCount - 1; i >= 0; --i) {
+        ItemWheelTempPaneState& st = s_itemWheelTemp[i];
+        if (st.pane == nullptr) continue;
+
+        st.pane->translate(st.tx, st.ty);
+        st.pane->scale(st.sx, st.sy);
+        st.pane->setAlpha(st.alpha);
+        if (st.visible) st.pane->show();
+        else st.pane->hide();
+
+        if (st.picture) {
+            J2DPicture* pic = static_cast<J2DPicture*>(st.pane);
+            if (st.tex0 != nullptr && pic->getTextureCount() > 0) pic->changeTexture(st.tex0, 0);
+            if (st.tex1 != nullptr && pic->getTextureCount() > 1) pic->changeTexture(st.tex1, 1);
+            set_bounds(pic, st.bounds.i.x, st.bounds.i.y,
+                       st.bounds.getWidth(), st.bounds.getHeight());
+            pic->setBlackWhite(st.black, st.white);
+            pic->setCornerColor(st.corners[0], st.corners[1], st.corners[2], st.corners[3]);
+        }
+    }
+
+    s_itemWheelTempCount = 0;
+    s_itemWheelTempScreen = nullptr;
+}
+
 // Item Wheel controller icons are authored on square canvases. The original
 // GameCube panes are not square (especially L/R), so simply swapping the BTI
 // stretches the new artwork. Fit the visible replacement picture into a square
@@ -2985,6 +3093,10 @@ void apply_known_menu_buttons(J2DScreen* screen) {
     if (screen->search(MULTI_CHAR('fyx_tex')) != nullptr &&
         screen->search(MULTI_CHAR('x_btn_n')) != nullptr &&
         screen->search(MULTI_CHAR('y_btn_n')) != nullptr) {
+        // Snapshot the original vanilla Item Wheel panes before changing any
+        // textures, bounds or visibility. Everything is restored in the POST
+        // J2DScreen::draw hook so Twilit Essentials never inherits our edits.
+        begin_item_wheel_temp_state(screen);
         if (const ResTIMG* triangle = resource_timg(s_triangle))
             apply_item_wheel_icon_texture(screen->search(MULTI_CHAR('x_btn_n')), triangle, s_wheelSquareBase, g_wheelSquareX, g_wheelSquareY, g_wheelSquareScale);
         if (const ResTIMG* square = resource_timg(s_square))
@@ -3393,8 +3505,9 @@ HookAction before_screen_draw(ModContext* ctx, void* args, void* retval, void* u
 
 void after_screen_draw(ModContext*, void* args, void*, void*) {
     if (args == nullptr) return;
-    restore_world_icons(mods::arg<J2DScreen*>(args,0));
     J2DScreen* screen = mods::arg<J2DScreen*>(args, 0);
+    restore_item_wheel_temp_state(screen);
+    restore_world_icons(screen);
     restore_shared_menu_ornament_after_draw(screen);
     restore_menu_prompt_after_draw(screen);
 }
