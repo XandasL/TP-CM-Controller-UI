@@ -2022,7 +2022,7 @@ void capture_shared_prompt_pane(J2DPane* pane) {
 
     if(J2DPicture* pic=as_picture(pane)) {
         st.picture=true;
-        st.bounds=pic->getBounds();
+        st.bounds=pic->mBounds;
         if(pic->getTexture(0)!=nullptr) st.tex0=pic->getTexture(0)->getTexInfo();
         if(pic->getTexture(1)!=nullptr) st.tex1=pic->getTexture(1)->getTexInfo();
         st.black=pic->getBlack(); st.white=pic->getWhite();
@@ -2118,7 +2118,7 @@ void capture_item_wheel_temp_pane(J2DPane* pane) {
 
     if (J2DPicture* pic = as_picture(pane)) {
         st.picture = true;
-        st.bounds = pic->getBounds();
+        st.bounds = pic->mBounds;
         if (pic->getTexture(0) != nullptr) st.tex0 = pic->getTexture(0)->getTexInfo();
         if (pic->getTexture(1) != nullptr) st.tex1 = pic->getTexture(1)->getTexInfo();
         st.black = pic->getBlack();
@@ -2879,7 +2879,7 @@ void capture_menu_ornament_host(J2DPicture* pic) {
     if (pic==nullptr) return;
     auto& st=s_menuOrnamentHost;
     st.pane=pic;
-    st.bounds=pic->getBounds();
+    st.bounds=pic->mBounds;
     st.x=pic->getTranslateX(); st.y=pic->getTranslateY();
     st.sx=pic->getScaleX(); st.sy=pic->getScaleY();
     st.rotation=pic->getRotateZ();
@@ -3090,7 +3090,7 @@ void capture_world_map_picture(J2DPicture* pic) {
     st.pic = pic;
     st.visible = pic->isVisible();
     st.alpha = pic->getAlpha();
-    st.bounds = pic->getBounds();
+    st.bounds = pic->mBounds;
     st.x = pic->getTranslateX();
     st.y = pic->getTranslateY();
     st.sx = pic->getScaleX();
@@ -3189,7 +3189,7 @@ void adjust_world_arrows(J2DScreen* screen) {
 void fit_world_icon(J2DPicture* pic,const ResTIMG* texture,float side) {
     if (pic==nullptr || texture==nullptr || s_worldIconGeometryCount>=3) return;
     auto& st=s_worldIconGeometry[s_worldIconGeometryCount++];
-    st={pic,pic->getBounds(),pic->getTranslateX(),pic->getTranslateY(),
+    st={pic,pic->mBounds,pic->getTranslateX(),pic->getTranslateY(),
         pic->getScaleX(),pic->getScaleY(),pic->getRotateZ()};
     // Bounds are local to the pane, not coordinates accepted by move().
     // Preserve the original center in parent space and the resource aspect.
