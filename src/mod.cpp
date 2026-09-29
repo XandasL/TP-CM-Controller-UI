@@ -824,8 +824,15 @@ J2DPicture* as_picture(J2DPane* pane) {
 
 struct PictureTexCoordAccess : J2DPicture {
     using Member = JGeometry::TVec2<s16> (J2DPicture::*)[4];
+    using TextureMember = JUTTexture* (J2DPicture::*)[2];
     static Member member() { return &PictureTexCoordAccess::field_0x10a; }
+    static TextureMember texture_member() { return &PictureTexCoordAccess::mTexture; }
 };
+
+JUTTexture*& picture_texture_slot(J2DPicture* pic, int index) {
+    const auto member = PictureTexCoordAccess::texture_member();
+    return (pic->*member)[index];
+}
 
 void copy_picture_texcoords(J2DPicture* pic, JGeometry::TVec2<s16> out[4]) {
     if (pic == nullptr) return;
@@ -2089,6 +2096,8 @@ struct ItemWheelTempPaneState {
     f32 tx = 0.0f, ty = 0.0f, sx = 1.0f, sy = 1.0f, rotation = 0.0f;
     const ResTIMG* tex0 = nullptr;
     const ResTIMG* tex1 = nullptr;
+    JUTTexture* originalTexture[2]{};
+    JUTTexture* privateTexture[2]{};
     JUtility::TColor black{};
     JUtility::TColor white{};
     JUtility::TColor corners[4]{};
@@ -2119,8 +2128,16 @@ void capture_item_wheel_temp_pane(J2DPane* pane) {
     if (J2DPicture* pic = as_picture(pane)) {
         st.picture = true;
         st.bounds = pic->mBounds;
-        if (pic->getTexture(0) != nullptr) st.tex0 = pic->getTexture(0)->getTexInfo();
-        if (pic->getTexture(1) != nullptr) st.tex1 = pic->getTexture(1)->getTexInfo();
+        if (pic->getTexture(0) != nullptr) {
+            st.tex0 = pic->getTexture(0)->getTexInfo();
+            st.originalTexture[0] = pic->getTexture(0);
+        }
+        if (pic->getTexture(1) != nullptr) {
+            st.tex1 = pic->getTexture(1)->getTexInfo();
+            st.originalTexture[1] = pic->getTexture(1);
+        }
+        st.privateTexture[0] = nullptr;
+        st.privateTexture[1] = nullptr;
         st.black = pic->getBlack();
         st.white = pic->getWhite();
         for (int i = 0; i < 4; ++i) st.corners[i] = pic->corner(i);
@@ -2141,6 +2158,41 @@ void capture_item_wheel_temp_tree(J2DPane* root) {
             if (top < 128) stack[top++] = child;
         }
     }
+}
+
+ItemWheelTempPaneState* item_wheel_temp_state_for(J2DPicture* pic) {
+    if (pic == nullptr) return nullptr;
+    for (int i = 0; i < s_itemWheelTempCount; ++i) {
+        if (s_itemWheelTemp[i].pane == pic) return &s_itemWheelTemp[i];
+    }
+    return nullptr;
+}
+
+bool use_private_item_wheel_texture(J2DPicture* pic, const ResTIMG* texture) {
+    if (pic == nullptr || texture == nullptr) return false;
+    ItemWheelTempPaneState* st = item_wheel_temp_state_for(pic);
+    if (st == nullptr) return false;
+
+    const u8 count = pic->getTextureCount() > 2 ? 2 : pic->getTextureCount();
+    if (count == 0) return false;
+
+    // BLO pictures normally point at JUTTexture objects owned by their J2DMaterial.
+    // changeTexture() calls storeTIMG() on that shared object. Even if we later
+    // restore the ResTIMG pointer, other material state (palette/TLUT/GX data) can
+    // already have been disturbed and then reused by later menus. For the Item
+    // Wheel, never mutate those material textures at all: temporarily replace the
+    // picture's texture pointers with private JUTTexture objects owned by us.
+    for (u8 i = 0; i < count; ++i) {
+        if (st->privateTexture[i] == nullptr) {
+            st->privateTexture[i] = JKR_NEW JUTTexture(texture, 0);
+            if (st->privateTexture[i] == nullptr) return false;
+        }
+        picture_texture_slot(pic, i) = st->privateTexture[i];
+    }
+
+    if (pic->getTexture(0) != nullptr)
+        pic->setTexCoord(pic->getTexture(0), BIND15, MIRROR0, false);
+    return true;
 }
 
 void begin_item_wheel_temp_state(J2DScreen* screen) {
@@ -2169,8 +2221,17 @@ void restore_item_wheel_temp_state(J2DScreen* screen) {
 
         if (st.picture) {
             J2DPicture* pic = static_cast<J2DPicture*>(st.pane);
-            if (st.tex0 != nullptr && pic->getTextureCount() > 0) pic->changeTexture(st.tex0, 0);
-            if (st.tex1 != nullptr && pic->getTextureCount() > 1) pic->changeTexture(st.tex1, 1);
+
+            // Restore the exact material texture objects first. The private
+            // replacements are deleted only after the picture no longer points
+            // at them, so no shared J2DMaterial/JUTTexture is ever modified.
+            for (u8 t = 0; t < 2; ++t) {
+                if (st.privateTexture[t] != nullptr) {
+                    picture_texture_slot(pic, t) = st.originalTexture[t];
+                    JKR_DELETE(st.privateTexture[t]);
+                    st.privateTexture[t] = nullptr;
+                }
+            }
 
             // Restore the exact local geometry instead of calling move()/place().
             // Those helpers recalculate translation (and place() can move children),
@@ -2231,7 +2292,7 @@ void apply_item_wheel_icon_texture(J2DPane* root, const ResTIMG* texture,
     const float localCx = base.i.x + w * 0.5f;
     const float localCy = base.i.y + h * 0.5f;
 
-    replace_picture_texture(face, texture);
+    if (!use_private_item_wheel_texture(face, texture)) return;
     const JUtility::TColor neutralBlack(0, 0, 0, 0);
     const JUtility::TColor neutralWhite(255, 255, 255, 255);
     face->setBlackWhite(neutralBlack, neutralWhite);
@@ -2292,7 +2353,7 @@ void apply_item_wheel_shoulder_texture(J2DPane* root, const ResTIMG* texture,
     const float aspect = texture->height != 0
         ? ((float)texture->width / (float)texture->height) : 1.0f;
 
-    replace_picture_texture(face, texture);
+    if (!use_private_item_wheel_texture(face, texture)) return;
     const JUtility::TColor neutralBlack(0, 0, 0, 0);
     const JUtility::TColor neutralWhite(255, 255, 255, 255);
     face->setBlackWhite(neutralBlack, neutralWhite);
@@ -2352,7 +2413,7 @@ void apply_item_wheel_exact_picture(J2DScreen* screen, u64 faceTag,
     const float localCx = base.i.x + w * 0.5f;
     const float localCy = base.i.y + h * 0.5f;
 
-    replace_picture_texture(face, texture);
+    if (!use_private_item_wheel_texture(face, texture)) return;
     const JUtility::TColor neutralBlack(0, 0, 0, 0);
     const JUtility::TColor neutralWhite(255, 255, 255, 255);
     face->setBlackWhite(neutralBlack, neutralWhite);
