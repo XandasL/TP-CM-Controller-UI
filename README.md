@@ -8,7 +8,7 @@ The mod does not aim to reproduce the original HUD exactly. It keeps the recogni
 
 ## Features
 
-- GameCube, PlayStation and Xbox controller mappings.
+- PlayStation and Xbox controller mappings.
 - Modern controller prompts across the HUD, menus, dialogues, maps, Item Wheel, shops, skills and save screens.
 - Custom Twilight Princess-inspired ornamentation and UI elements.
 - Animated analog-stick prompts using the game's native animation system.
