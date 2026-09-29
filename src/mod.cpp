@@ -14,6 +14,7 @@
 #include "JSystem/J2DGraph/J2DPane.h"
 #include "JSystem/J2DGraph/J2DPicture.h"
 #include "JSystem/J2DGraph/J2DScreen.h"
+#include "JSystem/JUtility/JUTFont.h"
 #include "mods/service.hpp"
 #include "mods/svc/hook.h"
 #include "mods/svc/hook.hpp"
@@ -766,6 +767,7 @@ DEFINE_HOOK(&COutFont_c::createPane, OutFontCreatePaneHook);
 DEFINE_HOOK(&COutFont_c::drawFont, OutFontDrawFontHook);
 DEFINE_HOOK(static_cast<bool (J2DScreen::*)(char const*, u32, JKRArchive*)>(&J2DScreen::setPriority), ScreenSetPriorityNameHook);
 DEFINE_HOOK(static_cast<void (J2DPicture::*)(f32, f32, f32, f32, bool, bool, bool)>(&J2DPicture::draw), PictureDrawSizedHook);
+DEFINE_HOOK(&JUTFont::drawString_size_scale, FontDrawStringSizeScaleHook);
 
 // Compatibility pass for mods that also touch the vanilla HUD, notably
 // Twilit Essentials. Its compatibility hooks use +/-100 priorities; run our
@@ -809,6 +811,7 @@ JUtility::TColor s_twilitShoulderSavedBlack{};
 JUtility::TColor s_twilitShoulderSavedWhite{};
 JUtility::TColor s_twilitShoulderSavedCorners[4]{};
 bool s_twilitShoulderPatched = false;
+int s_twilitSuppressShoulderLetterDraws = 0;
 
 J2DScreen* s_twilitRingZScreen = nullptr;
 J2DPicture* s_twilitRingZFace = nullptr;
@@ -958,6 +961,30 @@ void apply_full_button(J2DPane* root, const ResTIMG* texture) {
     if (J2DPane* nested = child_at(face, 0)) nested->hide();
 }
 
+void apply_full_button_preserve_child(J2DPane* root, const ResTIMG* texture,
+                                      J2DPane* preserve) {
+    if (root == nullptr || texture == nullptr) return;
+
+    J2DPicture* face = picture_child(root, 0);
+    if (face == nullptr) return;
+
+    replace_picture_texture(face, texture);
+    const JUtility::TColor neutralBlack(0, 0, 0, 0);
+    const JUtility::TColor neutralWhite(255, 255, 255, 255);
+    face->setBlackWhite(neutralBlack, neutralWhite);
+    face->setCornerColor(neutralWhite);
+    face->show();
+
+    for (int i = 1; i < 8; ++i) {
+        J2DPane* extra = child_at(root, i);
+        if (extra == nullptr) break;
+        if (extra == preserve) continue;
+        extra->hide();
+    }
+
+    if (J2DPane* nested = child_at(face, 0)) nested->hide();
+}
+
 
 void make_picture_copy_layer_transparent(J2DPane* root, J2DPicture* keep) {
     if (root == nullptr) return;
@@ -1083,6 +1110,27 @@ HookAction before_picture_draw_sized(ModContext*, void* args, void*, void*) {
     const f32 h = mods::arg<f32>(args, 4);
     const bool mirrorX = mods::arg<bool>(args, 5);
 
+    // Twilit Quick Access manually draws copies of A/B/X/Y at ~18 px. That
+    // looked too small after our square normalization. Enlarge only manual
+    // draws using this mod's four face textures; normal J2DScreen HUD rendering
+    // does not pass through this sized draw path.
+    const ResTIMG* crossTex = resource_timg(s_cross);
+    const ResTIMG* circleTex = resource_timg(s_circle);
+    const ResTIMG* squareTex = resource_timg(s_square);
+    const ResTIMG* triangleTex = resource_timg(s_triangle);
+    if ((current == crossTex || current == circleTex ||
+         current == squareTex || current == triangleTex) &&
+        mods::arg<f32>(args, 3) >= 10.0f && mods::arg<f32>(args, 3) <= 21.0f &&
+        h >= 10.0f && h <= 21.0f) {
+        const f32 oldW = mods::arg<f32>(args, 3);
+        const f32 oldH = h;
+        constexpr f32 target = 24.0f;
+        mods::arg_ref<f32>(args, 1) -= (target - oldW) * 0.5f;
+        mods::arg_ref<f32>(args, 2) -= (target - oldH) * 0.5f;
+        mods::arg_ref<f32>(args, 3) = target;
+        mods::arg_ref<f32>(args, 4) = target;
+    }
+
     // Twilit Essentials draws its Bottles/Tunics page shoulder prompt manually
     // from the original Z texture at 26 px high. Detect that private picture once,
     // then map left -> L2/LT and right -> R2/RT using this mod's own resources.
@@ -1132,6 +1180,24 @@ void after_picture_draw_sized(ModContext*, void* args, void*, void*) {
     pic->setCornerColor(s_twilitShoulderSavedCorners[0], s_twilitShoulderSavedCorners[1],
                         s_twilitShoulderSavedCorners[2], s_twilitShoulderSavedCorners[3]);
     s_twilitShoulderPatched = false;
+    s_twilitSuppressShoulderLetterDraws = 5;
+}
+
+HookAction before_font_draw_string_size_scale(ModContext*, void* args, void* retval, void*) {
+    if (s_twilitSuppressShoulderLetterDraws <= 0 || args == nullptr) {
+        return HOOK_CONTINUE;
+    }
+    const char* str = mods::arg<const char*>(args, 5);
+    const u32 len = mods::arg<u32>(args, 6);
+    const f32 w = mods::arg<f32>(args, 3);
+    const f32 h = mods::arg<f32>(args, 4);
+    if (str != nullptr && len == 1 && (str[0] == 'L' || str[0] == 'R') &&
+        w >= 8.0f && w <= 14.0f && h >= 8.0f && h <= 14.0f) {
+        --s_twilitSuppressShoulderLetterDraws;
+        if (retval != nullptr) *static_cast<f32*>(retval) = w;
+        return HOOK_SKIP_ORIGINAL;
+    }
+    return HOOK_CONTINUE;
 }
 
 
@@ -1178,6 +1244,18 @@ void patch_twilit_ring_z_before_draw(J2DScreen* screen) {
     const JUtility::TColor neutralWhite(255, 255, 255, 255);
     face->setBlackWhite(neutralBlack, neutralWhite);
     face->setCornerColor(neutralWhite);
+
+    // Item Wheel R1 uses the same 2:1 visual proportion as the HUD prompt.
+    // Resize around the existing center so Twilit keeps its placement.
+    {
+        const auto& fb = face->getBounds();
+        const f32 cx = (fb.i.x + fb.f.x) * 0.5f;
+        const f32 cy = (fb.i.y + fb.f.y) * 0.5f;
+        constexpr f32 rw = 42.0f;
+        constexpr f32 rh = 21.0f;
+        face->move(cx - rw * 0.5f, cy - rh * 0.5f);
+        face->resize(rw, rh);
+    }
 
     // Suppress the old Z letter/glow layers only while this private screen draws.
     make_picture_copy_layer_transparent(zRoot, face);
@@ -1973,7 +2051,15 @@ void after_meter_draw(ModContext*, void* args, void*, void*) {
         // v0.10.38: HUD and Options intentionally use separate R1 resources.
         // r1_hud.bti is the pre-Options 2:1 resource whose size/position were
         // already calibrated in the normal HUD. Restore that exact path here.
-        apply_full_button(z, resource_timg(s_r1_hud));
+        J2DPane* twilitItemPane =
+            (meter->mpItemXY[2] != nullptr) ? meter->mpItemXY[2]->getPanePtr() : nullptr;
+        const bool twilitOwnsItem =
+            twilitItemPane != nullptr && twilitItemPane->getParentPane() == z;
+        if (twilitOwnsItem) {
+            apply_full_button_preserve_child(z, resource_timg(s_r1_hud), twilitItemPane);
+        } else {
+            apply_full_button(z, resource_timg(s_r1_hud));
+        }
         const float zx=cfg_pos(g_r1X,170.0f);
         const float zy=cfg_pos(g_r1Y,-10.0f);
         // v0.10.93: the new R1 artwork is much wider than the original Z face.
@@ -3900,6 +3986,13 @@ ModResult mod_initialize(ModError* error) {
         free_resources();
         return mods::set_error(error, pictureDrawPost, "failed to install POST hook for J2DPicture::draw sized");
     }
+    ModResult fontDrawPre = mods::hook::add_pre<FontDrawStringSizeScaleHook>(svc_hook, before_font_draw_string_size_scale);
+    if (fontDrawPre != MOD_OK) {
+        mods::hook::uninstall<PictureDrawSizedHook>();
+        mods::hook::uninstall<ScreenSetPriorityNameHook>();
+        free_resources();
+        return mods::set_error(error, fontDrawPre, "failed to install PRE hook for JUTFont::drawString_size_scale");
+    }
 
     ModResult pt = mods::hook::add_pre<PaneTransHook>(svc_hook, before_pane_trans);
     ModResult psd = mods::hook::add_pre<ScreenDrawHook>(before_screen_draw, nullptr);
@@ -3968,6 +4061,9 @@ ModResult mod_initialize(ModError* error) {
 MOD_EXPORT ModResult mod_update(ModError*) { return MOD_OK; }
 
 MOD_EXPORT ModResult mod_shutdown(ModError*) {
+    mods::hook::uninstall<FontDrawStringSizeScaleHook>();
+    mods::hook::uninstall<PictureDrawSizedHook>();
+    mods::hook::uninstall<ScreenSetPriorityNameHook>();
     mods::hook::uninstall<MeterButtonScreenInitHook>();
     if (s_buttonCrossHookInstalled) {
         mods::hook::uninstall<ButtonCrossDrawHook>();
