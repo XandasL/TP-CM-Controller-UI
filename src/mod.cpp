@@ -134,6 +134,8 @@ ConfigVarHandle g_WorldPortalTextScale=0;
 ConfigVarHandle g_WorldMoveTextScale=0;
 ConfigVarHandle g_WorldReturnTextScale=0;
 UiMenuTabHandle g_menuTab=0;
+UiMenuTabHandle g_devMenuTab=0;
+UiWindowHandle g_publicWindow=0;
 UiWindowHandle g_layoutWindow=0;
 bool g_swordDiagLogged=false;
 bool s_buttonXYHookInstalled=false;
@@ -793,12 +795,71 @@ ModResult build_layout_panel(ModContext*,UiElementHandle pane,void*,ModError*) {
     style.label="Xbox"; style.on_pressed=select_xbox; style.is_selected=xbox_selected;
     svc_ui->pane_add_control(mod_ctx,pane,&style,nullptr);
 
-    if (kDeveloperOptions) {
-        svc_ui->pane_add_text(mod_ctx,pane,"Developer build: open the CONTROLLER UI tab for internal HUD calibration controls.",nullptr);
-    } else {
-        svc_ui->pane_add_text(mod_ctx,pane,"The HUD layout uses the calibrated release defaults.",nullptr);
-    }
+    svc_ui->pane_add_text(mod_ctx,pane,"Open the CONTROLLER UI tab in-game for visual options.",nullptr);
+    if (kDeveloperOptions)
+        svc_ui->pane_add_text(mod_ctx,pane,"Developer build: CONTROLLER DEV exposes the full internal calibration editor.",nullptr);
     return MOD_OK;
+}
+
+ModResult build_public_general_panel(ModContext*,UiWindowHandle,UiElementHandle pane,UiElementHandle,void*,ModError*) {
+    svc_ui->pane_add_text(mod_ctx,pane,"Simple presentation options. Button positions and scales use the calibrated layout included with the mod.",nullptr);
+
+    svc_ui->pane_add_section(mod_ctx,pane,"Decorations");
+    add_toggle(pane,"HUD Ornament",g_hudOrnamentEnabled,"Show or hide the decorative ornament on the gameplay HUD.");
+    add_toggle(pane,"Menu Prompt Ornament",g_menuPromptOrnament,"Show or hide the ornament used with shared menu prompts.");
+    add_toggle(pane,"Map Ornament",g_mapOrnamentEnabled,"Show or hide the decorative ornament used on map prompts.");
+
+    svc_ui->pane_add_section(mod_ctx,pane,"D-Pad");
+    add_toggle(pane,"Orange Direction Arrows",g_dpadArrowsEnabled,"Show or hide the orange D-Pad direction indicators.");
+    add_toggle(pane,"D-Pad Shadows",g_dpadShadowsEnabled,"Show or hide the original D-Pad shadow/ring layers.");
+    add_toggle(pane,"Map Rise Animation",g_dpadMapAnimation,"Keep the original Items/Map rise animation.");
+
+    svc_ui->pane_add_section(mod_ctx,pane,"World Map");
+    add_toggle(pane,"World Map Arrows",g_worldArrows,"Show or hide the World Map directional arrows.");
+    return MOD_OK;
+}
+
+ModResult build_public_effects_panel(ModContext*,UiWindowHandle,UiElementHandle pane,UiElementHandle,void*,ModError*) {
+    svc_ui->pane_add_text(mod_ctx,pane,"Optional prompt effects and animations.",nullptr);
+
+    svc_ui->pane_add_section(mod_ctx,pane,"Prompt Glows");
+    add_toggle(pane,"Action Prompt Glow",g_actionGlowEnabled,"Enable the action prompt glow.");
+    add_toggle(pane,"Back Prompt Glow",g_backGlowEnabled,"Enable the back prompt glow.");
+    add_toggle(pane,"Wolf X Prompt Glow",g_wolfXGlowEnabled,"Enable the Wolf X-button glow.");
+    add_toggle(pane,"Wolf Y Prompt Glow",g_wolfYGlowEnabled,"Enable the Wolf Y-button glow.");
+
+    svc_ui->pane_add_section(mod_ctx,pane,"Dialogue");
+    add_toggle(pane,"Back Button Animation",g_backButtonAnim,"Keep the original animation on the dialogue back-button prompt.");
+    add_toggle(pane,"Back Text Animation",g_backTextAnim,"Keep the original animation on the dialogue back-button text.");
+    return MOD_OK;
+}
+
+ModResult build_public_tools_panel(ModContext*,UiWindowHandle,UiElementHandle pane,UiElementHandle,void*,ModError*) {
+    svc_ui->pane_add_text(mod_ctx,pane,"Reset all controller UI options to the calibrated defaults included with this version.",nullptr);
+    add_button(pane,"Restore Default UI",reset_layout,"Restore every TP Classic UI option, including internal layout values, to the current release defaults.");
+    return MOD_OK;
+}
+
+void on_public_window_closed(ModContext*,UiWindowHandle,void*) {
+    g_publicWindow=0;
+}
+void open_public_window(ModContext*,void*) {
+    if(g_publicWindow!=0) return;
+    static UiTabDesc tabs[3];
+    const char* titles[3] = {"General", "Effects", "Restore"};
+    decltype(tabs[0].build) builders[3] = {
+        build_public_general_panel,
+        build_public_effects_panel,
+        build_public_tools_panel,
+    };
+    for (int i=0;i<3;i++) {
+        tabs[i]=UI_TAB_DESC_INIT;
+        tabs[i].title=titles[i];
+        tabs[i].build=builders[i];
+    }
+    UiWindowDesc d=UI_WINDOW_DESC_INIT;
+    d.tabs=tabs; d.tab_count=3; d.on_closed=on_public_window_closed;
+    svc_ui->window_push(mod_ctx,&d,&g_publicWindow);
 }
 
 void on_layout_window_closed(ModContext*,UiWindowHandle,void*) {
@@ -4467,11 +4528,18 @@ ModResult mod_initialize(ModError* error) {
     panel.build=build_layout_panel;
     if(svc_ui->register_mods_panel(mod_ctx,&panel)!=MOD_OK)
         return mods::set_error(error,MOD_ERROR,"failed to register layout editor panel");
-    if (kDeveloperOptions) {
+    {
         UiMenuTabDesc menuTab=UI_MENU_TAB_DESC_INIT;
         menuTab.label="CONTROLLER UI";
-        menuTab.on_selected=open_layout_window;
+        menuTab.on_selected=open_public_window;
         if(svc_ui->register_menu_tab(mod_ctx,&menuTab,&g_menuTab)!=MOD_OK)
+            return mods::set_error(error,MOD_ERROR,"failed to register Classic Buttons public menu tab");
+    }
+    if (kDeveloperOptions) {
+        UiMenuTabDesc devTab=UI_MENU_TAB_DESC_INIT;
+        devTab.label="CONTROLLER DEV";
+        devTab.on_selected=open_layout_window;
+        if(svc_ui->register_menu_tab(mod_ctx,&devTab,&g_devMenuTab)!=MOD_OK)
             return mods::set_error(error,MOD_ERROR,"failed to register Classic Buttons developer menu tab");
     }
 
@@ -4689,6 +4757,8 @@ MOD_EXPORT ModResult mod_shutdown(ModError*) {
     s_midnaPromptScreen = nullptr;
     s_midnaPromptOriginalTexture = nullptr;
     s_externalMidnaPromptOwner = false;
+    g_publicWindow = 0;
+    g_layoutWindow = 0;
     g_layoutSchemaVersion = 0;
     free_resources();
     return MOD_OK;
