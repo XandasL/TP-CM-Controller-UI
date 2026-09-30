@@ -3843,28 +3843,10 @@ bool pop_screen_mutation_frame(J2DScreen* screen) {
 HookAction before_screen_draw(ModContext* ctx, void* args, void* retval, void* userdata) {
     J2DScreen* screen = mods::arg<J2DScreen*>(args, 0);
 
-    const bool nestedDraw = s_screenMutationDepth > 0;
-    bool genericMutated = false;
-
-    if (is_item_wheel_screen(screen) || is_twilit_quick_access_screen(screen)) {
-        // Absolute isolation for both the vanilla ring and Twilit Essentials'
-        // private Quick Access wheel. Do not even arm a restore for this draw.
-        s_itemWheelTempScreen = nullptr;
-        s_itemWheelTempCount = 0;
-    } else if (collection_draw_active()) {
-        // Strong compatibility mode for the whole Collection family, including
-        // Letters/Skills/Fishing/Options/Save submenus.
-    } else if (nestedDraw) {
-        // All legacy snapshot buffers below are single-owner buffers. A nested
-        // J2DScreen::draw (often triggered by another mod's hook) must never
-        // overwrite the outer draw's pending restore state.
-    } else if (tp_classic_generic_screen_allowed(screen)) {
-        genericMutated = true;
-        begin_menu_prompt_draw(screen);
-        apply_known_menu_buttons(screen);
-        prepare_menu_ornament_before_draw(screen);
-    }
-    push_screen_mutation_frame(screen, genericMutated);
+    // Compatibility diagnostic: do not mutate any menu J2DScreen at all.
+    // HUD Pikari handling below is preserved because it targets one owned HUD
+    // screen and does not participate in menu/resource reuse.
+    push_screen_mutation_frame(screen, false);
 
     dMeter2Draw_c* meter = s_activeMeter != nullptr ? s_activeMeter : s_meterInstance;
     if (meter == nullptr) return HOOK_CONTINUE;
@@ -4063,7 +4045,7 @@ ModResult mod_initialize(ModError* error) {
 
     if (svc_log != nullptr)
         svc_log->info(mod_ctx, "TP Classic Modern Controller UI v1.0.0 starting - by XandasLegend");
-        svc_log->info(mod_ctx, "Compatibility diagnostic: vanilla/Twilit item ring fully isolated");
+        svc_log->info(mod_ctx, "Compatibility diagnostic: all generic menu J2DScreen mutations disabled");
 
     if (svc_hook == nullptr)
         return mods::set_error(error, MOD_ERROR, "HookService unavailable");
