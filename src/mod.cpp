@@ -8,6 +8,7 @@
 #include "d/d_msg_object.h"
 #include "d/d_meter_HIO.h"
 #include "d/d_meter2_info.h"
+#include "d/d_menu_collect.h"
 #include "d/d_item_data.h"
 #include "d/d_pane_class.h"
 #include "JSystem/J2DGraph/J2DPane.h"
@@ -759,6 +760,7 @@ DEFINE_HOOK(&dMeter2Draw_c::drawButtonXY, ButtonXYDrawHook);
 DEFINE_HOOK(&dMeter2Draw_c::drawButtonCross, ButtonCrossDrawHook);
 DEFINE_HOOK(&CPaneMgr::paneTrans, PaneTransHook);
 DEFINE_HOOK(&J2DScreen::draw, ScreenDrawHook);
+DEFINE_HOOK(&dMenu_Collect2DTop_c::draw, CollectTopDrawHook);
 DEFINE_HOOK(&dDlst_FileSel_c::draw, FileSelDrawHook);
 DEFINE_HOOK(&COutFont_c::createPane, OutFontCreatePaneHook);
 DEFINE_HOOK(&COutFont_c::drawFont, OutFontDrawFontHook);
@@ -3757,11 +3759,114 @@ int classify_current_pikari() {
     return 0;
 }
 
+dMenu_Collect2D_c* s_compatCollectOwner = nullptr;
+
+struct ScreenMutationFrame {
+    J2DScreen* screen = nullptr;
+    bool mutated = false;
+};
+ScreenMutationFrame s_screenMutationStack[16];
+int s_screenMutationDepth = 0;
+
+void push_screen_mutation_frame(J2DScreen* screen, bool mutated) {
+    if (s_screenMutationDepth < 16)
+        s_screenMutationStack[s_screenMutationDepth++] = {screen, mutated};
+}
+
+bool pop_screen_mutation_frame(J2DScreen* screen) {
+    if (s_screenMutationDepth <= 0) return false;
+    ScreenMutationFrame frame = s_screenMutationStack[--s_screenMutationDepth];
+    return frame.screen == screen && frame.mutated;
+}
+
+bool compat_item_wheel_screen(J2DScreen* screen) {
+    return screen != nullptr &&
+           screen->search(MULTI_CHAR('fyx_tex')) != nullptr &&
+           screen->search(MULTI_CHAR('x_btn_n')) != nullptr &&
+           screen->search(MULTI_CHAR('y_btn_n')) != nullptr;
+}
+
+bool compat_twilit_quick_access_screen(J2DScreen* screen) {
+    return screen != nullptr &&
+           screen->search(MULTI_CHAR('center_n')) != nullptr &&
+           screen->search(MULTI_CHAR('label_n')) != nullptr &&
+           screen->search(MULTI_CHAR('a_itmn_n')) != nullptr &&
+           screen->search(MULTI_CHAR('itemn_n')) != nullptr;
+}
+
+HookAction before_collect_top_draw(ModContext*, void* args, void*, void*) {
+    dMenu_Collect2DTop_c* top = args != nullptr ? mods::arg<dMenu_Collect2DTop_c*>(args, 0) : nullptr;
+    s_compatCollectOwner = top != nullptr ? top->mpCollect2D : nullptr;
+    return HOOK_CONTINUE;
+}
+
+bool pane_effectively_visible_for_overlay(J2DPane* pane) {
+    if (pane == nullptr) return false;
+    for (J2DPane* p = pane; p != nullptr; p = p->getParentPane()) {
+        if (!p->isVisible() || p->getAlpha() == 0) return false;
+    }
+    return true;
+}
+
+void draw_collection_button_overlay(J2DScreen* screen, u64 rootTag, const ResTIMG* texture,
+                                    ConfigVarHandle xh, ConfigVarHandle yh, ConfigVarHandle sh) {
+    if (screen == nullptr || texture == nullptr) return;
+    J2DPane* root = screen->search(rootTag);
+    if (root == nullptr) return;
+    J2DPicture* face = first_picture_recursive(root);
+    if (face == nullptr || !pane_effectively_visible_for_overlay(face)) return;
+
+    const auto& b = face->getGlbBounds();
+    const float w = b.getWidth();
+    const float h = b.getHeight();
+    if (w <= 0.0f || h <= 0.0f) return;
+
+    const float side = (w < h ? w : h) * cfg_scale(sh, 1.0f);
+    const float cx = b.i.x + w * 0.5f + cfg_pos(xh, 0.0f);
+    const float cy = b.i.y + h * 0.5f + cfg_pos(yh, 0.0f);
+
+    J2DPicture overlay(texture);
+    const JUtility::TColor black(0,0,0,0), white(255,255,255,255);
+    overlay.setBlackWhite(black, white);
+    overlay.setCornerColor(white);
+    overlay.setAlpha(face->getAlpha());
+    overlay.draw(cx - side * 0.5f, cy - side * 0.5f, side, side, false, false, false);
+}
+
+void after_collect_top_draw(ModContext*, void* args, void*, void*) {
+    dMenu_Collect2DTop_c* top = args != nullptr ? mods::arg<dMenu_Collect2DTop_c*>(args, 0) : nullptr;
+    dMenu_Collect2D_c* collect = top != nullptr ? top->mpCollect2D : nullptr;
+    if (collect != nullptr && collect == s_compatCollectOwner && collect->mpScreenIcon != nullptr) {
+        // Draw our A/B art independently after the Collection/Twilit trees have
+        // finished rendering. No pane, texture, material, visibility or parent
+        // state is changed, so third-party tabs/icons remain completely untouched.
+        draw_collection_button_overlay(collect->mpScreenIcon, MULTI_CHAR('g_abtn_n'),
+                                       resource_timg(s_cross),
+                                       g_menuCrossX, g_menuCrossY, g_menuCrossScale);
+        draw_collection_button_overlay(collect->mpScreenIcon, MULTI_CHAR('g_bbtn_n'),
+                                       resource_timg(s_circle),
+                                       g_menuCircleX, g_menuCircleY, g_menuCircleScale);
+    }
+    s_compatCollectOwner = nullptr;
+}
+
 HookAction before_screen_draw(ModContext* ctx, void* args, void* retval, void* userdata) {
     J2DScreen* screen = mods::arg<J2DScreen*>(args, 0);
-    begin_menu_prompt_draw(screen);
-    apply_known_menu_buttons(screen);
-    prepare_menu_ornament_before_draw(screen);
+
+    const bool nestedDraw = s_screenMutationDepth > 0;
+    const bool protectedScreen =
+        s_compatCollectOwner != nullptr ||
+        compat_item_wheel_screen(screen) ||
+        compat_twilit_quick_access_screen(screen);
+
+    bool genericMutated = false;
+    if (!protectedScreen && !nestedDraw) {
+        genericMutated = true;
+        begin_menu_prompt_draw(screen);
+        apply_known_menu_buttons(screen);
+        prepare_menu_ornament_before_draw(screen);
+    }
+    push_screen_mutation_frame(screen, genericMutated);
 
     dMeter2Draw_c* meter = s_activeMeter != nullptr ? s_activeMeter : s_meterInstance;
     if (meter == nullptr) return HOOK_CONTINUE;
@@ -3815,6 +3920,8 @@ HookAction before_screen_draw(ModContext* ctx, void* args, void* retval, void* u
 void after_screen_draw(ModContext*, void* args, void*, void*) {
     if (args == nullptr) return;
     J2DScreen* screen = mods::arg<J2DScreen*>(args, 0);
+    if (!pop_screen_mutation_frame(screen)) return;
+
     restore_item_wheel_temp_state(screen);
     restore_world_icons(screen);
     restore_world_map_temp_state(screen);
@@ -4021,6 +4128,20 @@ ModResult mod_initialize(ModError* error) {
     s_buttonCrossHookInstalled = true;
 
     ModResult pt = mods::hook::add_pre<PaneTransHook>(svc_hook, before_pane_trans);
+    ModResult collectTopPre = mods::hook::add_pre<CollectTopDrawHook>(svc_hook, before_collect_top_draw);
+    if (collectTopPre != MOD_OK) {
+        mods::hook::uninstall<PaneTransHook>();
+        free_resources();
+        return mods::set_error(error, collectTopPre, "failed to install PRE hook for dMenu_Collect2DTop_c::draw");
+    }
+    ModResult collectTopPost = mods::hook::add_post<CollectTopDrawHook>(svc_hook, after_collect_top_draw);
+    if (collectTopPost != MOD_OK) {
+        mods::hook::uninstall<CollectTopDrawHook>();
+        mods::hook::uninstall<PaneTransHook>();
+        free_resources();
+        return mods::set_error(error, collectTopPost, "failed to install POST hook for dMenu_Collect2DTop_c::draw");
+    }
+
     ModResult psd = mods::hook::add_pre<ScreenDrawHook>(before_screen_draw, nullptr);
     if (psd != MOD_OK) {
         mods::hook::uninstall<PaneTransHook>();
@@ -4087,6 +4208,7 @@ ModResult mod_initialize(ModError* error) {
 MOD_EXPORT ModResult mod_update(ModError*) { return MOD_OK; }
 
 MOD_EXPORT ModResult mod_shutdown(ModError*) {
+    mods::hook::uninstall<CollectTopDrawHook>();
     mods::hook::uninstall<MeterButtonScreenInitHook>();
     if (s_buttonCrossHookInstalled) {
         mods::hook::uninstall<ButtonCrossDrawHook>();
