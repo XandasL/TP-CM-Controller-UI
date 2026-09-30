@@ -1,6 +1,6 @@
 {
-  "id": "org.dusklight.tp_classic_buttons",
-  "name": "TP Classic Modern Controller UI",
+  "id": "org.dusklight.tp_classic_buttons_diag",
+  "name": "TP Classic Controller UI - ID Diagnostic",
   "version": "@PROJECT_VERSION@",
   "author": "XandasLegend",
   "description": "Modern PlayStation and Xbox controller prompts, reimagined in the style of Twilight Princess, with customizable HUD, menu, dialogue and map elements.",
