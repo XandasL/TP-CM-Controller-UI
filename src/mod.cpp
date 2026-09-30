@@ -104,8 +104,14 @@ ConfigVarHandle g_midnaX=0, g_midnaY=0, g_midnaScale=0;
 ConfigVarHandle g_actionTextX=0, g_actionTextY=0, g_actionTextScale=0;
 ConfigVarHandle g_howlActionX=0,g_howlActionY=0,g_howlActionScale=0;
 ConfigVarHandle g_shopActionX=0,g_shopActionY=0,g_shopActionScale=0;
+ConfigVarHandle g_swapShopActionX=0,g_swapShopActionY=0,g_swapShopActionScale=0;
+ConfigVarHandle g_ybShopActionX=0,g_ybShopActionY=0,g_ybShopActionScale=0;
+ConfigVarHandle g_xyxbShopActionX=0,g_xyxbShopActionY=0,g_xyxbShopActionScale=0;
 ConfigVarHandle g_howlBackX=0,g_howlBackY=0,g_howlBackScale=0;
 ConfigVarHandle g_shopBackX=0,g_shopBackY=0,g_shopBackScale=0;
+ConfigVarHandle g_swapShopBackX=0,g_swapShopBackY=0,g_swapShopBackScale=0;
+ConfigVarHandle g_ybShopBackX=0,g_ybShopBackY=0,g_ybShopBackScale=0;
+ConfigVarHandle g_xyxbShopBackX=0,g_xyxbShopBackY=0,g_xyxbShopBackScale=0;
 ConfigVarHandle g_dialogActionTextX=0, g_dialogActionTextY=0;
 ConfigVarHandle g_backTextX=0, g_backTextY=0, g_backTextScale=0;
 ConfigVarHandle g_ybBackTextX=0, g_ybBackTextY=0, g_ybBackTextScale=0;
@@ -629,6 +635,8 @@ void reset_layout(ModContext*, void*) {
         svc_config->set_int(mod_ctx,g_swapSquareX,971); svc_config->set_int(mod_ctx,g_swapSquareY,380); svc_config->set_int(mod_ctx,g_swapSquareScale,90);
         svc_config->set_int(mod_ctx,g_swapItemSquareX,-690); svc_config->set_int(mod_ctx,g_swapItemSquareY,-380); svc_config->set_int(mod_ctx,g_swapItemSquareScale,50);
         svc_config->set_int(mod_ctx,g_swapItemTriangleX,480); svc_config->set_int(mod_ctx,g_swapItemTriangleY,-30); svc_config->set_int(mod_ctx,g_swapItemTriangleScale,50);
+        svc_config->set_int(mod_ctx,g_swapShopActionX,450); svc_config->set_int(mod_ctx,g_swapShopActionY,830); svc_config->set_int(mod_ctx,g_swapShopActionScale,65);
+        svc_config->set_int(mod_ctx,g_swapShopBackX,900); svc_config->set_int(mod_ctx,g_swapShopBackY,300); svc_config->set_int(mod_ctx,g_swapShopBackScale,65);
         svc_config->set_int(mod_ctx,g_swapWolfSenseX,-920); svc_config->set_int(mod_ctx,g_swapWolfSenseY,-500); svc_config->set_int(mod_ctx,g_swapWolfSenseScale,55);
         svc_config->set_int(mod_ctx,g_swapWolfDigX,730); svc_config->set_int(mod_ctx,g_swapWolfDigY,310); svc_config->set_int(mod_ctx,g_swapWolfDigScale,55);
         svc_config->set_int(mod_ctx,g_swapWolfXGlowX,5); svc_config->set_int(mod_ctx,g_swapWolfXGlowY,-55); svc_config->set_int(mod_ctx,g_swapWolfXGlowScale,50);
@@ -638,6 +646,10 @@ void reset_layout(ModContext*, void*) {
         svc_config->set_bool(mod_ctx,g_swapItemSquareFlipH,false); svc_config->set_bool(mod_ctx,g_swapItemSquareFlipV,false);
         svc_config->set_bool(mod_ctx,g_swapItemTriangleFlipH,false); svc_config->set_bool(mod_ctx,g_swapItemTriangleFlipV,false);
         svc_config->set_bool(mod_ctx,g_swapWolfXGlowEnabled,true); svc_config->set_bool(mod_ctx,g_swapWolfYGlowEnabled,true);
+        svc_config->set_int(mod_ctx,g_ybShopActionX,450); svc_config->set_int(mod_ctx,g_ybShopActionY,830); svc_config->set_int(mod_ctx,g_ybShopActionScale,65);
+        svc_config->set_int(mod_ctx,g_ybShopBackX,900); svc_config->set_int(mod_ctx,g_ybShopBackY,300); svc_config->set_int(mod_ctx,g_ybShopBackScale,65);
+        svc_config->set_int(mod_ctx,g_xyxbShopActionX,450); svc_config->set_int(mod_ctx,g_xyxbShopActionY,830); svc_config->set_int(mod_ctx,g_xyxbShopActionScale,65);
+        svc_config->set_int(mod_ctx,g_xyxbShopBackX,900); svc_config->set_int(mod_ctx,g_xyxbShopBackY,300); svc_config->set_int(mod_ctx,g_xyxbShopBackScale,65);
         svc_config->set_int(mod_ctx,g_ybBackTextX,820); svc_config->set_int(mod_ctx,g_ybBackTextY,-350); svc_config->set_int(mod_ctx,g_ybBackTextScale,55);
         svc_config->set_int(mod_ctx,g_ybBackGlowX,10); svc_config->set_int(mod_ctx,g_ybBackGlowY,30); svc_config->set_int(mod_ctx,g_ybBackGlowScale,100);
         svc_config->set_bool(mod_ctx,g_ybBackGlowEnabled,true);
@@ -707,6 +719,8 @@ void export_calibration(ModContext*,void*) {
     json_int(json,"itemY.x",g_itemTriangleX,first); json_int(json,"itemY.y",g_itemTriangleY,first); json_int(json,"itemY.scale",g_itemTriangleScale,first);
     json_bool(json,"itemY.flipH",g_itemTriangleFlipH,first); json_bool(json,"itemY.flipV",g_itemTriangleFlipV,first);
     json_int(json,"sensesText.x",g_wolfSenseX,first); json_int(json,"sensesText.y",g_wolfSenseY,first); json_int(json,"sensesText.scale",g_wolfSenseScale,first);
+    json_int(json,"shopConfirm.x",g_shopActionX,first); json_int(json,"shopConfirm.y",g_shopActionY,first); json_int(json,"shopConfirm.scale",g_shopActionScale,first);
+    json_int(json,"shopExit.x",g_shopBackX,first); json_int(json,"shopExit.y",g_shopBackY,first); json_int(json,"shopExit.scale",g_shopBackScale,first);
     json_int(json,"digText.x",g_wolfDigX,first); json_int(json,"digText.y",g_wolfDigY,first); json_int(json,"digText.scale",g_wolfDigScale,first);
     json_int(json,"sensesGlow.x",g_wolfXGlowX,first); json_int(json,"sensesGlow.y",g_wolfXGlowY,first); json_int(json,"sensesGlow.scale",g_wolfXGlowScale,first);
     json_bool(json,"sensesGlow.enabled",g_wolfXGlowEnabled,first);
@@ -725,6 +739,8 @@ void export_calibration(ModContext*,void*) {
     json_int(json,"itemY.x",g_swapItemTriangleX,first); json_int(json,"itemY.y",g_swapItemTriangleY,first); json_int(json,"itemY.scale",g_swapItemTriangleScale,first);
     json_bool(json,"itemY.flipH",g_swapItemTriangleFlipH,first); json_bool(json,"itemY.flipV",g_swapItemTriangleFlipV,first);
     json_int(json,"sensesText.x",g_swapWolfSenseX,first); json_int(json,"sensesText.y",g_swapWolfSenseY,first); json_int(json,"sensesText.scale",g_swapWolfSenseScale,first);
+    json_int(json,"shopConfirm.x",g_swapShopActionX,first); json_int(json,"shopConfirm.y",g_swapShopActionY,first); json_int(json,"shopConfirm.scale",g_swapShopActionScale,first);
+    json_int(json,"shopExit.x",g_swapShopBackX,first); json_int(json,"shopExit.y",g_swapShopBackY,first); json_int(json,"shopExit.scale",g_swapShopBackScale,first);
     json_int(json,"digText.x",g_swapWolfDigX,first); json_int(json,"digText.y",g_swapWolfDigY,first); json_int(json,"digText.scale",g_swapWolfDigScale,first);
     json_int(json,"sensesGlow.x",g_swapWolfXGlowX,first); json_int(json,"sensesGlow.y",g_swapWolfXGlowY,first); json_int(json,"sensesGlow.scale",g_swapWolfXGlowScale,first);
     json_bool(json,"sensesGlow.enabled",g_swapWolfXGlowEnabled,first);
@@ -748,6 +764,8 @@ void export_calibration(ModContext*,void*) {
     json_int(json,"backGlow.x",g_ybBackGlowX,first); json_int(json,"backGlow.y",g_ybBackGlowY,first); json_int(json,"backGlow.scale",g_ybBackGlowScale,first);
     json_bool(json,"backGlow.enabled",g_ybBackGlowEnabled,first);
     json_int(json,"sensesText.x",g_ybWolfSenseX,first); json_int(json,"sensesText.y",g_ybWolfSenseY,first); json_int(json,"sensesText.scale",g_ybWolfSenseScale,first);
+    json_int(json,"shopConfirm.x",g_ybShopActionX,first); json_int(json,"shopConfirm.y",g_ybShopActionY,first); json_int(json,"shopConfirm.scale",g_ybShopActionScale,first);
+    json_int(json,"shopExit.x",g_ybShopBackX,first); json_int(json,"shopExit.y",g_ybShopBackY,first); json_int(json,"shopExit.scale",g_ybShopBackScale,first);
     json_int(json,"digText.x",g_ybWolfDigX,first); json_int(json,"digText.y",g_ybWolfDigY,first); json_int(json,"digText.scale",g_ybWolfDigScale,first);
     json_int(json,"sensesGlow.x",g_ybWolfXGlowX,first); json_int(json,"sensesGlow.y",g_ybWolfXGlowY,first); json_int(json,"sensesGlow.scale",g_ybWolfXGlowScale,first);
     json_int(json,"digGlow.x",g_ybWolfYGlowX,first); json_int(json,"digGlow.y",g_ybWolfYGlowY,first); json_int(json,"digGlow.scale",g_ybWolfYGlowScale,first);
@@ -769,6 +787,8 @@ void export_calibration(ModContext*,void*) {
     json_int(json,"backGlow.x",g_xyxbBackGlowX,first); json_int(json,"backGlow.y",g_xyxbBackGlowY,first); json_int(json,"backGlow.scale",g_xyxbBackGlowScale,first);
     json_bool(json,"backGlow.enabled",g_xyxbBackGlowEnabled,first);
     json_int(json,"sensesText.x",g_xyxbWolfSenseX,first); json_int(json,"sensesText.y",g_xyxbWolfSenseY,first); json_int(json,"sensesText.scale",g_xyxbWolfSenseScale,first);
+    json_int(json,"shopConfirm.x",g_xyxbShopActionX,first); json_int(json,"shopConfirm.y",g_xyxbShopActionY,first); json_int(json,"shopConfirm.scale",g_xyxbShopActionScale,first);
+    json_int(json,"shopExit.x",g_xyxbShopBackX,first); json_int(json,"shopExit.y",g_xyxbShopBackY,first); json_int(json,"shopExit.scale",g_xyxbShopBackScale,first);
     json_int(json,"digText.x",g_xyxbWolfDigX,first); json_int(json,"digText.y",g_xyxbWolfDigY,first); json_int(json,"digText.scale",g_xyxbWolfDigScale,first);
     json_int(json,"sensesGlow.x",g_xyxbWolfXGlowX,first); json_int(json,"sensesGlow.y",g_xyxbWolfXGlowY,first); json_int(json,"sensesGlow.scale",g_xyxbWolfXGlowScale,first);
     json_int(json,"digGlow.x",g_xyxbWolfYGlowX,first); json_int(json,"digGlow.y",g_xyxbWolfYGlowY,first); json_int(json,"digGlow.scale",g_xyxbWolfYGlowScale,first);
@@ -844,6 +864,8 @@ ModResult build_derived_b_swap_panel(UiElementHandle pane,bool xyBase) {
     ConfigVarHandle swh=xyxb?g_xyxbSwordFlipH:g_ybSwordFlipH, swv=xyxb?g_xyxbSwordFlipV:g_ybSwordFlipV;
     ConfigVarHandle btx=xyxb?g_xyxbBackTextX:g_ybBackTextX, bty=xyxb?g_xyxbBackTextY:g_ybBackTextY, bts=xyxb?g_xyxbBackTextScale:g_ybBackTextScale;
     ConfigVarHandle bgx=xyxb?g_xyxbBackGlowX:g_ybBackGlowX, bgy=xyxb?g_xyxbBackGlowY:g_ybBackGlowY, bgs=xyxb?g_xyxbBackGlowScale:g_ybBackGlowScale, bge=xyxb?g_xyxbBackGlowEnabled:g_ybBackGlowEnabled;
+    ConfigVarHandle sax=xyxb?g_xyxbShopActionX:g_ybShopActionX, say=xyxb?g_xyxbShopActionY:g_ybShopActionY, sas=xyxb?g_xyxbShopActionScale:g_ybShopActionScale;
+    ConfigVarHandle sbx=xyxb?g_xyxbShopBackX:g_ybShopBackX, sby=xyxb?g_xyxbShopBackY:g_ybShopBackY, sbs=xyxb?g_xyxbShopBackScale:g_ybShopBackScale;
     ConfigVarHandle stx=xyxb?g_xyxbWolfSenseX:g_ybWolfSenseX, sty=xyxb?g_xyxbWolfSenseY:g_ybWolfSenseY, sts=xyxb?g_xyxbWolfSenseScale:g_ybWolfSenseScale;
     ConfigVarHandle dtx=xyxb?g_xyxbWolfDigX:g_ybWolfDigX, dty=xyxb?g_xyxbWolfDigY:g_ybWolfDigY, dts=xyxb?g_xyxbWolfDigScale:g_ybWolfDigScale;
     ConfigVarHandle sgx=xyxb?g_xyxbWolfXGlowX:g_ybWolfXGlowX, sgy=xyxb?g_xyxbWolfXGlowY:g_ybWolfXGlowY, sgs=xyxb?g_xyxbWolfXGlowScale:g_ybWolfXGlowScale, sge=xyxb?g_xyxbWolfXGlowEnabled:g_ybWolfXGlowEnabled;
@@ -882,6 +904,14 @@ ModResult build_derived_b_swap_panel(UiElementHandle pane,bool xyBase) {
     add_num(pane,"Back Glow - Scale",bgs,25,300,1,"%","Preset-local Pikari glow scale for the GC B function.");
     add_toggle(pane,"Back Glow Enabled",bge,"Enable the GC B Pikari glow in this preset.");
     add_toggle(pane,"Glow Adjustment Preview",g_glowPreview,"Force Action/Back glows visible while calibrating.");
+
+    svc_ui->pane_add_section(mod_ctx,pane,"Shop Text");
+    add_num(pane,"Shop Confirm - X",sax,-3000,3000,10,"/10 px","Preset-local shop Confirm text offset.");
+    add_num(pane,"Shop Confirm - Y",say,-3000,3000,10,"/10 px","Preset-local shop Confirm text offset.");
+    add_num(pane,"Shop Confirm - Scale",sas,25,250,1,"%","Preset-local shop Confirm text scale.");
+    add_num(pane,"Shop Exit - X",sbx,-3000,3000,10,"/10 px","Preset-local shop Exit text offset.");
+    add_num(pane,"Shop Exit - Y",sby,-3000,3000,10,"/10 px","Preset-local shop Exit text offset.");
+    add_num(pane,"Shop Exit - Scale",sbs,25,250,1,"%","Preset-local shop Exit text scale.");
 
     svc_ui->pane_add_section(mod_ctx,pane,"GC X Item");
     add_num(pane,"GC X Item - X",ixx,-3000,3000,10,"/10 px","Item offset for the original GC X function.");
@@ -962,6 +992,14 @@ ModResult build_base_xy_preset_panel(ModContext*,UiWindowHandle,UiElementHandle 
     add_toggle(pane,"Y Item - Flip H",g_itemTriangleFlipH,"Base-preset horizontal flip.");
     add_toggle(pane,"Y Item - Flip V",g_itemTriangleFlipV,"Base-preset vertical flip.");
 
+    svc_ui->pane_add_section(mod_ctx,pane,"Shop Text");
+    add_num(pane,"Shop Confirm - X",g_shopActionX,-3000,3000,10,"/10 px","Base-preset shop Confirm text offset.");
+    add_num(pane,"Shop Confirm - Y",g_shopActionY,-3000,3000,10,"/10 px","Base-preset shop Confirm text offset.");
+    add_num(pane,"Shop Confirm - Scale",g_shopActionScale,25,250,1,"%","Base-preset shop Confirm text scale.");
+    add_num(pane,"Shop Exit - X",g_shopBackX,-3000,3000,10,"/10 px","Base-preset shop Exit text offset.");
+    add_num(pane,"Shop Exit - Y",g_shopBackY,-3000,3000,10,"/10 px","Base-preset shop Exit text offset.");
+    add_num(pane,"Shop Exit - Scale",g_shopBackScale,25,250,1,"%","Base-preset shop Exit text scale.");
+
     svc_ui->pane_add_section(mod_ctx,pane,"Wolf - Senses Text");
     add_num(pane,"Senses Text - X",g_wolfSenseX,-3000,3000,10,"/10 px","Base-preset Senses text offset.");
     add_num(pane,"Senses Text - Y",g_wolfSenseY,-3000,3000,10,"/10 px","Base-preset Senses text offset.");
@@ -1024,6 +1062,14 @@ ModResult build_swap_xy_preset_panel(ModContext*,UiWindowHandle,UiElementHandle 
     add_num(pane,"Y Item - Scale",g_swapItemTriangleScale,30,200,1,"%","Swap-preset item scale.");
     add_toggle(pane,"Y Item - Flip H",g_swapItemTriangleFlipH,"Swap-preset horizontal flip.");
     add_toggle(pane,"Y Item - Flip V",g_swapItemTriangleFlipV,"Swap-preset vertical flip.");
+
+    svc_ui->pane_add_section(mod_ctx,pane,"Shop Text");
+    add_num(pane,"Shop Confirm - X",g_swapShopActionX,-3000,3000,10,"/10 px","Swap X/Y shop Confirm text offset.");
+    add_num(pane,"Shop Confirm - Y",g_swapShopActionY,-3000,3000,10,"/10 px","Swap X/Y shop Confirm text offset.");
+    add_num(pane,"Shop Confirm - Scale",g_swapShopActionScale,25,250,1,"%","Swap X/Y shop Confirm text scale.");
+    add_num(pane,"Shop Exit - X",g_swapShopBackX,-3000,3000,10,"/10 px","Swap X/Y shop Exit text offset.");
+    add_num(pane,"Shop Exit - Y",g_swapShopBackY,-3000,3000,10,"/10 px","Swap X/Y shop Exit text offset.");
+    add_num(pane,"Shop Exit - Scale",g_swapShopBackScale,25,250,1,"%","Swap X/Y shop Exit text scale.");
 
     svc_ui->pane_add_section(mod_ctx,pane,"Wolf - Senses Text");
     add_num(pane,"Senses Text - X",g_swapWolfSenseX,-3000,3000,10,"/10 px","Swap-preset Senses text offset.");
@@ -1151,15 +1197,9 @@ ModResult build_settings_3_panel(ModContext*,UiWindowHandle,UiElementHandle pane
 }
 
 ModResult build_settings_4_panel(ModContext*,UiWindowHandle,UiElementHandle pane,UiElementHandle,void*,ModError*) {
-    svc_ui->pane_add_text(mod_ctx,pane,"Independent action and exit labels during shopping.",nullptr);
-    svc_ui->pane_add_section(mod_ctx,pane,"Confirm Text");
-    add_num(pane,"Shop Action Text - X",g_shopActionX,-3000,3000,10,"/10 px","Independent horizontal position of Confirm on the shop screen.");
-    add_num(pane,"Shop Action Text - Y",g_shopActionY,-3000,3000,10,"/10 px","Independent vertical position of Confirm on the shop screen.");
-    add_num(pane,"Shop Action Text - Scale",g_shopActionScale,25,250,1,"%","Independent scale of the shop action label.");
-    svc_ui->pane_add_section(mod_ctx,pane,"Exit Text");
-    add_num(pane,"Shop Exit Text - X",g_shopBackX,-3000,3000,10,"/10 px","Independent horizontal position of Exit on the shop screen.");
-    add_num(pane,"Shop Exit Text - Y",g_shopBackY,-3000,3000,10,"/10 px","Independent vertical position of Exit on the shop screen.");
-    add_num(pane,"Shop Exit Text - Scale",g_shopBackScale,25,250,1,"%","Independent scale of the shop exit label.");
+    svc_ui->pane_add_text(mod_ctx,pane,
+        "Shop Confirm/Exit calibration is preset-specific. Use the active preset tab to adjust these labels.",
+        nullptr);
     return MOD_OK;
 }
 
@@ -2156,10 +2196,19 @@ HookAction before_pane_trans(ModContext*, void* args, void*, void*) {
     if (dMeter2Info_isShopTalkFlag() &&
         (mgr == s_activeMeter->mpTextA || mgr == s_activeMeter->mpTextB)) {
         const bool action = mgr == s_activeMeter->mpTextA;
-        mods::arg_ref<f32>(args,1) += cfg_pos(action ? g_shopActionX : g_shopBackX,0.0f);
-        mods::arg_ref<f32>(args,2) += cfg_pos(action ? g_shopActionY : g_shopBackY,0.0f);
+        const ConfigVarHandle xh = action
+            ? layout_handle4(g_shopActionX,g_swapShopActionX,g_ybShopActionX,g_xyxbShopActionX)
+            : layout_handle4(g_shopBackX,g_swapShopBackX,g_ybShopBackX,g_xyxbShopBackX);
+        const ConfigVarHandle yh = action
+            ? layout_handle4(g_shopActionY,g_swapShopActionY,g_ybShopActionY,g_xyxbShopActionY)
+            : layout_handle4(g_shopBackY,g_swapShopBackY,g_ybShopBackY,g_xyxbShopBackY);
+        const ConfigVarHandle sh = action
+            ? layout_handle4(g_shopActionScale,g_swapShopActionScale,g_ybShopActionScale,g_xyxbShopActionScale)
+            : layout_handle4(g_shopBackScale,g_swapShopBackScale,g_ybShopBackScale,g_xyxbShopBackScale);
+        mods::arg_ref<f32>(args,1) += cfg_pos(xh,0.0f);
+        mods::arg_ref<f32>(args,2) += cfg_pos(yh,0.0f);
         if (J2DPane* pane = mgr->getPanePtr()) {
-            const float scale = cfg_scale(action ? g_shopActionScale : g_shopBackScale,1.0f);
+            const float scale = cfg_scale(sh,1.0f);
             pane->scale(pane->getScaleX()*scale,pane->getScaleY()*scale);
         }
         return HOOK_CONTINUE;
@@ -2331,12 +2380,14 @@ static void adjust_midna_pictures(J2DPane* pane,float dx,float dy,float sc) {
         const float prevX=st->base.i.x+st->lastDx-(prevW-bw)*0.5f;
         const float prevY=st->base.i.y+st->lastDy-(prevH-bh)*0.5f;
 
-        // Area/load transition: vanilla rebuilt/reset this picture. Treat its
-        // current geometry as the new clean baseline instead of reusing stale bounds.
-        if(!nearf(cur.i.x,prevX) || !nearf(cur.i.y,prevY) ||
-           !nearf(cur.getWidth(),prevW) || !nearf(cur.getHeight(),prevH)) {
-            st->base=cur;
-        }
+        // Do not learn a new baseline from arbitrary live geometry changes.
+        // Area transitions and contextual HUD animations can temporarily scale/
+        // reposition Midna; treating those frames as a fresh baseline compounds
+        // our configured scale until another HUD event happens.  A new pane
+        // pointer is captured by midna_state_for(); for the same pane, always
+        // reapply from the original clean bounds.
+        (void)cur;
+        (void)prevX; (void)prevY; (void)prevW; (void)prevH;
 
         const float nbw=st->base.getWidth(), nbh=st->base.getHeight();
         const float nw=nbw*sc, nh=nbh*sc;
@@ -3572,7 +3623,27 @@ HookAction before_outfont_draw_font(ModContext*, void* args, void*, void*) {
             sx = w; sy = h;
         }
         return HOOK_CONTINUE;
-    }    if (type==1 || type==5 || type==6) {
+    }
+    if (type==1) {
+        // Native B/font_01 does not use the X/Y height trim.  Normalize in
+        // final screen pixels only; sharing the X/Y compensation made B oval
+        // on Technique/Battle tutorial text.
+        float scaleX=1.0f,scaleY=1.0f;
+        for (J2DPane* pane=mods::arg<J2DTextBox*>(args,1);pane!=nullptr;pane=pane->getParentPane()) {
+            scaleX*=pane->getScaleX(); scaleY*=pane->getScaleY();
+        }
+        if (scaleX>0.0001f && scaleY>0.0001f) {
+            const float width=sx*scaleX;
+            const float height=sy*scaleY;
+            const float side=width>height?width:height;
+            px-=(side-width)*0.5f/scaleX;
+            py-=(side-height)*0.5f/scaleY;
+            sx=side/scaleX;
+            sy=side/scaleY;
+        }
+        return HOOK_CONTINUE;
+    }
+    if (type==5 || type==6) {
         // COutFont::draw applies the textbox ancestry scale, then subtracts
         // 2px (JPN) or 3px from X/Y glyph height. Compensate in final pixels.
         float scaleX=1.0f,scaleY=1.0f;
@@ -5258,6 +5329,8 @@ ModResult mod_initialize(ModError* error) {
             {"swapSquareX",972,&g_swapSquareX},{"swapSquareY",379,&g_swapSquareY},{"swapSquareScale",90,&g_swapSquareScale},
             {"swapItemSquareX",-670,&g_swapItemSquareX},{"swapItemSquareY",-380,&g_swapItemSquareY},{"swapItemSquareScale",50,&g_swapItemSquareScale},
             {"swapItemTriangleX",480,&g_swapItemTriangleX},{"swapItemTriangleY",-30,&g_swapItemTriangleY},{"swapItemTriangleScale",50,&g_swapItemTriangleScale},
+            {"swapShopActionX",450,&g_swapShopActionX},{"swapShopActionY",830,&g_swapShopActionY},{"swapShopActionScale",65,&g_swapShopActionScale},
+            {"swapShopBackX",900,&g_swapShopBackX},{"swapShopBackY",300,&g_swapShopBackY},{"swapShopBackScale",65,&g_swapShopBackScale},
             {"swapWolfSenseX",-920,&g_swapWolfSenseX},{"swapWolfSenseY",-500,&g_swapWolfSenseY},{"swapWolfSenseScale",55,&g_swapWolfSenseScale},
             {"swapWolfDigX",730,&g_swapWolfDigX},{"swapWolfDigY",310,&g_swapWolfDigY},{"swapWolfDigScale",55,&g_swapWolfDigScale},
             {"swapWolfXGlowX",5,&g_swapWolfXGlowX},{"swapWolfXGlowY",-55,&g_swapWolfXGlowY},{"swapWolfXGlowScale",50,&g_swapWolfXGlowScale},
@@ -5274,6 +5347,8 @@ ModResult mod_initialize(ModError* error) {
             {"ybSwordX",83,&g_ybSwordX},{"ybSwordY",-52,&g_ybSwordY},{"ybSwordScale",50,&g_ybSwordScale},
             {"ybBackTextX",820,&g_ybBackTextX},{"ybBackTextY",-350,&g_ybBackTextY},{"ybBackTextScale",55,&g_ybBackTextScale},
             {"ybBackGlowX",10,&g_ybBackGlowX},{"ybBackGlowY",30,&g_ybBackGlowY},{"ybBackGlowScale",100,&g_ybBackGlowScale},
+            {"ybShopActionX",450,&g_ybShopActionX},{"ybShopActionY",830,&g_ybShopActionY},{"ybShopActionScale",65,&g_ybShopActionScale},
+            {"ybShopBackX",900,&g_ybShopBackX},{"ybShopBackY",300,&g_ybShopBackY},{"ybShopBackScale",65,&g_ybShopBackScale},
             {"ybWolfSenseX",-670,&g_ybWolfSenseX},{"ybWolfSenseY",-760,&g_ybWolfSenseY},{"ybWolfSenseScale",55,&g_ybWolfSenseScale},
             {"ybWolfDigX",490,&g_ybWolfDigX},{"ybWolfDigY",575,&g_ybWolfDigY},{"ybWolfDigScale",55,&g_ybWolfDigScale},
             {"ybWolfXGlowX",5,&g_ybWolfXGlowX},{"ybWolfXGlowY",-55,&g_ybWolfXGlowY},{"ybWolfXGlowScale",50,&g_ybWolfXGlowScale},
@@ -5290,6 +5365,8 @@ ModResult mod_initialize(ModError* error) {
             {"xyxbSwordX",83,&g_xyxbSwordX},{"xyxbSwordY",-52,&g_xyxbSwordY},{"xyxbSwordScale",50,&g_xyxbSwordScale},
             {"xyxbBackTextX",820,&g_xyxbBackTextX},{"xyxbBackTextY",-350,&g_xyxbBackTextY},{"xyxbBackTextScale",55,&g_xyxbBackTextScale},
             {"xyxbBackGlowX",10,&g_xyxbBackGlowX},{"xyxbBackGlowY",30,&g_xyxbBackGlowY},{"xyxbBackGlowScale",100,&g_xyxbBackGlowScale},
+            {"xyxbShopActionX",450,&g_xyxbShopActionX},{"xyxbShopActionY",830,&g_xyxbShopActionY},{"xyxbShopActionScale",65,&g_xyxbShopActionScale},
+            {"xyxbShopBackX",900,&g_xyxbShopBackX},{"xyxbShopBackY",300,&g_xyxbShopBackY},{"xyxbShopBackScale",65,&g_xyxbShopBackScale},
             {"xyxbWolfSenseX",-920,&g_xyxbWolfSenseX},{"xyxbWolfSenseY",-500,&g_xyxbWolfSenseY},{"xyxbWolfSenseScale",55,&g_xyxbWolfSenseScale},
             {"xyxbWolfDigX",730,&g_xyxbWolfDigX},{"xyxbWolfDigY",310,&g_xyxbWolfDigY},{"xyxbWolfDigScale",55,&g_xyxbWolfDigScale},
             {"xyxbWolfXGlowX",5,&g_xyxbWolfXGlowX},{"xyxbWolfXGlowY",-55,&g_xyxbWolfXGlowY},{"xyxbWolfXGlowScale",50,&g_xyxbWolfXGlowScale},
