@@ -2519,6 +2519,8 @@ struct MidnaPictureState {
     bool captured = false;
 };
 MidnaPictureState s_midnaPictures[3]{};
+bool s_midnaEventWasRunning=false;
+int s_midnaPostEventCaptureDelay=0;
 
 static bool nearf(float a,float b,float eps=0.25f) {
     return (a>b ? a-b : b-a) <= eps;
@@ -2542,20 +2544,34 @@ static void midna_parent_scale(J2DPane* pane,float& sx,float& sy) {
     if (fabsf(sy)<0.0001f) sy=1.0f;
 }
 
+static int midna_slot_for(J2DPane* pane) {
+    if (pane==nullptr) return -1;
+    if (pane->mInfoTag == MULTI_CHAR('midona_s')) return 0;
+    if (pane->mInfoTag == MULTI_CHAR('midona')) return 1;
+    if (pane->mInfoTag == MULTI_CHAR('j_light1')) return 2;
+    return -1;
+}
+
 static MidnaPictureState* midna_state_for(J2DPane* pane) {
-    for(auto& st:s_midnaPictures) if(st.captured && st.pane==pane) return &st;
-    for(auto& st:s_midnaPictures) if(!st.captured) {
+    const int slot=midna_slot_for(pane);
+    if (slot<0) return nullptr;
+
+    MidnaPictureState& st=s_midnaPictures[slot];
+
+    // Canonical baseline is keyed by the vanilla pane tag, not by the pane
+    // address. Cutscenes may destroy/recreate HUD panes while their temporary
+    // transforms are still active; never learn those transient bounds.
+    if (st.captured) {
         st.pane=pane;
-        st.base=pane->getBounds();
-        midna_parent_scale(pane,st.baseParentScaleX,st.baseParentScaleY);
-        st.captured=true;
         return &st;
     }
-    // HUD may reuse addresses after an area transition. Reuse a slot by tag order.
-    int slot = 2;
-    if (pane->mInfoTag == MULTI_CHAR('midona_s')) slot = 0;
-    else if (pane->mInfoTag == MULTI_CHAR('midona')) slot = 1;
-    auto& st=s_midnaPictures[slot];
+
+    // Do not establish the first canonical baseline during a cutscene or in
+    // the first few HUD frames after it ends. If a canonical baseline already
+    // exists, the block above reuses it immediately.
+    if (dComIfGp_event_runCheck() || s_midnaPostEventCaptureDelay>0)
+        return nullptr;
+
     st.pane=pane;
     st.base=pane->getBounds();
     midna_parent_scale(pane,st.baseParentScaleX,st.baseParentScaleY);
@@ -2569,6 +2585,11 @@ static void adjust_midna_pictures(J2DPane* pane,float dx,float dy,float sc) {
     if(pane==nullptr) return;
     if(is_midna_picture(pane)) {
         MidnaPictureState* st=midna_state_for(pane);
+        if (st==nullptr) {
+            for(J2DPane* c=pane->getFirstChildPane();c!=nullptr;c=c->getNextChildPane())
+                adjust_midna_pictures(c,dx,dy,sc);
+            return;
+        }
         const auto& cur=pane->getBounds();
         const float bw=st->base.getWidth(), bh=st->base.getHeight();
         const float prevW=bw*st->lastScale, prevH=bh*st->lastScale;
@@ -2711,6 +2732,13 @@ void apply_wolf_text_config(dMeter2Draw_c* meter) {
 }
 
 void after_meter_draw(ModContext*, void* args, void*, void*) {
+    const bool eventRunning=dComIfGp_event_runCheck();
+    if (s_midnaEventWasRunning && !eventRunning)
+        s_midnaPostEventCaptureDelay=3;
+    s_midnaEventWasRunning=eventRunning;
+    if (!eventRunning && s_midnaPostEventCaptureDelay>0)
+        --s_midnaPostEventCaptureDelay;
+
     if (s_fishingCheckPane != nullptr) {
         s_fishingCheckPane->translate(s_fishingCheckBaseX, s_fishingCheckBaseY);
         s_fishingCheckPane->scale(s_fishingCheckBaseSX, s_fishingCheckBaseSY);
@@ -5870,6 +5898,8 @@ MOD_EXPORT ModResult mod_shutdown(ModError*) {
     s_midnaPromptOriginalTexture = nullptr;
     s_externalMidnaPromptOwner = false;
     for (auto& st : s_midnaPictures) st = {};
+    s_midnaEventWasRunning=false;
+    s_midnaPostEventCaptureDelay=0;
     g_publicWindow = 0;
     g_layoutWindow = 0;
     g_visualHudEditorEnabled = 0;
