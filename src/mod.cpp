@@ -45,7 +45,9 @@ constexpr bool kDeveloperOptions = false;
 ConfigVarHandle g_controllerStyle=0;
 ConfigVarHandle g_layoutSchemaVersion=0;
 ConfigVarHandle g_visualHudEditorEnabled=0;
+// Legacy boolean kept only for migration from the first experimental X/Y build.
 ConfigVarHandle g_swapXYButtonLayout=0;
+ConfigVarHandle g_buttonLayoutPreset=0;
 bool s_controllerStyleLocked=false;
 bool s_useXbox=false;
 
@@ -55,6 +57,16 @@ ConfigVarHandle g_squareX=0, g_squareY=0, g_squareScale=0;
 ConfigVarHandle g_swapTriX=0, g_swapTriY=0, g_swapTriScale=0;
 ConfigVarHandle g_swapSquareX=0, g_swapSquareY=0, g_swapSquareScale=0;
 ConfigVarHandle g_circleX=0, g_circleY=0, g_circleScale=0;
+
+// Derived presets get their own calibration so editing one never mutates another.
+// YB = Base with GC Y and GC B faces exchanged.
+// XYXB = Swap X/Y with GC X and GC B faces exchanged.
+ConfigVarHandle g_ybTriX=0, g_ybTriY=0, g_ybTriScale=0;
+ConfigVarHandle g_ybSquareX=0, g_ybSquareY=0, g_ybSquareScale=0;
+ConfigVarHandle g_ybCircleX=0, g_ybCircleY=0, g_ybCircleScale=0;
+ConfigVarHandle g_xyxbTriX=0, g_xyxbTriY=0, g_xyxbTriScale=0;
+ConfigVarHandle g_xyxbSquareX=0, g_xyxbSquareY=0, g_xyxbSquareScale=0;
+ConfigVarHandle g_xyxbCircleX=0, g_xyxbCircleY=0, g_xyxbCircleScale=0;
 ConfigVarHandle g_crossX=0, g_crossY=0, g_crossScale=0;
 ConfigVarHandle g_showGuide=0;
 ConfigVarHandle g_dpadShadowsEnabled=0, g_dpadArrowsEnabled=0;
@@ -70,6 +82,10 @@ ConfigVarHandle g_itemSquareX=0, g_itemSquareY=0, g_itemSquareScale=0;
 ConfigVarHandle g_itemTriangleX=0, g_itemTriangleY=0, g_itemTriangleScale=0;
 ConfigVarHandle g_swapItemSquareX=0, g_swapItemSquareY=0, g_swapItemSquareScale=0;
 ConfigVarHandle g_swapItemTriangleX=0, g_swapItemTriangleY=0, g_swapItemTriangleScale=0;
+ConfigVarHandle g_ybItemSquareX=0, g_ybItemSquareY=0, g_ybItemSquareScale=0;
+ConfigVarHandle g_ybItemTriangleX=0, g_ybItemTriangleY=0, g_ybItemTriangleScale=0;
+ConfigVarHandle g_xyxbItemSquareX=0, g_xyxbItemSquareY=0, g_xyxbItemSquareScale=0;
+ConfigVarHandle g_xyxbItemTriangleX=0, g_xyxbItemTriangleY=0, g_xyxbItemTriangleScale=0;
 ConfigVarHandle g_itemCircleX=0, g_itemCircleY=0, g_itemCircleScale=0;
 ConfigVarHandle g_itemR1X=0, g_itemR1Y=0, g_itemR1Scale=0;
 ConfigVarHandle g_swordX=0, g_swordY=0, g_swordScale=0;
@@ -77,7 +93,13 @@ ConfigVarHandle g_itemSquareFlipH=0, g_itemSquareFlipV=0;
 ConfigVarHandle g_itemTriangleFlipH=0, g_itemTriangleFlipV=0;
 ConfigVarHandle g_swapItemSquareFlipH=0, g_swapItemSquareFlipV=0;
 ConfigVarHandle g_swapItemTriangleFlipH=0, g_swapItemTriangleFlipV=0;
+ConfigVarHandle g_ybItemSquareFlipH=0, g_ybItemSquareFlipV=0;
+ConfigVarHandle g_ybItemTriangleFlipH=0, g_ybItemTriangleFlipV=0;
+ConfigVarHandle g_xyxbItemSquareFlipH=0, g_xyxbItemSquareFlipV=0;
+ConfigVarHandle g_xyxbItemTriangleFlipH=0, g_xyxbItemTriangleFlipV=0;
 ConfigVarHandle g_swordFlipH=0, g_swordFlipV=0;
+ConfigVarHandle g_ybSwordX=0, g_ybSwordY=0, g_ybSwordScale=0, g_ybSwordFlipH=0, g_ybSwordFlipV=0;
+ConfigVarHandle g_xyxbSwordX=0, g_xyxbSwordY=0, g_xyxbSwordScale=0, g_xyxbSwordFlipH=0, g_xyxbSwordFlipV=0;
 ConfigVarHandle g_midnaX=0, g_midnaY=0, g_midnaScale=0;
 ConfigVarHandle g_actionTextX=0, g_actionTextY=0, g_actionTextScale=0;
 ConfigVarHandle g_howlActionX=0,g_howlActionY=0,g_howlActionScale=0;
@@ -90,6 +112,10 @@ ConfigVarHandle g_wolfSenseX=0, g_wolfSenseY=0, g_wolfSenseScale=0;
 ConfigVarHandle g_wolfDigX=0, g_wolfDigY=0, g_wolfDigScale=0;
 ConfigVarHandle g_swapWolfSenseX=0, g_swapWolfSenseY=0, g_swapWolfSenseScale=0;
 ConfigVarHandle g_swapWolfDigX=0, g_swapWolfDigY=0, g_swapWolfDigScale=0;
+ConfigVarHandle g_ybWolfSenseX=0, g_ybWolfSenseY=0, g_ybWolfSenseScale=0;
+ConfigVarHandle g_ybWolfDigX=0, g_ybWolfDigY=0, g_ybWolfDigScale=0;
+ConfigVarHandle g_xyxbWolfSenseX=0, g_xyxbWolfSenseY=0, g_xyxbWolfSenseScale=0;
+ConfigVarHandle g_xyxbWolfDigX=0, g_xyxbWolfDigY=0, g_xyxbWolfDigScale=0;
 ConfigVarHandle g_backButtonAnim=0, g_backTextAnim=0;
 ConfigVarHandle g_actionGlowEnabled=0, g_actionGlowX=0, g_actionGlowY=0, g_actionGlowScale=0;
 ConfigVarHandle g_backGlowEnabled=0, g_backGlowX=0, g_backGlowY=0, g_backGlowScale=0;
@@ -99,6 +125,10 @@ ConfigVarHandle g_wolfXGlowEnabled=0, g_wolfXGlowX=0, g_wolfXGlowY=0, g_wolfXGlo
 ConfigVarHandle g_wolfYGlowEnabled=0, g_wolfYGlowX=0, g_wolfYGlowY=0, g_wolfYGlowScale=0;
 ConfigVarHandle g_swapWolfXGlowEnabled=0, g_swapWolfXGlowX=0, g_swapWolfXGlowY=0, g_swapWolfXGlowScale=0;
 ConfigVarHandle g_swapWolfYGlowEnabled=0, g_swapWolfYGlowX=0, g_swapWolfYGlowY=0, g_swapWolfYGlowScale=0;
+ConfigVarHandle g_ybWolfXGlowEnabled=0, g_ybWolfXGlowX=0, g_ybWolfXGlowY=0, g_ybWolfXGlowScale=0;
+ConfigVarHandle g_ybWolfYGlowEnabled=0, g_ybWolfYGlowX=0, g_ybWolfYGlowY=0, g_ybWolfYGlowScale=0;
+ConfigVarHandle g_xyxbWolfXGlowEnabled=0, g_xyxbWolfXGlowX=0, g_xyxbWolfXGlowY=0, g_xyxbWolfXGlowScale=0;
+ConfigVarHandle g_xyxbWolfYGlowEnabled=0, g_xyxbWolfYGlowX=0, g_xyxbWolfYGlowY=0, g_xyxbWolfYGlowScale=0;
 ConfigVarHandle g_wolfGlowPreview=0;
 // Save/file-select button offsets. Stored as tenths of a pixel.
 ConfigVarHandle g_fileCrossX=0, g_fileCrossY=0, g_fileCircleX=0, g_fileCircleY=0;
@@ -134,6 +164,10 @@ ConfigVarHandle g_wheelSquareX=0, g_wheelSquareY=0, g_wheelSquareScale=0;
 ConfigVarHandle g_wheelTriangleX=0, g_wheelTriangleY=0, g_wheelTriangleScale=0;
 ConfigVarHandle g_swapWheelSquareX=0, g_swapWheelSquareY=0, g_swapWheelSquareScale=0;
 ConfigVarHandle g_swapWheelTriangleX=0, g_swapWheelTriangleY=0, g_swapWheelTriangleScale=0;
+ConfigVarHandle g_ybWheelSquareX=0, g_ybWheelSquareY=0, g_ybWheelSquareScale=0;
+ConfigVarHandle g_ybWheelTriangleX=0, g_ybWheelTriangleY=0, g_ybWheelTriangleScale=0;
+ConfigVarHandle g_xyxbWheelSquareX=0, g_xyxbWheelSquareY=0, g_xyxbWheelSquareScale=0;
+ConfigVarHandle g_xyxbWheelTriangleX=0, g_xyxbWheelTriangleY=0, g_xyxbWheelTriangleScale=0;
 ConfigVarHandle g_wheelSelectAnalogX=0, g_wheelSelectAnalogY=0, g_wheelSelectAnalogScale=0;
 ConfigVarHandle g_wheelDirectAnalogX=0, g_wheelDirectAnalogY=0, g_wheelDirectAnalogScale=0;
 ConfigVarHandle g_wheelL2X=0, g_wheelL2Y=0, g_wheelL2Scale=0;
@@ -229,12 +263,37 @@ bool visual_editor_enabled() {
     return kDeveloperOptions && cfg_bool(g_visualHudEditorEnabled,false);
 }
 
+enum class ButtonLayoutPreset : int64_t {
+    Base = 0,
+    SwapXY = 1,
+    SwapYB = 2,
+    SwapXYXB = 3,
+};
+
+ButtonLayoutPreset current_layout_preset() {
+    if (!kDeveloperOptions || g_buttonLayoutPreset == 0) return ButtonLayoutPreset::Base;
+    int64_t raw=cfg_int(g_buttonLayoutPreset,0);
+    if (raw < 0 || raw > 3) raw=0;
+    return static_cast<ButtonLayoutPreset>(raw);
+}
+
 bool swap_xy_layout_enabled() {
-    return kDeveloperOptions && cfg_bool(g_swapXYButtonLayout,false);
+    const ButtonLayoutPreset p=current_layout_preset();
+    return p==ButtonLayoutPreset::SwapXY || p==ButtonLayoutPreset::SwapXYXB;
+}
+
+ConfigVarHandle layout_handle4(ConfigVarHandle base, ConfigVarHandle swapXY,
+                               ConfigVarHandle swapYB, ConfigVarHandle swapXYXB) {
+    switch(current_layout_preset()) {
+    case ButtonLayoutPreset::SwapXY:   return swapXY!=0 ? swapXY : base;
+    case ButtonLayoutPreset::SwapYB:   return swapYB!=0 ? swapYB : base;
+    case ButtonLayoutPreset::SwapXYXB: return swapXYXB!=0 ? swapXYXB : (swapXY!=0 ? swapXY : base);
+    default:                            return base;
+    }
 }
 
 ConfigVarHandle layout_handle(ConfigVarHandle normal, ConfigVarHandle swapped) {
-    return swap_xy_layout_enabled() && swapped != 0 ? swapped : normal;
+    return layout_handle4(normal,swapped,normal,swapped);
 }
 
 ModResult reg_bool(const char* name, bool def, ConfigVarHandle& out, ModError* err) {
@@ -315,6 +374,36 @@ void apply_layout_schema_migrations() {
         schemaVersion = 2;
     }
 
+    if (schemaVersion < 3 && kDeveloperOptions) {
+        // Preserve the first experimental boolean selection when upgrading to the enum.
+        if (g_swapXYButtonLayout != 0 && g_buttonLayoutPreset != 0 &&
+            cfg_bool(g_swapXYButtonLayout,false) && cfg_int(g_buttonLayoutPreset,0)==0)
+            svc_config->set_int(mod_ctx,g_buttonLayoutPreset,1);
+        svc_config->set_int(mod_ctx,g_layoutSchemaVersion,3);
+        schemaVersion=3;
+    }
+
+    if (schemaVersion < 4) {
+        migrate_int_default(g_triX,960,962,migratedCount);
+        migrate_int_default(g_triY,386,387,migratedCount);
+        migrate_int_default(g_squareX,1217,1218,migratedCount);
+        migrate_int_default(g_wolfSenseY,-770,-760,migratedCount);
+        migrate_int_default(g_wolfDigX,500,490,migratedCount);
+        migrate_int_default(g_wolfDigY,570,575,migratedCount);
+        migrate_int_default(g_wolfXGlowX,235,5,migratedCount);
+        migrate_int_default(g_wolfXGlowY,-295,-55,migratedCount);
+        migrate_int_default(g_wolfYGlowX,-300,-70,migratedCount);
+        migrate_int_default(g_wolfYGlowY,260,20,migratedCount);
+        if (kDeveloperOptions) {
+            migrate_int_default(g_swapTriX,1210,1208,migratedCount);
+            migrate_int_default(g_swapSquareX,972,971,migratedCount);
+            migrate_int_default(g_swapSquareY,379,380,migratedCount);
+            migrate_int_default(g_swapItemSquareX,-670,-690,migratedCount);
+        }
+        svc_config->set_int(mod_ctx,g_layoutSchemaVersion,4);
+        schemaVersion=4;
+    }
+
     if (svc_log != nullptr && migratedCount > 0)
         svc_log->info(mod_ctx, "Layout config migrated to latest schema");
 }
@@ -328,6 +417,7 @@ void add_num(UiElementHandle pane,const char* label,ConfigVarHandle h,int64_t mn
 
 void reset_layout(ModContext*, void*) {
     // Matches the registered defaults captured from the accepted user layout.
+    if (g_buttonLayoutPreset != 0) svc_config->set_int(mod_ctx,g_buttonLayoutPreset,0);
     svc_config->set_int(mod_ctx,g_worldR1X,80);
     svc_config->set_int(mod_ctx,g_worldR1Y,180);
     svc_config->set_int(mod_ctx,g_worldR1Scale,100);
@@ -349,10 +439,10 @@ void reset_layout(ModContext*, void*) {
     svc_config->set_int(mod_ctx,g_WorldMoveTextY,20);
     svc_config->set_int(mod_ctx,g_WorldReturnTextX,0);
     svc_config->set_int(mod_ctx,g_WorldReturnTextY,20);
-    svc_config->set_int(mod_ctx,g_triX,960);
-    svc_config->set_int(mod_ctx,g_triY,386);
+    svc_config->set_int(mod_ctx,g_triX,962);
+    svc_config->set_int(mod_ctx,g_triY,387);
     svc_config->set_int(mod_ctx,g_triScale,90);
-    svc_config->set_int(mod_ctx,g_squareX,1217);
+    svc_config->set_int(mod_ctx,g_squareX,1218);
     svc_config->set_int(mod_ctx,g_squareY,119);
     svc_config->set_int(mod_ctx,g_squareScale,90);
     svc_config->set_int(mod_ctx,g_circleX,1505);
@@ -420,10 +510,10 @@ void reset_layout(ModContext*, void*) {
     svc_config->set_int(mod_ctx,g_backTextY,-350);
     svc_config->set_int(mod_ctx,g_backTextScale,55);
     svc_config->set_int(mod_ctx,g_wolfSenseX,-670);
-    svc_config->set_int(mod_ctx,g_wolfSenseY,-770);
+    svc_config->set_int(mod_ctx,g_wolfSenseY,-760);
     svc_config->set_int(mod_ctx,g_wolfSenseScale,55);
-    svc_config->set_int(mod_ctx,g_wolfDigX,500);
-    svc_config->set_int(mod_ctx,g_wolfDigY,570);
+    svc_config->set_int(mod_ctx,g_wolfDigX,490);
+    svc_config->set_int(mod_ctx,g_wolfDigY,575);
     svc_config->set_int(mod_ctx,g_wolfDigScale,55);
     svc_config->set_int(mod_ctx,g_actionGlowX,-30);
     svc_config->set_int(mod_ctx,g_actionGlowY,-25);
@@ -431,11 +521,11 @@ void reset_layout(ModContext*, void*) {
     svc_config->set_int(mod_ctx,g_backGlowX,10);
     svc_config->set_int(mod_ctx,g_backGlowY,30);
     svc_config->set_int(mod_ctx,g_backGlowScale,100);
-    svc_config->set_int(mod_ctx,g_wolfXGlowX,235);
-    svc_config->set_int(mod_ctx,g_wolfXGlowY,-295);
+    svc_config->set_int(mod_ctx,g_wolfXGlowX,5);
+    svc_config->set_int(mod_ctx,g_wolfXGlowY,-55);
     svc_config->set_int(mod_ctx,g_wolfXGlowScale,50);
-    svc_config->set_int(mod_ctx,g_wolfYGlowX,-300);
-    svc_config->set_int(mod_ctx,g_wolfYGlowY,260);
+    svc_config->set_int(mod_ctx,g_wolfYGlowX,-70);
+    svc_config->set_int(mod_ctx,g_wolfYGlowY,20);
     svc_config->set_int(mod_ctx,g_wolfYGlowScale,50);
     svc_config->set_int(mod_ctx,g_fileCrossX,15);
     svc_config->set_int(mod_ctx,g_fileCrossY,0);
@@ -531,9 +621,9 @@ void reset_layout(ModContext*, void*) {
     svc_config->set_bool(mod_ctx,g_swordFlipH,false);
     svc_config->set_bool(mod_ctx,g_swordFlipV,false);
     if (kDeveloperOptions) {
-        svc_config->set_int(mod_ctx,g_swapTriX,1210); svc_config->set_int(mod_ctx,g_swapTriY,126); svc_config->set_int(mod_ctx,g_swapTriScale,90);
-        svc_config->set_int(mod_ctx,g_swapSquareX,972); svc_config->set_int(mod_ctx,g_swapSquareY,379); svc_config->set_int(mod_ctx,g_swapSquareScale,90);
-        svc_config->set_int(mod_ctx,g_swapItemSquareX,-670); svc_config->set_int(mod_ctx,g_swapItemSquareY,-380); svc_config->set_int(mod_ctx,g_swapItemSquareScale,50);
+        svc_config->set_int(mod_ctx,g_swapTriX,1208); svc_config->set_int(mod_ctx,g_swapTriY,126); svc_config->set_int(mod_ctx,g_swapTriScale,90);
+        svc_config->set_int(mod_ctx,g_swapSquareX,971); svc_config->set_int(mod_ctx,g_swapSquareY,380); svc_config->set_int(mod_ctx,g_swapSquareScale,90);
+        svc_config->set_int(mod_ctx,g_swapItemSquareX,-690); svc_config->set_int(mod_ctx,g_swapItemSquareY,-380); svc_config->set_int(mod_ctx,g_swapItemSquareScale,50);
         svc_config->set_int(mod_ctx,g_swapItemTriangleX,480); svc_config->set_int(mod_ctx,g_swapItemTriangleY,-30); svc_config->set_int(mod_ctx,g_swapItemTriangleScale,50);
         svc_config->set_int(mod_ctx,g_swapWolfSenseX,-920); svc_config->set_int(mod_ctx,g_swapWolfSenseY,-500); svc_config->set_int(mod_ctx,g_swapWolfSenseScale,55);
         svc_config->set_int(mod_ctx,g_swapWolfDigX,730); svc_config->set_int(mod_ctx,g_swapWolfDigY,310); svc_config->set_int(mod_ctx,g_swapWolfDigScale,55);
@@ -590,7 +680,12 @@ void export_calibration(ModContext*,void*) {
     json += "  \"format\": \"tp-classic-controller-ui-calibration\",\n";
     json += "  \"version\": 1,\n";
     json += "  \"activePreset\": \"";
-    json += swap_xy_layout_enabled() ? "swapXY" : "base";
+    switch(current_layout_preset()) {
+    case ButtonLayoutPreset::SwapXY: json += "swapXY"; break;
+    case ButtonLayoutPreset::SwapYB: json += "swapYB"; break;
+    case ButtonLayoutPreset::SwapXYXB: json += "swapXYXB"; break;
+    default: json += "base"; break;
+    }
     json += "\",\n";
 
     json += "  \"base\": {\n";
@@ -629,6 +724,42 @@ void export_calibration(ModContext*,void*) {
     json_int(json,"wheelY.x",g_swapWheelTriangleX,first); json_int(json,"wheelY.y",g_swapWheelTriangleY,first); json_int(json,"wheelY.scale",g_swapWheelTriangleScale,first);
     json += "\n  },\n";
 
+    json += "  \"swapYB\": {\n";
+    first=true;
+    json_int(json,"hudB.x",g_ybCircleX,first); json_int(json,"hudB.y",g_ybCircleY,first); json_int(json,"hudB.scale",g_ybCircleScale,first);
+    json_int(json,"hudY.x",g_ybTriX,first); json_int(json,"hudY.y",g_ybTriY,first); json_int(json,"hudY.scale",g_ybTriScale,first);
+    json_int(json,"hudX.x",g_ybSquareX,first); json_int(json,"hudX.y",g_ybSquareY,first); json_int(json,"hudX.scale",g_ybSquareScale,first);
+    json_int(json,"itemX.x",g_ybItemSquareX,first); json_int(json,"itemX.y",g_ybItemSquareY,first); json_int(json,"itemX.scale",g_ybItemSquareScale,first);
+    json_bool(json,"itemX.flipH",g_ybItemSquareFlipH,first); json_bool(json,"itemX.flipV",g_ybItemSquareFlipV,first);
+    json_int(json,"itemY.x",g_ybItemTriangleX,first); json_int(json,"itemY.y",g_ybItemTriangleY,first); json_int(json,"itemY.scale",g_ybItemTriangleScale,first);
+    json_bool(json,"itemY.flipH",g_ybItemTriangleFlipH,first); json_bool(json,"itemY.flipV",g_ybItemTriangleFlipV,first);
+    json_int(json,"sword.x",g_ybSwordX,first); json_int(json,"sword.y",g_ybSwordY,first); json_int(json,"sword.scale",g_ybSwordScale,first);
+    json_int(json,"sensesText.x",g_ybWolfSenseX,first); json_int(json,"sensesText.y",g_ybWolfSenseY,first); json_int(json,"sensesText.scale",g_ybWolfSenseScale,first);
+    json_int(json,"digText.x",g_ybWolfDigX,first); json_int(json,"digText.y",g_ybWolfDigY,first); json_int(json,"digText.scale",g_ybWolfDigScale,first);
+    json_int(json,"sensesGlow.x",g_ybWolfXGlowX,first); json_int(json,"sensesGlow.y",g_ybWolfXGlowY,first); json_int(json,"sensesGlow.scale",g_ybWolfXGlowScale,first);
+    json_int(json,"digGlow.x",g_ybWolfYGlowX,first); json_int(json,"digGlow.y",g_ybWolfYGlowY,first); json_int(json,"digGlow.scale",g_ybWolfYGlowScale,first);
+    json_int(json,"wheelX.x",g_ybWheelSquareX,first); json_int(json,"wheelX.y",g_ybWheelSquareY,first); json_int(json,"wheelX.scale",g_ybWheelSquareScale,first);
+    json_int(json,"wheelY.x",g_ybWheelTriangleX,first); json_int(json,"wheelY.y",g_ybWheelTriangleY,first); json_int(json,"wheelY.scale",g_ybWheelTriangleScale,first);
+    json += "\n  },\n";
+
+    json += "  \"swapXYXB\": {\n";
+    first=true;
+    json_int(json,"hudB.x",g_xyxbCircleX,first); json_int(json,"hudB.y",g_xyxbCircleY,first); json_int(json,"hudB.scale",g_xyxbCircleScale,first);
+    json_int(json,"hudY.x",g_xyxbTriX,first); json_int(json,"hudY.y",g_xyxbTriY,first); json_int(json,"hudY.scale",g_xyxbTriScale,first);
+    json_int(json,"hudX.x",g_xyxbSquareX,first); json_int(json,"hudX.y",g_xyxbSquareY,first); json_int(json,"hudX.scale",g_xyxbSquareScale,first);
+    json_int(json,"itemX.x",g_xyxbItemSquareX,first); json_int(json,"itemX.y",g_xyxbItemSquareY,first); json_int(json,"itemX.scale",g_xyxbItemSquareScale,first);
+    json_bool(json,"itemX.flipH",g_xyxbItemSquareFlipH,first); json_bool(json,"itemX.flipV",g_xyxbItemSquareFlipV,first);
+    json_int(json,"itemY.x",g_xyxbItemTriangleX,first); json_int(json,"itemY.y",g_xyxbItemTriangleY,first); json_int(json,"itemY.scale",g_xyxbItemTriangleScale,first);
+    json_bool(json,"itemY.flipH",g_xyxbItemTriangleFlipH,first); json_bool(json,"itemY.flipV",g_xyxbItemTriangleFlipV,first);
+    json_int(json,"sword.x",g_xyxbSwordX,first); json_int(json,"sword.y",g_xyxbSwordY,first); json_int(json,"sword.scale",g_xyxbSwordScale,first);
+    json_int(json,"sensesText.x",g_xyxbWolfSenseX,first); json_int(json,"sensesText.y",g_xyxbWolfSenseY,first); json_int(json,"sensesText.scale",g_xyxbWolfSenseScale,first);
+    json_int(json,"digText.x",g_xyxbWolfDigX,first); json_int(json,"digText.y",g_xyxbWolfDigY,first); json_int(json,"digText.scale",g_xyxbWolfDigScale,first);
+    json_int(json,"sensesGlow.x",g_xyxbWolfXGlowX,first); json_int(json,"sensesGlow.y",g_xyxbWolfXGlowY,first); json_int(json,"sensesGlow.scale",g_xyxbWolfXGlowScale,first);
+    json_int(json,"digGlow.x",g_xyxbWolfYGlowX,first); json_int(json,"digGlow.y",g_xyxbWolfYGlowY,first); json_int(json,"digGlow.scale",g_xyxbWolfYGlowScale,first);
+    json_int(json,"wheelX.x",g_xyxbWheelSquareX,first); json_int(json,"wheelX.y",g_xyxbWheelSquareY,first); json_int(json,"wheelX.scale",g_xyxbWheelSquareScale,first);
+    json_int(json,"wheelY.x",g_xyxbWheelTriangleX,first); json_int(json,"wheelY.y",g_xyxbWheelTriangleY,first); json_int(json,"wheelY.scale",g_xyxbWheelTriangleScale,first);
+    json += "\n  },\n";
+
     json += "  \"shared\": {\n";
     first=true;
     json_int(json,"hudA.x",g_crossX,first); json_int(json,"hudA.y",g_crossY,first); json_int(json,"hudA.scale",g_crossScale,first);
@@ -665,8 +796,110 @@ void export_calibration(ModContext*,void*) {
 
 bool base_xy_preset_selected(ModContext*,void*);
 bool swap_xy_preset_selected(ModContext*,void*);
+bool swap_yb_preset_selected(ModContext*,void*);
+bool swap_xyxb_preset_selected(ModContext*,void*);
 void select_base_xy_preset(ModContext*,void*);
 void select_swap_xy_preset(ModContext*,void*);
+void select_swap_yb_preset(ModContext*,void*);
+void select_swap_xyxb_preset(ModContext*,void*);
+
+
+ModResult build_derived_b_swap_panel(UiElementHandle pane,bool xyBase) {
+    const bool xyxb=xyBase;
+    svc_ui->pane_add_text(mod_ctx,pane,
+        xyxb ? "Swap X/Y base with the original GC X and GC B faces exchanged. GC B keeps the sword function."
+             : "Base layout with the original GC Y and GC B faces exchanged. GC B keeps the sword function.",
+        nullptr);
+    UiControlDesc activate=UI_CONTROL_DESC_INIT;
+    activate.kind=UI_CONTROL_BUTTON;
+    activate.label=xyxb ? "Use Swap X/Y + X/B Preset" : "Use Swap Y/B Preset";
+    activate.on_pressed=xyxb ? select_swap_xyxb_preset : select_swap_yb_preset;
+    activate.is_selected=xyxb ? swap_xyxb_preset_selected : swap_yb_preset_selected;
+    svc_ui->pane_add_control(mod_ctx,pane,&activate,nullptr);
+
+    ConfigVarHandle bx=xyxb?g_xyxbCircleX:g_ybCircleX, by=xyxb?g_xyxbCircleY:g_ybCircleY, bs=xyxb?g_xyxbCircleScale:g_ybCircleScale;
+    ConfigVarHandle xx=xyxb?g_xyxbSquareX:g_ybSquareX, xy=xyxb?g_xyxbSquareY:g_ybSquareY, xs=xyxb?g_xyxbSquareScale:g_ybSquareScale;
+    ConfigVarHandle yx=xyxb?g_xyxbTriX:g_ybTriX, yy=xyxb?g_xyxbTriY:g_ybTriY, ys=xyxb?g_xyxbTriScale:g_ybTriScale;
+    ConfigVarHandle ixx=xyxb?g_xyxbItemSquareX:g_ybItemSquareX, ixy=xyxb?g_xyxbItemSquareY:g_ybItemSquareY, ixs=xyxb?g_xyxbItemSquareScale:g_ybItemSquareScale;
+    ConfigVarHandle iyx=xyxb?g_xyxbItemTriangleX:g_ybItemTriangleX, iyy=xyxb?g_xyxbItemTriangleY:g_ybItemTriangleY, iys=xyxb?g_xyxbItemTriangleScale:g_ybItemTriangleScale;
+    ConfigVarHandle ixh=xyxb?g_xyxbItemSquareFlipH:g_ybItemSquareFlipH, ixv=xyxb?g_xyxbItemSquareFlipV:g_ybItemSquareFlipV;
+    ConfigVarHandle iyh=xyxb?g_xyxbItemTriangleFlipH:g_ybItemTriangleFlipH, iyv=xyxb?g_xyxbItemTriangleFlipV:g_ybItemTriangleFlipV;
+    ConfigVarHandle swx=xyxb?g_xyxbSwordX:g_ybSwordX, swy=xyxb?g_xyxbSwordY:g_ybSwordY, sws=xyxb?g_xyxbSwordScale:g_ybSwordScale;
+    ConfigVarHandle swh=xyxb?g_xyxbSwordFlipH:g_ybSwordFlipH, swv=xyxb?g_xyxbSwordFlipV:g_ybSwordFlipV;
+    ConfigVarHandle stx=xyxb?g_xyxbWolfSenseX:g_ybWolfSenseX, sty=xyxb?g_xyxbWolfSenseY:g_ybWolfSenseY, sts=xyxb?g_xyxbWolfSenseScale:g_ybWolfSenseScale;
+    ConfigVarHandle dtx=xyxb?g_xyxbWolfDigX:g_ybWolfDigX, dty=xyxb?g_xyxbWolfDigY:g_ybWolfDigY, dts=xyxb?g_xyxbWolfDigScale:g_ybWolfDigScale;
+    ConfigVarHandle sgx=xyxb?g_xyxbWolfXGlowX:g_ybWolfXGlowX, sgy=xyxb?g_xyxbWolfXGlowY:g_ybWolfXGlowY, sgs=xyxb?g_xyxbWolfXGlowScale:g_ybWolfXGlowScale, sge=xyxb?g_xyxbWolfXGlowEnabled:g_ybWolfXGlowEnabled;
+    ConfigVarHandle dgx=xyxb?g_xyxbWolfYGlowX:g_ybWolfYGlowX, dgy=xyxb?g_xyxbWolfYGlowY:g_ybWolfYGlowY, dgs=xyxb?g_xyxbWolfYGlowScale:g_ybWolfYGlowScale, dge=xyxb?g_xyxbWolfYGlowEnabled:g_ybWolfYGlowEnabled;
+    ConfigVarHandle wx=xyxb?g_xyxbWheelSquareX:g_ybWheelSquareX, wy=xyxb?g_xyxbWheelSquareY:g_ybWheelSquareY, ws=xyxb?g_xyxbWheelSquareScale:g_ybWheelSquareScale;
+    ConfigVarHandle wyx=xyxb?g_xyxbWheelTriangleX:g_ybWheelTriangleX, wyy=xyxb?g_xyxbWheelTriangleY:g_ybWheelTriangleY, wys=xyxb?g_xyxbWheelTriangleScale:g_ybWheelTriangleScale;
+
+    svc_ui->pane_add_section(mod_ctx,pane,"HUD - GC B Function (Sword / Back)");
+    add_num(pane,"GC B Slot - X",bx,0,2500,10," /10 px","Position of the GC B function slot.");
+    add_num(pane,"GC B Slot - Y",by,-1000,2000,10," /10 px","Position of the GC B function slot.");
+    add_num(pane,"GC B Slot - Scale",bs,50,200,1,"%","Scale of the face assigned to GC B.");
+    svc_ui->pane_add_section(mod_ctx,pane,"HUD - GC X Function");
+    add_num(pane,"GC X Slot - X",xx,0,2500,10," /10 px","Position of the GC X function slot.");
+    add_num(pane,"GC X Slot - Y",xy,-1000,2000,10," /10 px","Position of the GC X function slot.");
+    add_num(pane,"GC X Slot - Scale",xs,50,200,1,"%","Scale of the face assigned to GC X.");
+    svc_ui->pane_add_section(mod_ctx,pane,"HUD - GC Y Function");
+    add_num(pane,"GC Y Slot - X",yx,0,2500,10," /10 px","Position of the GC Y function slot.");
+    add_num(pane,"GC Y Slot - Y",yy,-1000,2000,10," /10 px","Position of the GC Y function slot.");
+    add_num(pane,"GC Y Slot - Scale",ys,50,200,1,"%","Scale of the face assigned to GC Y.");
+
+    svc_ui->pane_add_section(mod_ctx,pane,"Sword on GC B");
+    add_num(pane,"Sword - X",swx,-300,300,1," px","Sword offset for this preset.");
+    add_num(pane,"Sword - Y",swy,-300,300,1," px","Sword offset for this preset.");
+    add_num(pane,"Sword - Scale",sws,30,300,1,"%","Sword scale for this preset.");
+    add_toggle(pane,"Sword - Flip H",swh,"Preset-local sword horizontal flip.");
+    add_toggle(pane,"Sword - Flip V",swv,"Preset-local sword vertical flip.");
+
+    svc_ui->pane_add_section(mod_ctx,pane,"GC X Item");
+    add_num(pane,"GC X Item - X",ixx,-3000,3000,10,"/10 px","Item offset for the original GC X function.");
+    add_num(pane,"GC X Item - Y",ixy,-3000,3000,10,"/10 px","Item offset for the original GC X function.");
+    add_num(pane,"GC X Item - Scale",ixs,30,200,1,"%","Item scale.");
+    add_toggle(pane,"GC X Item - Flip H",ixh,"Horizontal flip.");
+    add_toggle(pane,"GC X Item - Flip V",ixv,"Vertical flip.");
+    svc_ui->pane_add_section(mod_ctx,pane,"GC Y Item");
+    add_num(pane,"GC Y Item - X",iyx,-3000,3000,10,"/10 px","Item offset for the original GC Y function.");
+    add_num(pane,"GC Y Item - Y",iyy,-3000,3000,10,"/10 px","Item offset for the original GC Y function.");
+    add_num(pane,"GC Y Item - Scale",iys,30,200,1,"%","Item scale.");
+    add_toggle(pane,"GC Y Item - Flip H",iyh,"Horizontal flip.");
+    add_toggle(pane,"GC Y Item - Flip V",iyv,"Vertical flip.");
+
+    svc_ui->pane_add_section(mod_ctx,pane,"Wolf Text");
+    add_num(pane,"Senses Text - X",stx,-3000,3000,10,"/10 px","Preset-local Senses text.");
+    add_num(pane,"Senses Text - Y",sty,-3000,3000,10,"/10 px","Preset-local Senses text.");
+    add_num(pane,"Senses Text - Scale",sts,50,200,1,"%","Preset-local Senses text scale.");
+    add_num(pane,"Dig Text - X",dtx,-3000,3000,10,"/10 px","Preset-local Dig text.");
+    add_num(pane,"Dig Text - Y",dty,-3000,3000,10,"/10 px","Preset-local Dig text.");
+    add_num(pane,"Dig Text - Scale",dts,50,200,1,"%","Preset-local Dig text scale.");
+
+    svc_ui->pane_add_section(mod_ctx,pane,"Wolf Glows");
+    add_num(pane,"Senses Glow - X",sgx,-3000,3000,10,"/10 px","Preset-local Senses glow.");
+    add_num(pane,"Senses Glow - Y",sgy,-3000,3000,10,"/10 px","Preset-local Senses glow.");
+    add_num(pane,"Senses Glow - Scale",sgs,25,300,1,"%","Preset-local Senses glow scale.");
+    add_toggle(pane,"Senses Glow Enabled",sge,"Enable Senses glow.");
+    add_num(pane,"Dig Glow - X",dgx,-3000,3000,10,"/10 px","Preset-local Dig glow.");
+    add_num(pane,"Dig Glow - Y",dgy,-3000,3000,10,"/10 px","Preset-local Dig glow.");
+    add_num(pane,"Dig Glow - Scale",dgs,25,300,1,"%","Preset-local Dig glow scale.");
+    add_toggle(pane,"Dig Glow Enabled",dge,"Enable Dig glow.");
+    add_toggle(pane,"Wolf Glow Preview",g_wolfGlowPreview,"Force contextual glows visible while calibrating.");
+
+    svc_ui->pane_add_section(mod_ctx,pane,"Item Wheel");
+    add_num(pane,"GC X Assignment - X",wx,-3000,3000,10,"/10 px","Preset-local GC X assignment prompt.");
+    add_num(pane,"GC X Assignment - Y",wy,-3000,3000,10,"/10 px","Preset-local GC X assignment prompt.");
+    add_num(pane,"GC X Assignment - Scale",ws,30,250,1,"%","Preset-local GC X assignment scale.");
+    add_num(pane,"GC Y Assignment - X",wyx,-3000,3000,10,"/10 px","Preset-local GC Y assignment prompt.");
+    add_num(pane,"GC Y Assignment - Y",wyy,-3000,3000,10,"/10 px","Preset-local GC Y assignment prompt.");
+    add_num(pane,"GC Y Assignment - Scale",wys,30,250,1,"%","Preset-local GC Y assignment scale.");
+    return MOD_OK;
+}
+ModResult build_swap_yb_preset_panel(ModContext*,UiWindowHandle,UiElementHandle pane,UiElementHandle,void*,ModError*) {
+    return build_derived_b_swap_panel(pane,false);
+}
+ModResult build_swap_xyxb_preset_panel(ModContext*,UiWindowHandle,UiElementHandle pane,UiElementHandle,void*,ModError*) {
+    return build_derived_b_swap_panel(pane,true);
+}
 
 ModResult build_base_xy_preset_panel(ModContext*,UiWindowHandle,UiElementHandle pane,UiElementHandle,void*,ModError*) {
     svc_ui->pane_add_text(mod_ctx,pane,"Base X/Y layout. Activate this preset before calibrating these controls.",nullptr);
@@ -714,7 +947,7 @@ ModResult build_base_xy_preset_panel(ModContext*,UiWindowHandle,UiElementHandle 
     add_num(pane,"Senses Glow - Scale",g_wolfXGlowScale,25,300,1,"%","Base-preset Senses glow scale.");
     add_toggle(pane,"Senses Glow Enabled",g_wolfXGlowEnabled,"Enable the base-preset Senses glow.");
     svc_ui->pane_add_section(mod_ctx,pane,"Wolf - Dig Glow");
-    add_num(pane,"Dig Glow - X",g_wolfYGlowX,-3000,3000,10,"/10 px","Base-preset Dig glow offset.");
+    add_num(pane,"Dig Glow - X",g_wolfYGlowX,-700,3000,10,"/10 px","Base-preset Dig glow offset.");
     add_num(pane,"Dig Glow - Y",g_wolfYGlowY,-3000,3000,10,"/10 px","Base-preset Dig glow offset.");
     add_num(pane,"Dig Glow - Scale",g_wolfYGlowScale,25,300,1,"%","Base-preset Dig glow scale.");
     add_toggle(pane,"Dig Glow Enabled",g_wolfYGlowEnabled,"Enable the base-preset Dig glow.");
@@ -1048,11 +1281,9 @@ ModResult build_settings_10_panel(ModContext*,UiWindowHandle,UiElementHandle pan
 
 ModResult build_settings_11_panel(ModContext*,UiWindowHandle,UiElementHandle pane,UiElementHandle,void*,ModError*) {
     svc_ui->pane_add_text(mod_ctx,pane,"Calibration and restoring the saved default preset.",nullptr);
-    svc_ui->pane_add_section(mod_ctx,pane,"Button Layout Test");
-    add_toggle(pane,"Swap X/Y Button Layout",g_swapXYButtonLayout,
-        "Developer test option. Swaps the modern faces assigned to the original GameCube X/Y slots while preserving each slot's function, item assignment and calibration values.");
+    svc_ui->pane_add_section(mod_ctx,pane,"Button Layout Presets");
     svc_ui->pane_add_text(mod_ctx,pane,
-        "Use the existing HUD, Item Wheel, Wolf and text controls to calibrate the swapped layout. This option will move to the public menu after the alternate layout is aligned.",
+        "Preset selection now lives in dedicated tabs. Functions remain attached to their original GameCube slots; only the modern face and preset-local calibration change.",
         nullptr);
     svc_ui->pane_add_section(mod_ctx,pane,"Calibration Export");
     svc_ui->pane_add_text(mod_ctx,pane,
@@ -1098,18 +1329,14 @@ void select_xbox(ModContext*,void*) {
     if (!s_controllerStyleLocked) svc_config->set_int(mod_ctx,g_controllerStyle,1);
 }
 
-bool base_xy_preset_selected(ModContext*,void*) {
-    return !swap_xy_layout_enabled();
-}
-bool swap_xy_preset_selected(ModContext*,void*) {
-    return swap_xy_layout_enabled();
-}
-void select_base_xy_preset(ModContext*,void*) {
-    if (g_swapXYButtonLayout != 0) svc_config->set_bool(mod_ctx,g_swapXYButtonLayout,false);
-}
-void select_swap_xy_preset(ModContext*,void*) {
-    if (g_swapXYButtonLayout != 0) svc_config->set_bool(mod_ctx,g_swapXYButtonLayout,true);
-}
+bool base_xy_preset_selected(ModContext*,void*) { return current_layout_preset()==ButtonLayoutPreset::Base; }
+bool swap_xy_preset_selected(ModContext*,void*) { return current_layout_preset()==ButtonLayoutPreset::SwapXY; }
+bool swap_yb_preset_selected(ModContext*,void*) { return current_layout_preset()==ButtonLayoutPreset::SwapYB; }
+bool swap_xyxb_preset_selected(ModContext*,void*) { return current_layout_preset()==ButtonLayoutPreset::SwapXYXB; }
+void select_base_xy_preset(ModContext*,void*) { if(g_buttonLayoutPreset!=0) svc_config->set_int(mod_ctx,g_buttonLayoutPreset,0); }
+void select_swap_xy_preset(ModContext*,void*) { if(g_buttonLayoutPreset!=0) svc_config->set_int(mod_ctx,g_buttonLayoutPreset,1); }
+void select_swap_yb_preset(ModContext*,void*) { if(g_buttonLayoutPreset!=0) svc_config->set_int(mod_ctx,g_buttonLayoutPreset,2); }
+void select_swap_xyxb_preset(ModContext*,void*) { if(g_buttonLayoutPreset!=0) svc_config->set_int(mod_ctx,g_buttonLayoutPreset,3); }
 
 bool public_back_animation_selected(ModContext*,void*) {
     return cfg_bool(g_backButtonAnim,false) && cfg_bool(g_backTextAnim,false);
@@ -1226,28 +1453,29 @@ void on_layout_window_closed(ModContext*,UiWindowHandle,void*) {
 }
 void open_layout_window(ModContext*,void*) {
     if(g_layoutWindow!=0) return;
-    static UiTabDesc tabs[15];
-    const char* titles[15] = {
-        "BASE PRESET", "SWAP X/Y PRESET",
+    static UiTabDesc tabs[17];
+    const char* titles[17] = {
+        "BASE PRESET", "SWAP X/Y PRESET", "SWAP Y/B PRESET", "SWAP X/Y + X/B",
         "Shared HUD", "Shared Items", "HUD Text", "Dialogue", "Shared Wolf",
         "Shops", "Fishing", "Shared Item Wheel", "Menus", "World Map",
         "Dungeon Map", "Save", "Tools"
     };
-    decltype(tabs[0].build) builders[15] = {
+    decltype(tabs[0].build) builders[17] = {
         build_base_xy_preset_panel, build_swap_xy_preset_panel,
+        build_swap_yb_preset_panel, build_swap_xyxb_preset_panel,
         build_settings_0_panel, build_settings_1_panel, build_settings_2_panel,
         build_dialogue_panel, build_settings_3_panel, build_settings_4_panel,
         build_settings_5_panel, build_settings_6_panel, build_settings_7_panel,
         build_settings_8_panel, build_settings_9_panel, build_settings_10_panel,
         build_settings_11_panel
     };
-    for (int i=0;i<15;i++) {
+    for (int i=0;i<17;i++) {
         tabs[i]=UI_TAB_DESC_INIT;
         tabs[i].title=titles[i];
         tabs[i].build=builders[i];
     }
     UiWindowDesc d=UI_WINDOW_DESC_INIT;
-    d.tabs=tabs; d.tab_count=15; d.on_closed=on_layout_window_closed;
+    d.tabs=tabs; d.tab_count=17; d.on_closed=on_layout_window_closed;
     svc_ui->window_push(mod_ctx,&d,&g_layoutWindow);
 }
 
@@ -1402,14 +1630,35 @@ const ResTIMG* resource_timg(const ResourceBuffer& requested) {
     return reinterpret_cast<const ResTIMG*>(buffer.data);
 }
 
-// X/Y are treated as GameCube slots. The experimental layout option swaps only
-// the modern face assigned to each slot; game functions, items and per-slot
-// X/Y/Scale config handles remain unchanged.
+// Faces are resolved by original GameCube function slot. The game input/function
+// stays attached to GC B/X/Y; presets only choose which modern physical face is
+// drawn for that function. This keeps sword/item/dialogue behavior untouched.
+const ResTIMG* gc_b_face_texture() {
+    switch(current_layout_preset()) {
+    case ButtonLayoutPreset::SwapYB:
+    case ButtonLayoutPreset::SwapXYXB:
+        return resource_timg(s_square);
+    default:
+        return resource_timg(s_circle);
+    }
+}
 const ResTIMG* gc_x_face_texture() {
-    return resource_timg(swap_xy_layout_enabled() ? s_square : s_triangle);
+    switch(current_layout_preset()) {
+    case ButtonLayoutPreset::SwapXY:   return resource_timg(s_square);
+    case ButtonLayoutPreset::SwapXYXB: return gc_b_face_texture();
+    default:                            return resource_timg(s_triangle);
+    }
 }
 const ResTIMG* gc_y_face_texture() {
-    return resource_timg(swap_xy_layout_enabled() ? s_triangle : s_square);
+    switch(current_layout_preset()) {
+    case ButtonLayoutPreset::SwapXY:
+    case ButtonLayoutPreset::SwapXYXB:
+        return resource_timg(s_triangle);
+    case ButtonLayoutPreset::SwapYB:
+        return gc_b_face_texture();
+    default:
+        return resource_timg(s_square);
+    }
 }
 
 // Twilit Essentials does not currently expose a public "is mod enabled" API/service.
@@ -1785,8 +2034,8 @@ HookAction before_meter_draw(ModContext*, void* args, void*, void*) {
         // rendered by drawPikari(mpBTextXY[i], ...). This is separate from
         // x_light/y_light and from dMeterButton_c's emphasis Pikari.
         const bool wolfPreview = cfg_bool(g_wolfGlowPreview,false);
-        const ConfigVarHandle wolfXEnabled = layout_handle(g_wolfXGlowEnabled,g_swapWolfXGlowEnabled);
-        const ConfigVarHandle wolfYEnabled = layout_handle(g_wolfYGlowEnabled,g_swapWolfYGlowEnabled);
+        const ConfigVarHandle wolfXEnabled = layout_handle4(g_wolfXGlowEnabled,g_swapWolfXGlowEnabled,g_ybWolfXGlowEnabled,g_xyxbWolfXGlowEnabled);
+        const ConfigVarHandle wolfYEnabled = layout_handle4(g_wolfYGlowEnabled,g_swapWolfYGlowEnabled,g_ybWolfYGlowEnabled,g_xyxbWolfYGlowEnabled);
         if (!cfg_bool(wolfXEnabled,true)) {
             s_activeMeter->field_0x620[0] = 0.0f;
         } else if (wolfPreview) {
@@ -1824,14 +2073,14 @@ HookAction before_pane_trans(ModContext*, void* args, void*, void*) {
     // drawButtonB() refreshes the vanilla transform immediately before paneTrans(),
     // so these offsets remain relative to the current vanilla sword position.
     if (mgr == s_activeMeter->mpItemB) {
-        mods::arg_ref<f32>(args, 1) += (float)cfg_int(g_swordX,0);
-        mods::arg_ref<f32>(args, 2) += (float)cfg_int(g_swordY,0);
+        mods::arg_ref<f32>(args, 1) += (float)cfg_int(layout_handle4(g_swordX,g_swordX,g_ybSwordX,g_xyxbSwordX),0);
+        mods::arg_ref<f32>(args, 2) += (float)cfg_int(layout_handle4(g_swordY,g_swordY,g_ybSwordY,g_xyxbSwordY),0);
 
         J2DPane* pane = mgr->getPanePtr();
         if (pane != nullptr) {
-            const float factor=(float)cfg_int(g_swordScale,100)/100.0f;
-            const bool flipH=cfg_bool(g_swordFlipH,false);
-            const bool flipV=cfg_bool(g_swordFlipV,false);
+            const float factor=(float)cfg_int(layout_handle4(g_swordScale,g_swordScale,g_ybSwordScale,g_xyxbSwordScale),100)/100.0f;
+            const bool flipH=cfg_bool(layout_handle4(g_swordFlipH,g_swordFlipH,g_ybSwordFlipH,g_xyxbSwordFlipH),false);
+            const bool flipV=cfg_bool(layout_handle4(g_swordFlipV,g_swordFlipV,g_ybSwordFlipV,g_xyxbSwordFlipV),false);
             const float flipX=flipH ? -1.0f : 1.0f;
             const float flipY=flipV ? -1.0f : 1.0f;
 
@@ -1935,9 +2184,9 @@ HookAction before_pane_trans(ModContext*, void* args, void*, void*) {
             animX=vanillaX+2.2f;
             animY=vanillaY+1.3f;
         }
-        mods::arg_ref<f32>(args, 1) = cfg_pos(g_circleX,151.5f) - 81.5f + animX;
-        mods::arg_ref<f32>(args, 2) = cfg_pos(g_circleY,39.4f) - 76.0f + animY;
-        const float sc=cfg_scale(g_circleScale,1.45f);
+        mods::arg_ref<f32>(args, 1) = cfg_pos(layout_handle4(g_circleX,g_circleX,g_ybCircleX,g_xyxbCircleX),151.5f) - 81.5f + animX;
+        mods::arg_ref<f32>(args, 2) = cfg_pos(layout_handle4(g_circleY,g_circleY,g_ybCircleY,g_xyxbCircleY),39.4f) - 76.0f + animY;
+        const float sc=cfg_scale(layout_handle4(g_circleScale,g_circleScale,g_ybCircleScale,g_xyxbCircleScale),1.45f);
         if (mgr->getPanePtr()!=nullptr) mgr->getPanePtr()->scale(sc,sc);
     } else if (mgr == s_activeMeter->mpButtonXY[2]) {
         // Z/R1 is also repositioned by vanilla each frame. Use the editor values
@@ -2143,14 +2392,14 @@ void apply_wolf_text_config(dMeter2Draw_c* meter) {
         if (text == nullptr || text->getPanePtr() == nullptr) continue;
 
         ConfigVarHandle xh = (i_no == 0)
-            ? layout_handle(g_wolfSenseX,g_swapWolfSenseX)
-            : layout_handle(g_wolfDigX,g_swapWolfDigX);
+            ? layout_handle4(g_wolfSenseX,g_swapWolfSenseX,g_ybWolfSenseX,g_xyxbWolfSenseX)
+            : layout_handle4(g_wolfDigX,g_swapWolfDigX,g_ybWolfDigX,g_xyxbWolfDigX);
         ConfigVarHandle yh = (i_no == 0)
-            ? layout_handle(g_wolfSenseY,g_swapWolfSenseY)
-            : layout_handle(g_wolfDigY,g_swapWolfDigY);
+            ? layout_handle4(g_wolfSenseY,g_swapWolfSenseY,g_ybWolfSenseY,g_xyxbWolfSenseY)
+            : layout_handle4(g_wolfDigY,g_swapWolfDigY,g_ybWolfDigY,g_xyxbWolfDigY);
         ConfigVarHandle sh = (i_no == 0)
-            ? layout_handle(g_wolfSenseScale,g_swapWolfSenseScale)
-            : layout_handle(g_wolfDigScale,g_swapWolfDigScale);
+            ? layout_handle4(g_wolfSenseScale,g_swapWolfSenseScale,g_ybWolfSenseScale,g_xyxbWolfSenseScale)
+            : layout_handle4(g_wolfDigScale,g_swapWolfDigScale,g_ybWolfDigScale,g_xyxbWolfDigScale);
         const WolfTextBase& base = s_wolfTextBase[i_no];
         const float factor = cfg_scale(sh, 1.0f);
 
@@ -2262,7 +2511,7 @@ void after_meter_draw(ModContext*, void* args, void*, void*) {
     // Mapeamento PlayStation:
     // A -> Cross, B -> Circle, X -> Triangle, Y -> Square.
     apply_full_button(a, resource_timg(s_cross));
-    apply_full_button(b, resource_timg(s_circle));
+    apply_full_button(b, gc_b_face_texture());
     apply_full_button(x, gc_x_face_texture());
     apply_full_button(y, gc_y_face_texture());
 
@@ -2419,17 +2668,17 @@ void after_meter_draw(ModContext*, void* args, void*, void*) {
     };
 
     apply_item_adjust(0,meter->mpItemXY[0],
-                      layout_handle(g_itemSquareX,g_swapItemSquareX),
-                      layout_handle(g_itemSquareY,g_swapItemSquareY),
-                      layout_handle(g_itemSquareScale,g_swapItemSquareScale),
-                      layout_handle(g_itemSquareFlipH,g_swapItemSquareFlipH),
-                      layout_handle(g_itemSquareFlipV,g_swapItemSquareFlipV));
+                      layout_handle4(g_itemSquareX,g_swapItemSquareX,g_ybItemSquareX,g_xyxbItemSquareX),
+                      layout_handle4(g_itemSquareY,g_swapItemSquareY,g_ybItemSquareY,g_xyxbItemSquareY),
+                      layout_handle4(g_itemSquareScale,g_swapItemSquareScale,g_ybItemSquareScale,g_xyxbItemSquareScale),
+                      layout_handle4(g_itemSquareFlipH,g_swapItemSquareFlipH,g_ybItemSquareFlipH,g_xyxbItemSquareFlipH),
+                      layout_handle4(g_itemSquareFlipV,g_swapItemSquareFlipV,g_ybItemSquareFlipV,g_xyxbItemSquareFlipV));
     apply_item_adjust(1,meter->mpItemXY[1],
-                      layout_handle(g_itemTriangleX,g_swapItemTriangleX),
-                      layout_handle(g_itemTriangleY,g_swapItemTriangleY),
-                      layout_handle(g_itemTriangleScale,g_swapItemTriangleScale),
-                      layout_handle(g_itemTriangleFlipH,g_swapItemTriangleFlipH),
-                      layout_handle(g_itemTriangleFlipV,g_swapItemTriangleFlipV));
+                      layout_handle4(g_itemTriangleX,g_swapItemTriangleX,g_ybItemTriangleX,g_xyxbItemTriangleX),
+                      layout_handle4(g_itemTriangleY,g_swapItemTriangleY,g_ybItemTriangleY,g_xyxbItemTriangleY),
+                      layout_handle4(g_itemTriangleScale,g_swapItemTriangleScale,g_ybItemTriangleScale,g_xyxbItemTriangleScale),
+                      layout_handle4(g_itemTriangleFlipH,g_swapItemTriangleFlipH,g_ybItemTriangleFlipH,g_xyxbItemTriangleFlipH),
+                      layout_handle4(g_itemTriangleFlipV,g_swapItemTriangleFlipV,g_ybItemTriangleFlipV,g_xyxbItemTriangleFlipV));
     // v0.9.13 sword test: target the dynamically appended visible J2DPicture
     // instead of its mpItemB container.
 // Midna v0.9.8: leave the vanilla root alone and transform only its pictures.
@@ -2452,19 +2701,19 @@ void after_meter_draw(ModContext*, void* args, void*, void*) {
     // Isso deixa o diametro aparente dos quatro botoes consistente.
     { float sc=cfg_scale(g_crossScale,1.45f); meter->mpButtonA->scale(sc,sc); }
     { float sc=cfg_scale(g_circleScale,1.45f); meter->mpButtonB->scale(sc,sc); }
-    { float sc=cfg_scale(layout_handle(g_squareScale,g_swapSquareScale),1.45f); meter->mpButtonXY[0]->scale(sc,sc); }
-    { float sc=cfg_scale(layout_handle(g_triScale,g_swapTriScale),1.45f); meter->mpButtonXY[1]->scale(sc,sc); }
+    { float sc=cfg_scale(layout_handle4(g_squareScale,g_swapSquareScale,g_ybSquareScale,g_xyxbSquareScale),1.45f); meter->mpButtonXY[0]->scale(sc,sc); }
+    { float sc=cfg_scale(layout_handle4(g_triScale,g_swapTriScale,g_ybTriScale,g_xyxbTriScale),1.45f); meter->mpButtonXY[1]->scale(sc,sc); }
 
     // Losango base da v0.6.17. Each GC slot selects its normal or swapped profile.
     set_bounds(y,
-               cfg_pos(layout_handle(g_triX,g_swapTriX),124.0f),
-               cfg_pos(layout_handle(g_triY,g_swapTriY),7.2f),
+               cfg_pos(layout_handle4(g_triX,g_swapTriX,g_ybTriX,g_xyxbTriX),124.0f),
+               cfg_pos(layout_handle4(g_triY,g_swapTriY,g_ybTriY,g_xyxbTriY),7.2f),
                24.0f,24.0f);
     set_bounds(x,
-               cfg_pos(layout_handle(g_squareX,g_swapSquareX),89.6f),
-               cfg_pos(layout_handle(g_squareY,g_swapSquareY),40.6f),
+               cfg_pos(layout_handle4(g_squareX,g_swapSquareX,g_ybSquareX,g_xyxbSquareX),89.6f),
+               cfg_pos(layout_handle4(g_squareY,g_swapSquareY,g_ybSquareY,g_xyxbSquareY),40.6f),
                24.0f,24.0f);
-    set_bounds(b, cfg_pos(g_circleX,151.5f), cfg_pos(g_circleY,39.4f), 24.0f, 24.0f); // Circle
+    set_bounds(b, cfg_pos(layout_handle4(g_circleX,g_circleX,g_ybCircleX,g_xyxbCircleX),151.5f), cfg_pos(layout_handle4(g_circleY,g_circleY,g_ybCircleY,g_xyxbCircleY),39.4f), 24.0f, 24.0f); // Circle
     set_bounds(a, cfg_pos(g_crossX,118.0f), cfg_pos(g_crossY,65.7f), 24.0f, 24.0f); // Cross
 
     // Z/XY2 permanece totalmente vanilla nesta versao.
@@ -3062,7 +3311,7 @@ HookAction before_file_select_draw(ModContext* ctx, void* args, void* retval, vo
     J2DPane* bRoot = dlst->Scr->search(MULTI_CHAR('w_n_bbtn'));
 
     apply_menu_button_texture(aRoot, resource_timg(s_cross));   // A -> Cross
-    apply_menu_button_texture(bRoot, resource_timg(s_circle));  // B -> Circle
+    apply_menu_button_texture(bRoot, gc_b_face_texture());  // B -> Circle
     // Initial file-select screen: make Circle visually the same size as Cross.
     match_menu_button_picture_size(bRoot, aRoot);
     // Position controls affect only the replacement pictures, not Confirmar/Voltar.
@@ -3078,7 +3327,7 @@ void after_outfont_create_pane(ModContext* ctx, void* args, void* retval, void* 
     if (outFont == nullptr) return;
 
     const ResTIMG* cross = resource_timg(s_cross);
-    const ResTIMG* circle = resource_timg(s_circle);
+    const ResTIMG* circle = gc_b_face_texture();
     if (cross == nullptr || circle == nullptr) return;
 
     // COutFont icon 0 = A (font_00.bti), icon 1 = B (font_01.bti).
@@ -3900,7 +4149,7 @@ void apply_known_menu_buttons(J2DScreen* screen) {
     if (s_activeMeter != nullptr && screen == s_activeMeter->mpScreen) return;
 
     const ResTIMG* cross = resource_timg(s_cross);
-    const ResTIMG* circle = resource_timg(s_circle);
+    const ResTIMG* circle = gc_b_face_texture();
     if (cross == nullptr || circle == nullptr) return;
 
     // Known menu roots used across Collection/Options/TV setup/FMap.
@@ -4217,7 +4466,7 @@ void after_meter_button_screen_init(ModContext*, void* args, void*, void*) {
         {MULTI_CHAR('c_btn'), resource_timg(s_r3)},
         {MULTI_CHAR('as_btn1'), resource_timg(s_analog)},
         {MULTI_CHAR('as_btn3'), resource_timg(s_analog)},
-        {MULTI_CHAR('b_btn1'), resource_timg(s_circle)},
+        {MULTI_CHAR('b_btn1'), gc_b_face_texture()},
     };
     for (const FishingFace& entry : fishingFaces) {
         J2DPicture* face = as_picture(self->mpButtonScreen->search(entry.tag));
@@ -4367,8 +4616,8 @@ HookAction before_meter_button_draw(ModContext*, void* args, void*, void*) {
         s_meterButtonGlowState.frame[i] = s_activeMeterButton->field_0x2e8[i];
         s_meterButtonGlowState.button[i] = s_activeMeterButton->field_0x4be[i];
 
-        const ConfigVarHandle wolfXEnabled = layout_handle(g_wolfXGlowEnabled,g_swapWolfXGlowEnabled);
-        const ConfigVarHandle wolfYEnabled = layout_handle(g_wolfYGlowEnabled,g_swapWolfYGlowEnabled);
+        const ConfigVarHandle wolfXEnabled = layout_handle4(g_wolfXGlowEnabled,g_swapWolfXGlowEnabled,g_ybWolfXGlowEnabled,g_xyxbWolfXGlowEnabled);
+        const ConfigVarHandle wolfYEnabled = layout_handle4(g_wolfYGlowEnabled,g_swapWolfYGlowEnabled,g_ybWolfYGlowEnabled,g_xyxbWolfYGlowEnabled);
         if (s_activeMeterButton->field_0x4be[i] == dMeterButton_c::BUTTON_X_e &&
             !cfg_bool(wolfXEnabled,true))
             s_activeMeterButton->field_0x2e8[i] = 0.0f;
@@ -4384,9 +4633,9 @@ HookAction before_meter_button_draw(ModContext*, void* args, void*, void*) {
         s_activeMeterButton->field_0x4be[0] = dMeterButton_c::BUTTON_X_e;
         s_activeMeterButton->field_0x4be[1] = dMeterButton_c::BUTTON_Y_e;
         s_activeMeterButton->field_0x2e8[0] =
-            cfg_bool(layout_handle(g_wolfXGlowEnabled,g_swapWolfXGlowEnabled),true) ? 18.0f : 0.0f;
+            cfg_bool(layout_handle4(g_wolfXGlowEnabled,g_swapWolfXGlowEnabled,g_ybWolfXGlowEnabled,g_xyxbWolfXGlowEnabled),true) ? 18.0f : 0.0f;
         s_activeMeterButton->field_0x2e8[1] =
-            cfg_bool(layout_handle(g_wolfYGlowEnabled,g_swapWolfYGlowEnabled),true) ? 18.0f : 0.0f;
+            cfg_bool(layout_handle4(g_wolfYGlowEnabled,g_swapWolfYGlowEnabled,g_ybWolfYGlowEnabled,g_xyxbWolfYGlowEnabled),true) ? 18.0f : 0.0f;
     }
     return HOOK_CONTINUE;
 }
@@ -4630,14 +4879,14 @@ HookAction before_ring_controller_overlay(ModContext*, void* args, void*, void*)
     if(!ring->mPlayerIsWolf) {
         // X (GC) -> Triangle (PS) / Y (XB)
         ring_collect_root(ring->mpScreen,MULTI_CHAR('x_btn_n'),gc_x_face_texture(),
-                          layout_handle(g_wheelSquareX,g_swapWheelSquareX),
-                          layout_handle(g_wheelSquareY,g_swapWheelSquareY),
-                          layout_handle(g_wheelSquareScale,g_swapWheelSquareScale));
+                          layout_handle4(g_wheelSquareX,g_swapWheelSquareX,g_ybWheelSquareX,g_xyxbWheelSquareX),
+                          layout_handle4(g_wheelSquareY,g_swapWheelSquareY,g_ybWheelSquareY,g_xyxbWheelSquareY),
+                          layout_handle4(g_wheelSquareScale,g_swapWheelSquareScale,g_ybWheelSquareScale,g_xyxbWheelSquareScale));
         // Y (GC) slot; face and calibration may be swapped by the alternate profile.
         ring_collect_root(ring->mpScreen,MULTI_CHAR('y_btn_n'),gc_y_face_texture(),
-                          layout_handle(g_wheelTriangleX,g_swapWheelTriangleX),
-                          layout_handle(g_wheelTriangleY,g_swapWheelTriangleY),
-                          layout_handle(g_wheelTriangleScale,g_swapWheelTriangleScale));
+                          layout_handle4(g_wheelTriangleX,g_swapWheelTriangleX,g_ybWheelTriangleX,g_xyxbWheelTriangleX),
+                          layout_handle4(g_wheelTriangleY,g_swapWheelTriangleY,g_ybWheelTriangleY,g_xyxbWheelTriangleY),
+                          layout_handle4(g_wheelTriangleScale,g_swapWheelTriangleScale,g_ybWheelTriangleScale,g_xyxbWheelTriangleScale));
 
         ring_collect_root(ring->mpScreen,MULTI_CHAR('gr_btn_n'),resource_timg(s_r2),
                           g_wheelR2X,g_wheelR2Y,g_wheelR2Scale,true);
@@ -4777,17 +5026,17 @@ HookAction before_screen_draw(ModContext* ctx, void* args, void* retval, void* u
     } else if (target == 3 || target == 4) {
         const bool isX = target == 3;
         ConfigVarHandle xh = isX
-            ? layout_handle(g_wolfXGlowX,g_swapWolfXGlowX)
-            : layout_handle(g_wolfYGlowX,g_swapWolfYGlowX);
+            ? layout_handle4(g_wolfXGlowX,g_swapWolfXGlowX,g_ybWolfXGlowX,g_xyxbWolfXGlowX)
+            : layout_handle4(g_wolfYGlowX,g_swapWolfYGlowX,g_ybWolfYGlowX,g_xyxbWolfYGlowX);
         ConfigVarHandle yh = isX
-            ? layout_handle(g_wolfXGlowY,g_swapWolfXGlowY)
-            : layout_handle(g_wolfYGlowY,g_swapWolfYGlowY);
+            ? layout_handle4(g_wolfXGlowY,g_swapWolfXGlowY,g_ybWolfXGlowY,g_xyxbWolfXGlowY)
+            : layout_handle4(g_wolfYGlowY,g_swapWolfYGlowY,g_ybWolfYGlowY,g_xyxbWolfYGlowY);
         ConfigVarHandle sh = isX
-            ? layout_handle(g_wolfXGlowScale,g_swapWolfXGlowScale)
-            : layout_handle(g_wolfYGlowScale,g_swapWolfYGlowScale);
+            ? layout_handle4(g_wolfXGlowScale,g_swapWolfXGlowScale,g_ybWolfXGlowScale,g_xyxbWolfXGlowScale)
+            : layout_handle4(g_wolfYGlowScale,g_swapWolfYGlowScale,g_ybWolfYGlowScale,g_xyxbWolfYGlowScale);
         ConfigVarHandle eh = isX
-            ? layout_handle(g_wolfXGlowEnabled,g_swapWolfXGlowEnabled)
-            : layout_handle(g_wolfYGlowEnabled,g_swapWolfYGlowEnabled);
+            ? layout_handle4(g_wolfXGlowEnabled,g_swapWolfXGlowEnabled,g_ybWolfXGlowEnabled,g_xyxbWolfXGlowEnabled)
+            : layout_handle4(g_wolfYGlowEnabled,g_swapWolfYGlowEnabled,g_ybWolfYGlowEnabled,g_xyxbWolfYGlowEnabled);
         mods::arg_ref<f32>(args, 1) += cfg_pos(xh, 0.0f);
         mods::arg_ref<f32>(args, 2) += cfg_pos(yh, 0.0f);
         if (meter->mpPikariParent != nullptr) {
@@ -4835,8 +5084,8 @@ ModResult mod_initialize(ModError* error) {
         {"WorldPortalTextX",-130,&g_WorldPortalTextX},{"WorldPortalTextY",0,&g_WorldPortalTextY},
         {"WorldMoveTextX",270,&g_WorldMoveTextX},{"WorldMoveTextY",20,&g_WorldMoveTextY},
         {"WorldReturnTextX",0,&g_WorldReturnTextX},{"WorldReturnTextY",20,&g_WorldReturnTextY},
-        {"triX",960,&g_triX},{"triY",386,&g_triY},{"triScale",90,&g_triScale},
-        {"squareX",1217,&g_squareX},{"squareY",119,&g_squareY},{"squareScale",90,&g_squareScale},
+        {"triX",962,&g_triX},{"triY",387,&g_triY},{"triScale",90,&g_triScale},
+        {"squareX",1218,&g_squareX},{"squareY",119,&g_squareY},{"squareScale",90,&g_squareScale},
         {"circleX",1505,&g_circleX},{"circleY",414,&g_circleY},{"circleScale",90,&g_circleScale},
         {"crossX",1174,&g_crossX},{"crossY",597,&g_crossY},{"crossScale",90,&g_crossScale},
         {"fishingCheckX",190,&g_fishingCheckX},{"fishingCheckY",110,&g_fishingCheckY},{"fishingCheckScale",65,&g_fishingCheckScale},
@@ -4859,12 +5108,12 @@ ModResult mod_initialize(ModError* error) {
         {"actionTextX",250,&g_actionTextX},{"actionTextY",220,&g_actionTextY},{"actionTextScale",55,&g_actionTextScale},
         {"dialogActionTextX",200,&g_dialogActionTextX},{"dialogActionTextY",480,&g_dialogActionTextY},
         {"backTextX",820,&g_backTextX},{"backTextY",-350,&g_backTextY},{"backTextScale",55,&g_backTextScale},
-        {"wolfSenseX",-670,&g_wolfSenseX},{"wolfSenseY",-770,&g_wolfSenseY},{"wolfSenseScale",55,&g_wolfSenseScale},
-        {"wolfDigX",500,&g_wolfDigX},{"wolfDigY",570,&g_wolfDigY},{"wolfDigScale",55,&g_wolfDigScale},
+        {"wolfSenseX",-670,&g_wolfSenseX},{"wolfSenseY",-760,&g_wolfSenseY},{"wolfSenseScale",55,&g_wolfSenseScale},
+        {"wolfDigX",490,&g_wolfDigX},{"wolfDigY",575,&g_wolfDigY},{"wolfDigScale",55,&g_wolfDigScale},
         {"actionGlowX",-30,&g_actionGlowX},{"actionGlowY",-25,&g_actionGlowY},{"actionGlowScale",50,&g_actionGlowScale},
         {"backGlowX",10,&g_backGlowX},{"backGlowY",30,&g_backGlowY},{"backGlowScale",100,&g_backGlowScale},
-        {"wolfXGlowX",235,&g_wolfXGlowX},{"wolfXGlowY",-295,&g_wolfXGlowY},{"wolfXGlowScale",50,&g_wolfXGlowScale},
-        {"wolfYGlowX",-300,&g_wolfYGlowX},{"wolfYGlowY",260,&g_wolfYGlowY},{"wolfYGlowScale",50,&g_wolfYGlowScale},
+        {"wolfXGlowX",5,&g_wolfXGlowX},{"wolfXGlowY",-55,&g_wolfXGlowY},{"wolfXGlowScale",50,&g_wolfXGlowScale},
+        {"wolfYGlowX",-70,&g_wolfYGlowX},{"wolfYGlowY",20,&g_wolfYGlowY},{"wolfYGlowScale",50,&g_wolfYGlowScale},
         {"fileCrossX",15,&g_fileCrossX},{"fileCrossY",0,&g_fileCrossY},
         {"fileCircleX",10,&g_fileCircleX},{"fileCircleY",30,&g_fileCircleY},
         {"saveCrossX",15,&g_saveCrossX},{"saveCrossY",0,&g_saveCrossY},
@@ -4947,6 +5196,8 @@ ModResult mod_initialize(ModError* error) {
         if(rr!=MOD_OK) return rr;
         rr=reg_bool("swapXYButtonLayout",false,g_swapXYButtonLayout,error);
         if(rr!=MOD_OK) return rr;
+        rr=reg_int("buttonLayoutPreset",0,g_buttonLayoutPreset,error);
+        if(rr!=MOD_OK) return rr;
 
         struct DevInt { const char* n; int64_t d; ConfigVarHandle* h; };
         DevInt swapVars[] = {
@@ -4960,6 +5211,34 @@ ModResult mod_initialize(ModError* error) {
             {"swapWolfYGlowX",-75,&g_swapWolfYGlowX},{"swapWolfYGlowY",20,&g_swapWolfYGlowY},{"swapWolfYGlowScale",50,&g_swapWolfYGlowScale},
             {"swapWheelSquareX",-430,&g_swapWheelSquareX},{"swapWheelSquareY",-10,&g_swapWheelSquareY},{"swapWheelSquareScale",87,&g_swapWheelSquareScale},
             {"swapWheelTriangleX",160,&g_swapWheelTriangleX},{"swapWheelTriangleY",-40,&g_swapWheelTriangleY},{"swapWheelTriangleScale",90,&g_swapWheelTriangleScale},
+
+            // Swap Y/B starts from the calibrated Base preset.
+            {"ybTriX",962,&g_ybTriX},{"ybTriY",387,&g_ybTriY},{"ybTriScale",90,&g_ybTriScale},
+            {"ybSquareX",1218,&g_ybSquareX},{"ybSquareY",119,&g_ybSquareY},{"ybSquareScale",90,&g_ybSquareScale},
+            {"ybCircleX",1505,&g_ybCircleX},{"ybCircleY",414,&g_ybCircleY},{"ybCircleScale",90,&g_ybCircleScale},
+            {"ybItemSquareX",-430,&g_ybItemSquareX},{"ybItemSquareY",-640,&g_ybItemSquareY},{"ybItemSquareScale",50,&g_ybItemSquareScale},
+            {"ybItemTriangleX",220,&g_ybItemTriangleX},{"ybItemTriangleY",230,&g_ybItemTriangleY},{"ybItemTriangleScale",50,&g_ybItemTriangleScale},
+            {"ybSwordX",83,&g_ybSwordX},{"ybSwordY",-52,&g_ybSwordY},{"ybSwordScale",50,&g_ybSwordScale},
+            {"ybWolfSenseX",-670,&g_ybWolfSenseX},{"ybWolfSenseY",-760,&g_ybWolfSenseY},{"ybWolfSenseScale",55,&g_ybWolfSenseScale},
+            {"ybWolfDigX",490,&g_ybWolfDigX},{"ybWolfDigY",575,&g_ybWolfDigY},{"ybWolfDigScale",55,&g_ybWolfDigScale},
+            {"ybWolfXGlowX",5,&g_ybWolfXGlowX},{"ybWolfXGlowY",-55,&g_ybWolfXGlowY},{"ybWolfXGlowScale",50,&g_ybWolfXGlowScale},
+            {"ybWolfYGlowX",-70,&g_ybWolfYGlowX},{"ybWolfYGlowY",20,&g_ybWolfYGlowY},{"ybWolfYGlowScale",50,&g_ybWolfYGlowScale},
+            {"ybWheelSquareX",-170,&g_ybWheelSquareX},{"ybWheelSquareY",-10,&g_ybWheelSquareY},{"ybWheelSquareScale",87,&g_ybWheelSquareScale},
+            {"ybWheelTriangleX",-100,&g_ybWheelTriangleX},{"ybWheelTriangleY",-40,&g_ybWheelTriangleY},{"ybWheelTriangleScale",90,&g_ybWheelTriangleScale},
+
+            // Swap X/Y + X/B starts from the calibrated Swap X/Y preset.
+            {"xyxbTriX",1208,&g_xyxbTriX},{"xyxbTriY",126,&g_xyxbTriY},{"xyxbTriScale",90,&g_xyxbTriScale},
+            {"xyxbSquareX",971,&g_xyxbSquareX},{"xyxbSquareY",380,&g_xyxbSquareY},{"xyxbSquareScale",90,&g_xyxbSquareScale},
+            {"xyxbCircleX",1505,&g_xyxbCircleX},{"xyxbCircleY",414,&g_xyxbCircleY},{"xyxbCircleScale",90,&g_xyxbCircleScale},
+            {"xyxbItemSquareX",-690,&g_xyxbItemSquareX},{"xyxbItemSquareY",-380,&g_xyxbItemSquareY},{"xyxbItemSquareScale",50,&g_xyxbItemSquareScale},
+            {"xyxbItemTriangleX",480,&g_xyxbItemTriangleX},{"xyxbItemTriangleY",-30,&g_xyxbItemTriangleY},{"xyxbItemTriangleScale",50,&g_xyxbItemTriangleScale},
+            {"xyxbSwordX",83,&g_xyxbSwordX},{"xyxbSwordY",-52,&g_xyxbSwordY},{"xyxbSwordScale",50,&g_xyxbSwordScale},
+            {"xyxbWolfSenseX",-920,&g_xyxbWolfSenseX},{"xyxbWolfSenseY",-500,&g_xyxbWolfSenseY},{"xyxbWolfSenseScale",55,&g_xyxbWolfSenseScale},
+            {"xyxbWolfDigX",730,&g_xyxbWolfDigX},{"xyxbWolfDigY",310,&g_xyxbWolfDigY},{"xyxbWolfDigScale",55,&g_xyxbWolfDigScale},
+            {"xyxbWolfXGlowX",5,&g_xyxbWolfXGlowX},{"xyxbWolfXGlowY",-55,&g_xyxbWolfXGlowY},{"xyxbWolfXGlowScale",50,&g_xyxbWolfXGlowScale},
+            {"xyxbWolfYGlowX",-75,&g_xyxbWolfYGlowX},{"xyxbWolfYGlowY",20,&g_xyxbWolfYGlowY},{"xyxbWolfYGlowScale",50,&g_xyxbWolfYGlowScale},
+            {"xyxbWheelSquareX",-430,&g_xyxbWheelSquareX},{"xyxbWheelSquareY",-10,&g_xyxbWheelSquareY},{"xyxbWheelSquareScale",87,&g_xyxbWheelSquareScale},
+            {"xyxbWheelTriangleX",160,&g_xyxbWheelTriangleX},{"xyxbWheelTriangleY",-40,&g_xyxbWheelTriangleY},{"xyxbWheelTriangleScale",90,&g_xyxbWheelTriangleScale},
         };
         for (auto& v : swapVars) {
             rr=reg_int(v.n,v.d,*v.h,error);
@@ -4971,6 +5250,22 @@ ModResult mod_initialize(ModError* error) {
         rr=reg_bool("swapItemTriangleFlipV",false,g_swapItemTriangleFlipV,error); if(rr!=MOD_OK) return rr;
         rr=reg_bool("swapWolfXGlowEnabled",true,g_swapWolfXGlowEnabled,error); if(rr!=MOD_OK) return rr;
         rr=reg_bool("swapWolfYGlowEnabled",true,g_swapWolfYGlowEnabled,error); if(rr!=MOD_OK) return rr;
+        rr=reg_bool("ybItemSquareFlipH",false,g_ybItemSquareFlipH,error); if(rr!=MOD_OK) return rr;
+        rr=reg_bool("ybItemSquareFlipV",false,g_ybItemSquareFlipV,error); if(rr!=MOD_OK) return rr;
+        rr=reg_bool("ybItemTriangleFlipH",false,g_ybItemTriangleFlipH,error); if(rr!=MOD_OK) return rr;
+        rr=reg_bool("ybItemTriangleFlipV",false,g_ybItemTriangleFlipV,error); if(rr!=MOD_OK) return rr;
+        rr=reg_bool("ybSwordFlipH",false,g_ybSwordFlipH,error); if(rr!=MOD_OK) return rr;
+        rr=reg_bool("ybSwordFlipV",false,g_ybSwordFlipV,error); if(rr!=MOD_OK) return rr;
+        rr=reg_bool("ybWolfXGlowEnabled",true,g_ybWolfXGlowEnabled,error); if(rr!=MOD_OK) return rr;
+        rr=reg_bool("ybWolfYGlowEnabled",true,g_ybWolfYGlowEnabled,error); if(rr!=MOD_OK) return rr;
+        rr=reg_bool("xyxbItemSquareFlipH",false,g_xyxbItemSquareFlipH,error); if(rr!=MOD_OK) return rr;
+        rr=reg_bool("xyxbItemSquareFlipV",false,g_xyxbItemSquareFlipV,error); if(rr!=MOD_OK) return rr;
+        rr=reg_bool("xyxbItemTriangleFlipH",false,g_xyxbItemTriangleFlipH,error); if(rr!=MOD_OK) return rr;
+        rr=reg_bool("xyxbItemTriangleFlipV",false,g_xyxbItemTriangleFlipV,error); if(rr!=MOD_OK) return rr;
+        rr=reg_bool("xyxbSwordFlipH",false,g_xyxbSwordFlipH,error); if(rr!=MOD_OK) return rr;
+        rr=reg_bool("xyxbSwordFlipV",false,g_xyxbSwordFlipV,error); if(rr!=MOD_OK) return rr;
+        rr=reg_bool("xyxbWolfXGlowEnabled",true,g_xyxbWolfXGlowEnabled,error); if(rr!=MOD_OK) return rr;
+        rr=reg_bool("xyxbWolfYGlowEnabled",true,g_xyxbWolfYGlowEnabled,error); if(rr!=MOD_OK) return rr;
     }
     apply_layout_schema_migrations();
 
