@@ -8,9 +8,8 @@
 #include "d/d_msg_object.h"
 #include "d/d_meter_HIO.h"
 #include "d/d_meter2_info.h"
-#include "d/d_menu_collect.h"
-#include "d/d_menu_window.h"
 #include "d/d_menu_ring.h"
+#include "d/d_menu_collect.h"
 #include "d/d_item_data.h"
 #include "d/d_pane_class.h"
 #include "JSystem/J2DGraph/J2DPane.h"
@@ -762,9 +761,8 @@ DEFINE_HOOK(&dMeter2Draw_c::drawButtonXY, ButtonXYDrawHook);
 DEFINE_HOOK(&dMeter2Draw_c::drawButtonCross, ButtonCrossDrawHook);
 DEFINE_HOOK(&CPaneMgr::paneTrans, PaneTransHook);
 DEFINE_HOOK(&J2DScreen::draw, ScreenDrawHook);
-DEFINE_HOOK(&dMenu_Collect2DTop_c::draw, CollectTopDrawHook);
-DEFINE_HOOK(&dMenu_Collect2D_c::_draw, CollectMainDrawHook);
-DEFINE_HOOK(&dMenu_Ring_c::_create, RingCreateCompatHook);
+DEFINE_HOOK(&dMenu_Ring_c::_draw, RingControllerOverlayHook);
+DEFINE_HOOK(&dMenu_Collect2D_c::_draw, CollectCompatDrawHook);
 DEFINE_HOOK(&dDlst_FileSel_c::draw, FileSelDrawHook);
 DEFINE_HOOK(&COutFont_c::createPane, OutFontCreatePaneHook);
 DEFINE_HOOK(&COutFont_c::drawFont, OutFontDrawFontHook);
@@ -830,8 +828,22 @@ J2DPicture* as_picture(J2DPane* pane) {
 
 struct PictureTexCoordAccess : J2DPicture {
     using Member = JGeometry::TVec2<s16> (J2DPicture::*)[4];
+    using TextureMember = JUTTexture* (J2DPicture::*)[2];
+    using TextureNumMember = u8 J2DPicture::*;
     static Member member() { return &PictureTexCoordAccess::field_0x10a; }
+    static TextureMember texture_member() { return &PictureTexCoordAccess::mTexture; }
+    static TextureNumMember texture_num_member() { return &PictureTexCoordAccess::mTextureNum; }
 };
+
+JUTTexture*& picture_texture_slot(J2DPicture* pic, int index) {
+    const auto member = PictureTexCoordAccess::texture_member();
+    return (pic->*member)[index];
+}
+
+u8& picture_texture_count(J2DPicture* pic) {
+    const auto member = PictureTexCoordAccess::texture_num_member();
+    return pic->*member;
+}
 
 void copy_picture_texcoords(J2DPicture* pic, JGeometry::TVec2<s16> out[4]) {
     if (pic == nullptr) return;
@@ -2095,6 +2107,9 @@ struct ItemWheelTempPaneState {
     f32 tx = 0.0f, ty = 0.0f, sx = 1.0f, sy = 1.0f, rotation = 0.0f;
     const ResTIMG* tex0 = nullptr;
     const ResTIMG* tex1 = nullptr;
+    JUTTexture* originalTexture[2]{};
+    JUTTexture* privateTexture[2]{};
+    u8 originalTextureCount = 0;
     JUtility::TColor black{};
     JUtility::TColor white{};
     JUtility::TColor corners[4]{};
@@ -2125,8 +2140,17 @@ void capture_item_wheel_temp_pane(J2DPane* pane) {
     if (J2DPicture* pic = as_picture(pane)) {
         st.picture = true;
         st.bounds = pic->mBounds;
-        if (pic->getTexture(0) != nullptr) st.tex0 = pic->getTexture(0)->getTexInfo();
-        if (pic->getTexture(1) != nullptr) st.tex1 = pic->getTexture(1)->getTexInfo();
+        if (pic->getTexture(0) != nullptr) {
+            st.tex0 = pic->getTexture(0)->getTexInfo();
+            st.originalTexture[0] = pic->getTexture(0);
+        }
+        if (pic->getTexture(1) != nullptr) {
+            st.tex1 = pic->getTexture(1)->getTexInfo();
+            st.originalTexture[1] = pic->getTexture(1);
+        }
+        st.privateTexture[0] = nullptr;
+        st.privateTexture[1] = nullptr;
+        st.originalTextureCount = pic->getTextureCount();
         st.black = pic->getBlack();
         st.white = pic->getWhite();
         for (int i = 0; i < 4; ++i) st.corners[i] = pic->corner(i);
@@ -2147,6 +2171,37 @@ void capture_item_wheel_temp_tree(J2DPane* root) {
             if (top < 128) stack[top++] = child;
         }
     }
+}
+
+ItemWheelTempPaneState* item_wheel_temp_state_for(J2DPicture* pic) {
+    if (pic == nullptr) return nullptr;
+    for (int i = 0; i < s_itemWheelTempCount; ++i) {
+        if (s_itemWheelTemp[i].pane == pic) return &s_itemWheelTemp[i];
+    }
+    return nullptr;
+}
+
+bool use_private_item_wheel_texture(J2DPicture* pic, const ResTIMG* texture) {
+    if (pic == nullptr || texture == nullptr) return false;
+    ItemWheelTempPaneState* st = item_wheel_temp_state_for(pic);
+    if (st == nullptr || pic->getTextureCount() == 0) return false;
+
+    // Use a single private texture stage. Several vanilla wheel glyphs have two
+    // texture stages/blend ratios; feeding our art through those stages can leave
+    // the vanilla-looking mask/letter visible even though our geometry changed.
+    // A one-stage private picture gives us the exact PS/Xbox artwork while still
+    // leaving every original J2DMaterial/JUTTexture object completely untouched.
+    if (st->privateTexture[0] == nullptr) {
+        st->privateTexture[0] = JKR_NEW JUTTexture(texture, 0);
+        if (st->privateTexture[0] == nullptr) return false;
+    }
+
+    picture_texture_slot(pic, 0) = st->privateTexture[0];
+    picture_texture_count(pic) = 1;
+
+    if (pic->getTexture(0) != nullptr)
+        pic->setTexCoord(pic->getTexture(0), BIND15, MIRROR0, false);
+    return true;
 }
 
 void begin_item_wheel_temp_state(J2DScreen* screen) {
@@ -2175,8 +2230,18 @@ void restore_item_wheel_temp_state(J2DScreen* screen) {
 
         if (st.picture) {
             J2DPicture* pic = static_cast<J2DPicture*>(st.pane);
-            if (st.tex0 != nullptr && pic->getTextureCount() > 0) pic->changeTexture(st.tex0, 0);
-            if (st.tex1 != nullptr && pic->getTextureCount() > 1) pic->changeTexture(st.tex1, 1);
+
+            // Restore the exact material texture objects first. The private
+            // replacements are deleted only after the picture no longer points
+            // at them, so no shared J2DMaterial/JUTTexture is ever modified.
+            picture_texture_count(pic) = st.originalTextureCount;
+            for (u8 t = 0; t < 2; ++t) {
+                if (st.privateTexture[t] != nullptr) {
+                    picture_texture_slot(pic, t) = st.originalTexture[t];
+                    JKR_DELETE(st.privateTexture[t]);
+                    st.privateTexture[t] = nullptr;
+                }
+            }
 
             // Restore the exact local geometry instead of calling move()/place().
             // Those helpers recalculate translation (and place() can move children),
@@ -2224,44 +2289,49 @@ void apply_item_wheel_icon_texture(J2DPane* root, const ResTIMG* texture,
     J2DPicture* face = first_picture_recursive(root);
     if (face == nullptr) return;
 
-    const auto& cur = face->getBounds();
-    if (!state.captured || state.picture != face) {
-        const float w = cur.getWidth();
-        const float h = cur.getHeight();
-        const float side = (w < h ? w : h);
-        const float cx = cur.i.x + w * 0.5f;
-        const float cy = cur.i.y + h * 0.5f;
-        state.picture = face;
-        state.base.i.x = cx - side * 0.5f;
-        state.base.i.y = cy - side * 0.5f;
-        state.base.f.x = cx + side * 0.5f;
-        state.base.f.y = cy + side * 0.5f;
-        state.lastDx = state.lastDy = 0.0f;
-        state.lastScale = 1.0f;
-        state.captured = true;
-    }
+    // Rebuild from the live vanilla/local geometry on every draw. The wheel is
+    // destroyed and recreated whenever the item menu closes; the allocator can
+    // reuse the same J2DPicture address, so pointer-based cached baselines can
+    // accidentally survive into a new wheel instance and compound each reopen.
+    const JGeometry::TBox2<f32> base = face->mBounds;
+    const float baseTx = face->getTranslateX();
+    const float baseTy = face->getTranslateY();
+    const float w = base.getWidth();
+    const float h = base.getHeight();
+    const float side = (w < h ? w : h);
+    const float localCx = base.i.x + w * 0.5f;
+    const float localCy = base.i.y + h * 0.5f;
 
-    replace_picture_texture(face, texture);
+    if (!use_private_item_wheel_texture(face, texture)) return;
     const JUtility::TColor neutralBlack(0, 0, 0, 0);
     const JUtility::TColor neutralWhite(255, 255, 255, 255);
     face->setBlackWhite(neutralBlack, neutralWhite);
     face->setCornerColor(neutralWhite);
     face->setAlpha(255);
 
-    // Always rebuild from the captured square baseline. This prevents slider
-    // changes and repeated Item Wheel draws from accumulating transforms.
     const float dx = cfg_pos(xh, 0.0f);
     const float dy = cfg_pos(yh, 0.0f);
     const float sc = cfg_scale(sh, 1.0f);
-    const float bw = state.base.getWidth();
-    const float bh = state.base.getHeight();
-    const float nw = bw * sc;
-    const float nh = bh * sc;
-    const float cx = state.base.i.x + bw * 0.5f + dx;
-    const float cy = state.base.i.y + bh * 0.5f + dy;
-    set_bounds(face, cx - nw * 0.5f, cy - nh * 0.5f, nw, nh);
-    state.lastDx = dx; state.lastDy = dy; state.lastScale = sc;
+    const float fitted = side * sc;
+
+    // Never use move()/resize()/place() for the draw-local wheel replacement:
+    // place() adjusts child translations, which is exactly the kind of state
+    // that can accumulate across repeated wheel opens. Change only local bounds
+    // and local translation, then restore the complete subtree after draw.
+    face->mBounds.i.x = localCx - fitted * 0.5f;
+    face->mBounds.i.y = localCy - fitted * 0.5f;
+    face->mBounds.f.x = localCx + fitted * 0.5f;
+    face->mBounds.f.y = localCy + fitted * 0.5f;
+    face->translate(baseTx + dx, baseTy + dy);
+    if (face->getTexture(0) != nullptr)
+        face->setTexCoord(face->getTexture(0), BIND15, MIRROR0, false);
     face->show();
+
+    // Keep the legacy state object only for ABI/source compatibility with the
+    // existing call sites. It is intentionally not used as a persistent base.
+    state.picture = face;
+    state.base = base;
+    state.captured = false;
 
     J2DPane* stack[64];
     int top = 0;
@@ -2276,7 +2346,6 @@ void apply_item_wheel_icon_texture(J2DPane* root, const ResTIMG* texture,
     }
 }
 
-
 void apply_item_wheel_shoulder_texture(J2DPane* root, const ResTIMG* texture,
                                        ItemWheelIconBase& state,
                                        ConfigVarHandle xh, ConfigVarHandle yh, ConfigVarHandle sh) {
@@ -2284,26 +2353,17 @@ void apply_item_wheel_shoulder_texture(J2DPane* root, const ResTIMG* texture,
     J2DPicture* face = first_picture_recursive(root);
     if (face == nullptr) return;
 
-    const auto& cur = face->getBounds();
-    if (!state.captured || state.picture != face) {
-        const float vanillaW = cur.getWidth();
-        const float vanillaH = cur.getHeight();
-        const float cx = cur.i.x + vanillaW * 0.5f;
-        const float cy = cur.i.y + vanillaH * 0.5f;
-        const float aspect = texture->height != 0 ? ((float)texture->width / (float)texture->height) : 1.0f;
+    const JGeometry::TBox2<f32> base = face->mBounds;
+    const float baseTx = face->getTranslateX();
+    const float baseTy = face->getTranslateY();
+    const float vanillaW = base.getWidth();
+    const float vanillaH = base.getHeight();
+    const float localCx = base.i.x + vanillaW * 0.5f;
+    const float localCy = base.i.y + vanillaH * 0.5f;
+    const float aspect = texture->height != 0
+        ? ((float)texture->width / (float)texture->height) : 1.0f;
 
-        // 100% = the original shoulder-button height. Width follows L2/R2 art.
-        const float baseH = vanillaH;
-        const float baseW = baseH * aspect;
-        state.picture = face;
-        state.base.i.x = cx - baseW * 0.5f;
-        state.base.i.y = cy - baseH * 0.5f;
-        state.base.f.x = cx + baseW * 0.5f;
-        state.base.f.y = cy + baseH * 0.5f;
-        state.captured = true;
-    }
-
-    replace_picture_texture(face, texture);
+    if (!use_private_item_wheel_texture(face, texture)) return;
     const JUtility::TColor neutralBlack(0, 0, 0, 0);
     const JUtility::TColor neutralWhite(255, 255, 255, 255);
     face->setBlackWhite(neutralBlack, neutralWhite);
@@ -2313,12 +2373,21 @@ void apply_item_wheel_shoulder_texture(J2DPane* root, const ResTIMG* texture,
     const float dx = cfg_pos(xh, 0.0f);
     const float dy = cfg_pos(yh, 0.0f);
     const float sc = cfg_scale(sh, 1.0f);
-    const float bw = state.base.getWidth(), bh = state.base.getHeight();
-    const float nw = bw * sc, nh = bh * sc;
-    const float cx = state.base.i.x + bw * 0.5f + dx;
-    const float cy = state.base.i.y + bh * 0.5f + dy;
-    set_bounds(face, cx - nw * 0.5f, cy - nh * 0.5f, nw, nh);
+    const float fittedH = vanillaH * sc;
+    const float fittedW = fittedH * aspect;
+
+    face->mBounds.i.x = localCx - fittedW * 0.5f;
+    face->mBounds.i.y = localCy - fittedH * 0.5f;
+    face->mBounds.f.x = localCx + fittedW * 0.5f;
+    face->mBounds.f.y = localCy + fittedH * 0.5f;
+    face->translate(baseTx + dx, baseTy + dy);
+    if (face->getTexture(0) != nullptr)
+        face->setTexCoord(face->getTexture(0), BIND15, MIRROR0, false);
     face->show();
+
+    state.picture = face;
+    state.base = base;
+    state.captured = false;
 
     J2DPane* stack[64];
     int top = 0;
@@ -2345,22 +2414,16 @@ void apply_item_wheel_exact_picture(J2DScreen* screen, u64 faceTag,
     J2DPicture* face = as_picture(pane);
     if (face == nullptr) return;
 
-    const auto& cur = face->getBounds();
-    if (!state.captured || state.picture != face) {
-        const float w = cur.getWidth();
-        const float h = cur.getHeight();
-        const float side = (w > h ? w : h); // preserve a useful 32x32 analog canvas
-        const float cx = cur.i.x + w * 0.5f;
-        const float cy = cur.i.y + h * 0.5f;
-        state.picture = face;
-        state.base.i.x = cx - side * 0.5f;
-        state.base.i.y = cy - side * 0.5f;
-        state.base.f.x = cx + side * 0.5f;
-        state.base.f.y = cy + side * 0.5f;
-        state.captured = true;
-    }
+    const JGeometry::TBox2<f32> base = face->mBounds;
+    const float baseTx = face->getTranslateX();
+    const float baseTy = face->getTranslateY();
+    const float w = base.getWidth();
+    const float h = base.getHeight();
+    const float side = (w > h ? w : h);
+    const float localCx = base.i.x + w * 0.5f;
+    const float localCy = base.i.y + h * 0.5f;
 
-    replace_picture_texture(face, texture);
+    if (!use_private_item_wheel_texture(face, texture)) return;
     const JUtility::TColor neutralBlack(0, 0, 0, 0);
     const JUtility::TColor neutralWhite(255, 255, 255, 255);
     face->setBlackWhite(neutralBlack, neutralWhite);
@@ -2368,12 +2431,21 @@ void apply_item_wheel_exact_picture(J2DScreen* screen, u64 faceTag,
     face->setAlpha(255);
     face->show();
 
-    const float dx = cfg_pos(xh, 0.0f), dy = cfg_pos(yh, 0.0f), sc = cfg_scale(sh, 1.0f);
-    const float bw = state.base.getWidth(), bh = state.base.getHeight();
-    const float nw = bw * sc, nh = bh * sc;
-    const float cx = state.base.i.x + bw * 0.5f + dx;
-    const float cy = state.base.i.y + bh * 0.5f + dy;
-    set_bounds(face, cx - nw * 0.5f, cy - nh * 0.5f, nw, nh);
+    const float dx = cfg_pos(xh, 0.0f);
+    const float dy = cfg_pos(yh, 0.0f);
+    const float sc = cfg_scale(sh, 1.0f);
+    const float fitted = side * sc;
+    face->mBounds.i.x = localCx - fitted * 0.5f;
+    face->mBounds.i.y = localCy - fitted * 0.5f;
+    face->mBounds.f.x = localCx + fitted * 0.5f;
+    face->mBounds.f.y = localCy + fitted * 0.5f;
+    face->translate(baseTx + dx, baseTy + dy);
+    if (face->getTexture(0) != nullptr)
+        face->setTexCoord(face->getTexture(0), BIND15, MIRROR0, false);
+
+    state.picture = face;
+    state.base = base;
+    state.captured = false;
 
     for (int i = 0; i < hideCount; ++i) {
         J2DPane* other = screen->search(hideTags[i]);
@@ -3301,8 +3373,13 @@ void apply_known_menu_buttons(J2DScreen* screen) {
         MULTI_CHAR('w_nbbtn'),
     };
 
+    const bool itemWheelScreen =
+        screen->search(MULTI_CHAR('fyx_tex')) != nullptr &&
+        screen->search(MULTI_CHAR('x_btn_n')) != nullptr &&
+        screen->search(MULTI_CHAR('y_btn_n')) != nullptr;
+
     const PromptMapKind mapKind=prompt_map_kind(screen);
-    const bool sharedPrompt = mapKind==PromptMapKind::None &&
+    const bool sharedPrompt = !itemWheelScreen && mapKind==PromptMapKind::None &&
         (screen->search(MULTI_CHAR('atext1_1'))!=nullptr ||
          screen->search(MULTI_CHAR('btext1_1'))!=nullptr);
     if(sharedPrompt) begin_shared_prompt_temp_state(screen);
@@ -3325,7 +3402,7 @@ void apply_known_menu_buttons(J2DScreen* screen) {
     if (mapKind!=PromptMapKind::None) {
         apply_menu_button_texture(map_button_root(screen,mapKind,true),cross);
         apply_menu_button_texture(map_button_root(screen,mapKind,false),circle);
-    } else {
+    } else if (!itemWheelScreen) {
         for (u64 tag : aTags) {
             J2DPane* root = screen->search(tag);
             if (root != nullptr) apply_menu_button_texture(root, cross);
@@ -3397,115 +3474,21 @@ void apply_known_menu_buttons(J2DScreen* screen) {
     }
 
     // Shared Collection/Options/Fishing/Skills/etc. A/B prompt layout.
-    apply_shared_menu_prompt_layout(screen);
-    // Map prompts use mutually exclusive layouts and independent configuration handles.
-    apply_map_menu_prompt_layout(screen);
-
-    // Item Wheel / Item Menu (zelda_item_select_icon_message_ver2.blo).
-    // Keep this isolated from the gameplay HUD.  The X/Y assignment prompts use
-    // dedicated roots in this layout; L/R are shoulder prompts for direct select
-    // and bow-item combination.  Only replace artwork, preserving vanilla geometry.
-    if (screen->search(MULTI_CHAR('fyx_tex')) != nullptr &&
-        screen->search(MULTI_CHAR('x_btn_n')) != nullptr &&
-        screen->search(MULTI_CHAR('y_btn_n')) != nullptr) {
-        // Snapshot the original vanilla Item Wheel panes before changing any
-        // textures, bounds or visibility. Everything is restored in the POST
-        // J2DScreen::draw hook so Twilit Essentials never inherits our edits.
-        begin_item_wheel_temp_state(screen);
-        if (const ResTIMG* triangle = resource_timg(s_triangle))
-            apply_item_wheel_icon_texture(screen->search(MULTI_CHAR('x_btn_n')), triangle, s_wheelSquareBase, g_wheelSquareX, g_wheelSquareY, g_wheelSquareScale);
-        if (const ResTIMG* square = resource_timg(s_square))
-            apply_item_wheel_icon_texture(screen->search(MULTI_CHAR('y_btn_n')), square, s_wheelTriangleBase, g_wheelTriangleX, g_wheelTriangleY, g_wheelTriangleScale);
-
-        // The pane-tree diagnostic proved these controls are real BLO pictures,
-        // not inline OutFont glyphs. Replace the exact layout artwork directly.
-        if (const ResTIMG* analog = resource_timg(s_analog)) {
-            // Select: cbtn1/cbtn3/cbtn/cbtn2 are the four layered C-stick pictures.
-            const u64 selectHide[] = { MULTI_CHAR('cbtn3'), MULTI_CHAR('cbtn'), MULTI_CHAR('cbtn2') };
-            apply_item_wheel_exact_picture(screen, MULTI_CHAR('cbtn1'), selectHide, 3,
-                                           analog, s_wheelSelectAnalogBase,
-                                           g_wheelSelectAnalogX, g_wheelSelectAnalogY, g_wheelSelectAnalogScale);
-            // Direct Select: cbtn4/cbtn5/cbtn6/cbtn7 are the second C-stick set.
-            const u64 directHide[] = { MULTI_CHAR('cbtn5'), MULTI_CHAR('cbtn6'), MULTI_CHAR('cbtn7') };
-            apply_item_wheel_exact_picture(screen, MULTI_CHAR('cbtn4'), directHide, 3,
-                                           analog, s_wheelDirectAnalogBase,
-                                           g_wheelDirectAnalogX, g_wheelDirectAnalogY, g_wheelDirectAnalogScale);
-        }
-        if (const ResTIMG* l2 = resource_timg(s_l2)) {
-            apply_item_wheel_shoulder_texture(screen->search(MULTI_CHAR('l_btn_n')), l2,
-                                          s_wheelL2Base, g_wheelL2X, g_wheelL2Y, g_wheelL2Scale);
-        }
-        if (const ResTIMG* r2 = resource_timg(s_r2)) {
-            // gr_btn_n is the visible bow-combination group. r_btn_n is kept as
-            // a second dynamic variant so either game state receives R2.
-            apply_item_wheel_shoulder_texture(screen->search(MULTI_CHAR('gr_btn_n')), r2,
-                                          s_wheelR2ComboBase, g_wheelR2X, g_wheelR2Y, g_wheelR2Scale);
-            apply_item_wheel_shoulder_texture(screen->search(MULTI_CHAR('r_btn_n')), r2,
-                                          s_wheelR2AltBase, g_wheelR2X, g_wheelR2Y, g_wheelR2Scale);
-        }
+    // The item wheel has its own dedicated path below; never let broad menu
+    // aliases touch its panes because Twilit Essentials also anchors UI to them.
+    if (!itemWheelScreen) {
+        apply_shared_menu_prompt_layout(screen);
+        // Map prompts use mutually exclusive layouts and independent configuration handles.
+        apply_map_menu_prompt_layout(screen);
     }
 
-    // Options menu: the GameCube Z prompt lives under z_gc_n.
-    // Keep the root geometry untouched; only fit the R1 artwork inside the
-    // original 26x18 face while preserving the source texture's 2:1 ratio.
-    const ResTIMG* r1 = resource_timg(s_r1);
-    if (r1 != nullptr) {
-        J2DPane* zRoot = screen->search(MULTI_CHAR('z_gc_n'));
-        if (zRoot != nullptr) {
-            // Keep every original Z pane bound untouched. r1.bti is now a
-            // square 128x128 canvas with the 2.6:1 R1 artwork centered inside,
-            // so the original menu geometry provides the sizing without distortion.
-            apply_menu_button_texture(zRoot, r1);
-            // Preserve the Options root/animation, but size the visible R1 face
-            // from the replacement texture's aspect ratio instead of the narrow Z art.
-            if (J2DPicture* face = first_picture_recursive(zRoot)) {
-                const auto& b = face->getBounds();
-                const float oldW = b.getWidth();
-                const float oldH = b.getHeight();
-                const float cx = b.i.x + oldW * 0.5f;
-                const float cy = b.i.y + oldH * 0.5f;
-                const float aspect = r1->height != 0 ? ((float)r1->width / (float)r1->height) : 2.0f;
-                const float newH = oldH;
-                const float newW = newH * aspect;
-                set_bounds(face, cx - newW * 0.5f, cy - newH * 0.5f, newW, newH);
-            }
-        }
-    }
+    // Item Wheel controller prompts are handled by the dedicated
+    // dMenu_Ring_c::_draw overlay hook below. Do not mutate the wheel's
+    // J2DScreen/J2DMaterial tree here: Twilit Essentials hooks the same ring
+    // object and reuses those panes as anchors.
 
-    // Dungeon map: the "Mover" prompt is the GameCube C-stick control.
-    // dMenu_DmapBg_c builds it under c_btn beside c_text/c_text_s.
-    // Replace only this map C-stick root with the dedicated R3 texture.
-    const ResTIMG* r3 = resource_timg(s_r3);
-    if (r3 != nullptr && screen->search(MULTI_CHAR('c_text')) != nullptr) {
-        J2DPane* cRoot = screen->search(MULTI_CHAR('c_btn'));
-        if (cRoot != nullptr) apply_menu_button_texture(cRoot, r3);
-    }
-
-    // Options help legend: diagnostic v0.10.34 identified these 20x20
-    // pictures are the analog-stick glyphs. Replace only these pictures;
-    // the neighbouring .yaji_* arrow panes remain completely untouched.
-    const ResTIMG* analog = resource_timg(s_analog);
-    if (analog != nullptr && screen->search(MULTI_CHAR('let_area')) != nullptr) {
-        static const u64 analogTags[] = {
-            MULTI_CHAR('wi_juji1'),
-            MULTI_CHAR('wi_juji'),
-            MULTI_CHAR('wi_juji2'),
-            MULTI_CHAR('wi_juji3'),
-        };
-        for (u64 tag : analogTags) {
-            J2DPane* pane = screen->search(tag);
-            J2DPicture* pic = as_picture(pane);
-            if (pic != nullptr) {
-                replace_picture_texture(pic, analog);
-                const JUtility::TColor neutralBlack(0, 0, 0, 0);
-                const JUtility::TColor neutralWhite(255, 255, 255, 255);
-                pic->setBlackWhite(neutralBlack, neutralWhite);
-                pic->setCornerColor(neutralWhite);
-                pic->show();
-            }
-        }
-    }
 }
+
 
 // v0.11.20 brightness test, based directly on the stable v0.11.19 implementation.
 // Replace only the contextual GameCube R artwork after its layout is created.
@@ -3763,168 +3746,228 @@ int classify_current_pikari() {
     return 0;
 }
 
-dMenu_Collect2D_c* s_compatCollectOwner = nullptr;
-dMenu_Collect2D_c* s_compatCollectMainOwner = nullptr;
 
-// Twilit recovery bridge. Twilit Essentials already hooks dMenu_Ring_c::_delete
-// to destroy/reload its cached Quick Access radial. Vanilla Dusklight's
-// dMenu_Ring_c::_delete is empty, so pulsing it once immediately after a new
-// ring is created asks Twilit to rebuild only its cached radial resources
-// without deleting the actual vanilla ring object.
-void after_ring_create_compat(ModContext*, void* args, void*, void*) {
-    dMenu_Ring_c* ring = args != nullptr ? mods::arg<dMenu_Ring_c*>(args, 0) : nullptr;
-    if (ring != nullptr)
-        ring->_delete();
-}
-
-dMenu_Collect2D_c* s_collectionRefreshOwner = nullptr;
-bool s_collectionHadSubwindow = false;
-bool s_collectionRefreshPending = false;
-
-bool collection_has_subwindow(dMenu_Collect2D_c* c) {
-    return c != nullptr &&
-           (c->getSaveScreen() != nullptr ||
-            c->getOptionScreen() != nullptr ||
-            c->getLetterScreen() != nullptr ||
-            c->getFishingScreen() != nullptr ||
-            c->getSkillScreen() != nullptr ||
-            c->getInsectScreen() != nullptr);
-}
-
-
-HookAction before_collect_main_draw(ModContext*, void* args, void*, void*) {
-    s_compatCollectMainOwner = args != nullptr ? mods::arg<dMenu_Collect2D_c*>(args, 0) : nullptr;
-    return HOOK_CONTINUE;
-}
-
-void after_collect_main_draw(ModContext*, void* args, void*, void*) {
-    dMenu_Collect2D_c* collect = args != nullptr ? mods::arg<dMenu_Collect2D_c*>(args, 0) : nullptr;
-    if (collect == s_compatCollectMainOwner)
-        s_compatCollectMainOwner = nullptr;
-}
-
-struct ScreenMutationFrame {
-    J2DScreen* screen = nullptr;
-    bool mutated = false;
+struct RingDrawTarget {
+    J2DPicture* face = nullptr;
+    const ResTIMG* texture = nullptr;
+    ConfigVarHandle x = 0;
+    ConfigVarHandle y = 0;
+    ConfigVarHandle scale = 0;
+    bool shoulder = false;
+    bool maxSquare = false;
 };
-ScreenMutationFrame s_screenMutationStack[16];
-int s_screenMutationDepth = 0;
 
-void push_screen_mutation_frame(J2DScreen* screen, bool mutated) {
-    if (s_screenMutationDepth < 16)
-        s_screenMutationStack[s_screenMutationDepth++] = {screen, mutated};
-}
+RingDrawTarget s_ringDrawTargets[8];
+int s_ringDrawTargetCount = 0;
+dMenu_Ring_c* s_ringDrawOwner = nullptr;
+dMenu_Collect2D_c* s_activeCollect = nullptr;
 
-bool pop_screen_mutation_frame(J2DScreen* screen) {
-    if (s_screenMutationDepth <= 0) return false;
-    ScreenMutationFrame frame = s_screenMutationStack[--s_screenMutationDepth];
-    return frame.screen == screen && frame.mutated;
-}
-
-bool compat_item_wheel_screen(J2DScreen* screen) {
-    return screen != nullptr &&
-           screen->search(MULTI_CHAR('fyx_tex')) != nullptr &&
-           screen->search(MULTI_CHAR('x_btn_n')) != nullptr &&
-           screen->search(MULTI_CHAR('y_btn_n')) != nullptr;
-}
-
-bool compat_twilit_quick_access_screen(J2DScreen* screen) {
-    return screen != nullptr &&
-           screen->search(MULTI_CHAR('center_n')) != nullptr &&
-           screen->search(MULTI_CHAR('label_n')) != nullptr &&
-           screen->search(MULTI_CHAR('a_itmn_n')) != nullptr &&
-           screen->search(MULTI_CHAR('itemn_n')) != nullptr;
-}
-
-HookAction before_collect_top_draw(ModContext*, void* args, void*, void*) {
-    dMenu_Collect2DTop_c* top = args != nullptr ? mods::arg<dMenu_Collect2DTop_c*>(args, 0) : nullptr;
-    s_compatCollectOwner = top != nullptr ? top->mpCollect2D : nullptr;
-    return HOOK_CONTINUE;
-}
-
-bool pane_effectively_visible_for_overlay(J2DPane* pane) {
-    if (pane == nullptr) return false;
-    for (J2DPane* p = pane; p != nullptr; p = p->getParentPane()) {
-        if (!p->isVisible() || p->getAlpha() == 0) return false;
+bool pane_effectively_visible(J2DPane* pane) {
+    if(pane==nullptr) return false;
+    for(J2DPane* p=pane; p!=nullptr; p=p->getParentPane()) {
+        if(!p->isVisible() || p->getAlpha()==0) return false;
     }
     return true;
 }
 
-void draw_collection_button_overlay(J2DScreen* screen, u64 rootTag, const ResTIMG* texture,
-                                    ConfigVarHandle xh, ConfigVarHandle yh, ConfigVarHandle sh) {
-    if (screen == nullptr || texture == nullptr) return;
-    J2DPane* root = screen->search(rootTag);
-    if (root == nullptr) return;
-    J2DPicture* face = first_picture_recursive(root);
-    if (face == nullptr || !pane_effectively_visible_for_overlay(face)) return;
+float pane_effective_scale_x(J2DPane* pane) {
+    float out=1.0f;
+    for(J2DPane* p=pane; p!=nullptr; p=p->getParentPane()) out*=p->getScaleX();
+    return fabsf(out);
+}
+float pane_effective_scale_y(J2DPane* pane) {
+    float out=1.0f;
+    for(J2DPane* p=pane; p!=nullptr; p=p->getParentPane()) out*=p->getScaleY();
+    return fabsf(out);
+}
+u8 pane_effective_alpha(J2DPane* pane) {
+    float a=1.0f;
+    for(J2DPane* p=pane; p!=nullptr; p=p->getParentPane())
+        a*=((float)p->getAlpha()/255.0f);
+    if(a<0.0f) a=0.0f;
+    if(a>1.0f) a=1.0f;
+    return (u8)(a*255.0f);
+}
 
-    const auto& b = face->getGlbBounds();
-    const float w = b.getWidth();
-    const float h = b.getHeight();
-    if (w <= 0.0f || h <= 0.0f) return;
+void ring_add_draw_target(J2DPicture* face, const ResTIMG* texture,
+                          ConfigVarHandle x, ConfigVarHandle y, ConfigVarHandle scale,
+                          bool shoulder=false, bool maxSquare=false) {
+    if(face==nullptr || texture==nullptr ||
+       s_ringDrawTargetCount >= (int)(sizeof(s_ringDrawTargets)/sizeof(s_ringDrawTargets[0])))
+        return;
+    s_ringDrawTargets[s_ringDrawTargetCount++] =
+        {face,texture,x,y,scale,shoulder,maxSquare};
+}
 
-    const float side = (w < h ? w : h) * cfg_scale(sh, 1.0f);
-    const float cx = b.i.x + w * 0.5f + cfg_pos(xh, 0.0f);
-    const float cy = b.i.y + h * 0.5f + cfg_pos(yh, 0.0f);
+void ring_collect_root(J2DScreen* screen, u64 tag, const ResTIMG* texture,
+                       ConfigVarHandle x, ConfigVarHandle y, ConfigVarHandle scale,
+                       bool shoulder=false, bool maxSquare=false) {
+    J2DPane* root=screen!=nullptr ? screen->search(tag) : nullptr;
+    if(root==nullptr) return;
+    J2DPicture* face=first_picture_recursive(root);
+    ring_add_draw_target(face,texture,x,y,scale,shoulder,maxSquare);
+}
+
+void ring_collect_exact(J2DScreen* screen, u64 faceTag,
+                        const ResTIMG* texture,
+                        ConfigVarHandle x, ConfigVarHandle y, ConfigVarHandle scale,
+                        bool shoulder=false, bool maxSquare=true) {
+    if(screen==nullptr) return;
+    ring_add_draw_target(as_picture(screen->search(faceTag)),texture,x,y,scale,shoulder,maxSquare);
+}
+
+void draw_independent_prompt_overlay(J2DPicture* face, const ResTIMG* texture,
+                                     ConfigVarHandle xh, ConfigVarHandle yh, ConfigVarHandle sh,
+                                     bool shoulder, bool maxSquare) {
+    if(face==nullptr || texture==nullptr || !pane_effectively_visible(face)) return;
+
+    const JGeometry::TBox2<f32>& b=face->getGlbBounds();
+    float w=b.getWidth();
+    float h=b.getHeight();
+    if(w<=0.0f || h<=0.0f) return;
+
+    const float sc=cfg_scale(sh,1.0f);
+    float drawW=0.0f, drawH=0.0f;
+    if(shoulder) {
+        drawH=h*sc;
+        const float aspect=texture->height ? (float)texture->width/(float)texture->height : 1.0f;
+        drawW=drawH*aspect;
+    } else {
+        const float side=(maxSquare ? (w>h?w:h) : (w<h?w:h))*sc;
+        drawW=side;
+        drawH=side;
+    }
+
+    const float cx=b.i.x+w*0.5f+cfg_pos(xh,0.0f);
+    const float cy=b.i.y+h*0.5f+cfg_pos(yh,0.0f);
 
     J2DPicture overlay(texture);
     const JUtility::TColor black(0,0,0,0), white(255,255,255,255);
-    overlay.setBlackWhite(black, white);
+    overlay.setBlackWhite(black,white);
     overlay.setCornerColor(white);
-    overlay.setAlpha(face->getAlpha());
-    overlay.draw(cx - side * 0.5f, cy - side * 0.5f, side, side, false, false, false);
+    overlay.setAlpha(pane_effective_alpha(face));
+    overlay.draw(cx-drawW*0.5f,cy-drawH*0.5f,drawW,drawH,false,false,false);
 }
 
-void after_collect_top_draw(ModContext*, void* args, void*, void*) {
-    dMenu_Collect2DTop_c* top = args != nullptr ? mods::arg<dMenu_Collect2DTop_c*>(args, 0) : nullptr;
-    dMenu_Collect2D_c* collect = top != nullptr ? top->mpCollect2D : nullptr;
-    if (collect != nullptr && collect == s_compatCollectOwner && collect->mpScreenIcon != nullptr) {
-        // Draw our A/B art independently after the Collection/Twilit trees have
-        // finished rendering. No pane, texture, material, visibility or parent
-        // state is changed, so third-party tabs/icons remain completely untouched.
-        draw_collection_button_overlay(collect->mpScreenIcon, MULTI_CHAR('g_abtn_n'),
-                                       resource_timg(s_cross),
-                                       g_menuCrossX, g_menuCrossY, g_menuCrossScale);
-        draw_collection_button_overlay(collect->mpScreenIcon, MULTI_CHAR('g_bbtn_n'),
-                                       resource_timg(s_circle),
-                                       g_menuCircleX, g_menuCircleY, g_menuCircleScale);
+HookAction before_ring_controller_overlay(ModContext*, void* args, void*, void*) {
+    dMenu_Ring_c* ring = args != nullptr ? mods::arg<dMenu_Ring_c*>(args,0) : nullptr;
+    s_ringDrawOwner=nullptr;
+    s_ringDrawTargetCount=0;
+    if(ring==nullptr || ring->mpScreen==nullptr || ring->mPlayerIsWolf) return HOOK_CONTINUE;
 
-        const bool hasSub = collection_has_subwindow(collect);
-        if (s_collectionRefreshOwner != collect) {
-            s_collectionRefreshOwner = collect;
-            s_collectionHadSubwindow = hasSub;
-        } else {
-            // Returning from Letters/Skills/Fishing/Options/Save is the exact
-            // transition that tends to leave Twilit's injected Collection panes
-            // in a bad state. Rebuild the Collection on the next mod_update,
-            // outside the draw call, so Twilit's _delete/_create hooks recreate
-            // Boss Rush and all custom page resources from scratch.
-            if (s_collectionHadSubwindow && !hasSub)
-                s_collectionRefreshPending = true;
-            s_collectionHadSubwindow = hasSub;
-        }
+    s_ringDrawOwner=ring;
+    ring_collect_root(ring->mpScreen,MULTI_CHAR('x_btn_n'),resource_timg(s_triangle),
+                      g_wheelSquareX,g_wheelSquareY,g_wheelSquareScale);
+    ring_collect_root(ring->mpScreen,MULTI_CHAR('y_btn_n'),resource_timg(s_square),
+                      g_wheelTriangleX,g_wheelTriangleY,g_wheelTriangleScale);
+
+    ring_collect_exact(ring->mpScreen,MULTI_CHAR('cbtn1'),resource_timg(s_analog),
+                       g_wheelSelectAnalogX,g_wheelSelectAnalogY,g_wheelSelectAnalogScale);
+    ring_collect_exact(ring->mpScreen,MULTI_CHAR('cbtn4'),resource_timg(s_analog),
+                       g_wheelDirectAnalogX,g_wheelDirectAnalogY,g_wheelDirectAnalogScale);
+
+    ring_collect_root(ring->mpScreen,MULTI_CHAR('l_btn_n'),resource_timg(s_l2),
+                      g_wheelL2X,g_wheelL2Y,g_wheelL2Scale,true);
+    ring_collect_root(ring->mpScreen,MULTI_CHAR('gr_btn_n'),resource_timg(s_r2),
+                      g_wheelR2X,g_wheelR2Y,g_wheelR2Scale,true);
+    ring_collect_root(ring->mpScreen,MULTI_CHAR('r_btn_n'),resource_timg(s_r2),
+                      g_wheelR2X,g_wheelR2Y,g_wheelR2Scale,true);
+    return HOOK_CONTINUE;
+}
+
+void after_ring_controller_overlay(ModContext*, void* args, void*, void*) {
+    dMenu_Ring_c* ring = args != nullptr ? mods::arg<dMenu_Ring_c*>(args,0) : nullptr;
+    if(ring==nullptr || ring!=s_ringDrawOwner) return;
+
+    // Pure overlay path: never hide/show/move/changeTexture on the ring's BLO.
+    // This is intentionally boring because Twilit Essentials reads those exact
+    // panes as anchors while switching Quick Access/menu modes.
+    for(int i=0;i<s_ringDrawTargetCount;++i) {
+        const auto& t=s_ringDrawTargets[i];
+        draw_independent_prompt_overlay(t.face,t.texture,t.x,t.y,t.scale,t.shoulder,t.maxSquare);
     }
-    s_compatCollectOwner = nullptr;
+
+    s_ringDrawOwner=nullptr;
+    s_ringDrawTargetCount=0;
+}
+
+J2DScreen* s_collectPromptScreen = nullptr;
+
+HookAction before_collect_compat_draw(ModContext*, void* args, void*, void*) {
+    s_activeCollect = args != nullptr ? mods::arg<dMenu_Collect2D_c*>(args,0) : nullptr;
+    s_collectPromptScreen = nullptr;
+
+    // Twilit Essentials injects its custom pages/icons into mpScreen. Leave that
+    // tree completely untouched. The controller prompts live on mpScreenIcon,
+    // which is a separate vanilla screen, so restore TP Classic's Collection
+    // Cross/Circle/ornament there only.
+    if (s_activeCollect != nullptr && s_activeCollect->mpScreenIcon != nullptr) {
+        s_collectPromptScreen = s_activeCollect->mpScreenIcon;
+        begin_menu_prompt_draw(s_collectPromptScreen);
+        apply_known_menu_buttons(s_collectPromptScreen);
+        prepare_menu_ornament_before_draw(s_collectPromptScreen);
+    }
+    return HOOK_CONTINUE;
+}
+
+void after_collect_compat_draw(ModContext*, void* args, void*, void*) {
+    dMenu_Collect2D_c* c = args != nullptr ? mods::arg<dMenu_Collect2D_c*>(args,0) : nullptr;
+    if(c==nullptr || c!=s_activeCollect) return;
+
+    // Restore the prompt-only screen immediately after Collection finished
+    // drawing. Twilit's mpScreen/custom pages never receive any TP Classic
+    // texture/material/tree mutation.
+    if (s_collectPromptScreen != nullptr) {
+        restore_shared_menu_ornament_after_draw(s_collectPromptScreen);
+        restore_menu_prompt_after_draw(s_collectPromptScreen);
+        restore_shared_prompt_temp_state(s_collectPromptScreen);
+    }
+    s_collectPromptScreen=nullptr;
+    s_activeCollect=nullptr;
+}
+
+bool is_item_wheel_screen(J2DScreen* screen) {
+    return screen!=nullptr &&
+           screen->search(MULTI_CHAR('fyx_tex'))!=nullptr &&
+           screen->search(MULTI_CHAR('x_btn_n'))!=nullptr &&
+           screen->search(MULTI_CHAR('y_btn_n'))!=nullptr;
+}
+
+bool is_twilit_quick_access_screen(J2DScreen* screen) {
+    // Twilit Essentials creates a private J2DScreen from
+    // zelda_item_select_icon3_center_parts.blo. These four panes form a
+    // reliable signature and are not part of the vanilla item wheel screen.
+    return screen!=nullptr &&
+           screen->search(MULTI_CHAR('center_n'))!=nullptr &&
+           screen->search(MULTI_CHAR('label_n'))!=nullptr &&
+           screen->search(MULTI_CHAR('a_itmn_n'))!=nullptr &&
+           screen->search(MULTI_CHAR('itemn_n'))!=nullptr;
+}
+
+bool collection_draw_active() {
+    // dMenu_Collect2D_c::_draw owns not only the main Collection screen but
+    // also its Letters/Skills/Fishing/Options/Save submenus. While it is active,
+    // never let the generic J2DScreen hook mutate any BLO tree: Twilit's
+    // collection-lib reparents/clones panes across these transitions.
+    return s_activeCollect!=nullptr;
 }
 
 HookAction before_screen_draw(ModContext* ctx, void* args, void* retval, void* userdata) {
     J2DScreen* screen = mods::arg<J2DScreen*>(args, 0);
 
-    const bool nestedDraw = s_screenMutationDepth > 0;
-    const bool protectedScreen =
-        s_compatCollectOwner != nullptr ||
-        s_compatCollectMainOwner != nullptr ||
-        compat_item_wheel_screen(screen) ||
-        compat_twilit_quick_access_screen(screen);
-
-    bool genericMutated = false;
-    if (!protectedScreen && !nestedDraw) {
-        genericMutated = true;
+    if (is_item_wheel_screen(screen) || is_twilit_quick_access_screen(screen)) {
+        // Absolute isolation for both the vanilla ring and Twilit Essentials'
+        // private Quick Access wheel. Our ring art is drawn independently later.
+    } else if (collection_draw_active()) {
+        // Strong compatibility mode for the whole Collection family, including
+        // Letters/Skills/Fishing/Options/Save submenus. Do not touch textures,
+        // visibility, pane order, bounds or transforms while Twilit is actively
+        // managing this menu tree.
+    } else {
         begin_menu_prompt_draw(screen);
         apply_known_menu_buttons(screen);
         prepare_menu_ornament_before_draw(screen);
     }
-    push_screen_mutation_frame(screen, genericMutated);
 
     dMeter2Draw_c* meter = s_activeMeter != nullptr ? s_activeMeter : s_meterInstance;
     if (meter == nullptr) return HOOK_CONTINUE;
@@ -3978,8 +4021,6 @@ HookAction before_screen_draw(ModContext* ctx, void* args, void* retval, void* u
 void after_screen_draw(ModContext*, void* args, void*, void*) {
     if (args == nullptr) return;
     J2DScreen* screen = mods::arg<J2DScreen*>(args, 0);
-    if (!pop_screen_mutation_frame(screen)) return;
-
     restore_item_wheel_temp_state(screen);
     restore_world_icons(screen);
     restore_world_map_temp_state(screen);
@@ -4186,51 +4227,46 @@ ModResult mod_initialize(ModError* error) {
     s_buttonCrossHookInstalled = true;
 
     ModResult pt = mods::hook::add_pre<PaneTransHook>(svc_hook, before_pane_trans);
-    ModResult collectMainPre = mods::hook::add_pre<CollectMainDrawHook>(svc_hook, before_collect_main_draw);
-    if (collectMainPre != MOD_OK) {
-        mods::hook::uninstall<PaneTransHook>();
-        free_resources();
-        return mods::set_error(error, collectMainPre, "failed to install PRE hook for dMenu_Collect2D_c::_draw");
-    }
-    ModResult collectMainPost = mods::hook::add_post<CollectMainDrawHook>(svc_hook, after_collect_main_draw);
-    if (collectMainPost != MOD_OK) {
-        mods::hook::uninstall<CollectMainDrawHook>();
-        mods::hook::uninstall<PaneTransHook>();
-        free_resources();
-        return mods::set_error(error, collectMainPost, "failed to install POST hook for dMenu_Collect2D_c::_draw");
-    }
-
-    ModResult collectTopPre = mods::hook::add_pre<CollectTopDrawHook>(svc_hook, before_collect_top_draw);
-    if (collectTopPre != MOD_OK) {
-        mods::hook::uninstall<CollectMainDrawHook>();
-        mods::hook::uninstall<PaneTransHook>();
-        free_resources();
-        return mods::set_error(error, collectTopPre, "failed to install PRE hook for dMenu_Collect2DTop_c::draw");
-    }
-    ModResult collectTopPost = mods::hook::add_post<CollectTopDrawHook>(svc_hook, after_collect_top_draw);
-    if (collectTopPost != MOD_OK) {
-        mods::hook::uninstall<CollectTopDrawHook>();
-        mods::hook::uninstall<CollectMainDrawHook>();
-        mods::hook::uninstall<PaneTransHook>();
-        free_resources();
-        return mods::set_error(error, collectTopPost, "failed to install POST hook for dMenu_Collect2DTop_c::draw");
-    }
-
-    ModResult ringCreatePost = mods::hook::add_post<RingCreateCompatHook>(svc_hook, after_ring_create_compat);
-    if (ringCreatePost != MOD_OK) {
-        mods::hook::uninstall<CollectTopDrawHook>();
-        mods::hook::uninstall<CollectMainDrawHook>();
-        mods::hook::uninstall<PaneTransHook>();
-        free_resources();
-        return mods::set_error(error, ringCreatePost, "failed to install POST hook for dMenu_Ring_c::_create");
-    }
-
     ModResult psd = mods::hook::add_pre<ScreenDrawHook>(before_screen_draw, nullptr);
     if (psd != MOD_OK) {
         mods::hook::uninstall<PaneTransHook>();
         free_resources();
         return psd;
     }
+    ModResult ringPre = mods::hook::add_pre<RingControllerOverlayHook>(svc_hook, before_ring_controller_overlay);
+    if (ringPre != MOD_OK) {
+        mods::hook::uninstall<PaneTransHook>();
+        mods::hook::uninstall<ScreenDrawHook>();
+        free_resources();
+        return mods::set_error(error, ringPre, "failed to install PRE hook for dMenu_Ring_c::_draw");
+    }
+    ModResult ringPost = mods::hook::add_post<RingControllerOverlayHook>(svc_hook, after_ring_controller_overlay);
+    if (ringPost != MOD_OK) {
+        mods::hook::uninstall<RingControllerOverlayHook>();
+        mods::hook::uninstall<PaneTransHook>();
+        mods::hook::uninstall<ScreenDrawHook>();
+        free_resources();
+        return mods::set_error(error, ringPost, "failed to install POST hook for dMenu_Ring_c::_draw");
+    }
+
+    ModResult collectPre = mods::hook::add_pre<CollectCompatDrawHook>(svc_hook, before_collect_compat_draw);
+    if (collectPre != MOD_OK) {
+        mods::hook::uninstall<RingControllerOverlayHook>();
+        mods::hook::uninstall<PaneTransHook>();
+        mods::hook::uninstall<ScreenDrawHook>();
+        free_resources();
+        return mods::set_error(error, collectPre, "failed to install PRE hook for dMenu_Collect2D_c::_draw");
+    }
+    ModResult collectPost = mods::hook::add_post<CollectCompatDrawHook>(svc_hook, after_collect_compat_draw);
+    if (collectPost != MOD_OK) {
+        mods::hook::uninstall<CollectCompatDrawHook>();
+        mods::hook::uninstall<RingControllerOverlayHook>();
+        mods::hook::uninstall<PaneTransHook>();
+        mods::hook::uninstall<ScreenDrawHook>();
+        free_resources();
+        return mods::set_error(error, collectPost, "failed to install POST hook for dMenu_Collect2D_c::_draw");
+    }
+
     ModResult psdPost = mods::hook::add_post<ScreenDrawHook>(svc_hook, after_screen_draw);
     if (psdPost != MOD_OK) {
         mods::hook::uninstall<ScreenDrawHook>();
@@ -4288,31 +4324,11 @@ ModResult mod_initialize(ModError* error) {
     return MOD_OK;
 }
 
-MOD_EXPORT ModResult mod_update(ModError*) {
-    if (s_collectionRefreshPending) {
-        dMw_c* mw = dMeter2Info_getMenuWindowClass();
-        if (mw != nullptr && mw->isPauseWindow()) {
-            s_collectionRefreshPending = false;
-            s_collectionRefreshOwner = nullptr;
-            s_collectionHadSubwindow = false;
-
-            // Force a complete vanilla Collection lifecycle. Twilit Essentials
-            // hooks these create/delete paths, so its Boss Rush icon/pages are
-            // rebuilt too. Doing it here avoids deleting panes during a draw.
-            mw->dMw_collect_delete(true);
-            mw->dMw_collect_create();
-        }
-    }
-    return MOD_OK;
-}
+MOD_EXPORT ModResult mod_update(ModError*) { return MOD_OK; }
 
 MOD_EXPORT ModResult mod_shutdown(ModError*) {
-    mods::hook::uninstall<RingCreateCompatHook>();
-    mods::hook::uninstall<CollectTopDrawHook>();
-    mods::hook::uninstall<CollectMainDrawHook>();
-    s_collectionRefreshPending = false;
-    s_collectionRefreshOwner = nullptr;
-    s_collectionHadSubwindow = false;
+    mods::hook::uninstall<CollectCompatDrawHook>();
+    mods::hook::uninstall<RingControllerOverlayHook>();
     mods::hook::uninstall<MeterButtonScreenInitHook>();
     if (s_buttonCrossHookInstalled) {
         mods::hook::uninstall<ButtonCrossDrawHook>();
