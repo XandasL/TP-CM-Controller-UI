@@ -52,6 +52,12 @@ ConfigVarHandle g_buttonLayoutPreset=0;
 bool s_controllerStyleLocked=false;
 bool s_useXbox=false;
 
+// Developer-only Midna diagnostics. This records geometry only; it never
+// changes the HUD. Export from CONTROLLER DEV > Tools after reproducing.
+std::string s_midnaDiagnostic;
+bool s_midnaDiagLastEvent=false;
+int s_midnaDiagPostEventFrame=-1;
+
 ConfigVarHandle g_triX=0, g_triY=0, g_triScale=0;
 ConfigVarHandle g_squareX=0, g_squareY=0, g_squareScale=0;
 // Alternate X/Y layout calibration. These handles are developer-only for now.
@@ -730,6 +736,8 @@ void json_bool(std::string& out,const char* key,ConfigVarHandle h,bool& first) {
     out += cfg_bool(h,false) ? "true" : "false";
 }
 
+void export_midna_diagnostic(ModContext*,void*);
+
 void export_calibration(ModContext*,void*) {
     if (!kDeveloperOptions || svc_host == nullptr || svc_log == nullptr) return;
 
@@ -906,6 +914,43 @@ void select_swap_xy_preset(ModContext*,void*);
 void select_swap_yb_preset(ModContext*,void*);
 void select_swap_xyxb_preset(ModContext*,void*);
 
+
+
+void export_midna_diagnostic(ModContext*,void*) {
+    if (!kDeveloperOptions || svc_host == nullptr || svc_log == nullptr) return;
+
+    const char* dataDir=nullptr;
+    if (svc_host->data_dir(mod_ctx,&dataDir) != MOD_OK || dataDir == nullptr || dataDir[0] == '\0') {
+        svc_log->error(mod_ctx,"Midna diagnostic export failed: mod data directory unavailable");
+        return;
+    }
+
+    std::string path=dataDir;
+    if (!path.empty() && path.back()!='/' && path.back()!='\\') path += '/';
+    path += "midna_diagnostic.txt";
+
+    std::FILE* fp=std::fopen(path.c_str(),"wb");
+    if (fp==nullptr) {
+        svc_log->error(mod_ctx,"Midna diagnostic export failed: could not open output file");
+        return;
+    }
+
+    const char* header =
+        "TP Classic Modern Controller UI - Midna Diagnostic\n"
+        "Reproduce the bad Midna size, then export this file.\n\n";
+    std::fwrite(header,1,std::strlen(header),fp);
+    if (!s_midnaDiagnostic.empty())
+        std::fwrite(s_midnaDiagnostic.data(),1,s_midnaDiagnostic.size(),fp);
+    else {
+        const char* empty="No Midna snapshots were captured yet.\n";
+        std::fwrite(empty,1,std::strlen(empty),fp);
+    }
+    std::fclose(fp);
+
+    std::string msg="Midna diagnostic exported to: ";
+    msg+=path;
+    svc_log->info(mod_ctx,msg.c_str());
+}
 
 ModResult build_derived_b_swap_panel(UiElementHandle pane,bool xyBase) {
     const bool xyxb=xyBase;
@@ -1494,6 +1539,12 @@ ModResult build_settings_11_panel(ModContext*,UiWindowHandle,UiElementHandle pan
         nullptr);
     add_button(pane,"Export Calibration JSON",export_calibration,
         "Export the current calibration so it can be shared without screenshots.");
+    svc_ui->pane_add_section(mod_ctx,pane,"Midna Diagnostic");
+    svc_ui->pane_add_text(mod_ctx,pane,
+        "After reproducing the oversized Midna after a cutscene/skip, export the captured HUD geometry and parent transforms.",
+        nullptr);
+    add_button(pane,"Export Midna Diagnostic",export_midna_diagnostic,
+        "Writes midna_diagnostic.txt to the mod data folder. Send that file for analysis.");
         svc_ui->pane_add_section(mod_ctx,pane,"Visual HUD Editor");
     add_toggle(pane,"Enable Visual HUD Editor",g_visualHudEditorEnabled,
         "Developer-only visual editing mode. The editor is restricted to a whitelist of TP Classic elements with known X/Y/Scale config handles.");
@@ -2647,6 +2698,107 @@ static void tag_to_text(u64 tag,char out[9]) {
     out[8]='\0';
 }
 
+static void append_midna_pane_diag(std::string& out,const char* name,J2DPane* pane) {
+    char line[1024];
+    if (pane==nullptr) {
+        std::snprintf(line,sizeof(line),"  %s: <null>\n",name);
+        out+=line;
+        return;
+    }
+
+    const auto& b=pane->getBounds();
+    const auto& gb=pane->getGlbBounds();
+    char tag[9],user[9];
+    tag_to_text(pane->mInfoTag,tag);
+    tag_to_text(pane->getUserInfo(),user);
+
+    float parentSX=1.0f,parentSY=1.0f;
+    midna_parent_scale(pane,parentSX,parentSY);
+
+    std::snprintf(line,sizeof(line),
+        "  %s: ptr=%p tag='%s' user='%s' type=%u vis=%d alpha=%u "
+        "local=(%.3f,%.3f %.3fx%.3f) global=(%.3f,%.3f %.3fx%.3f) "
+        "scale=(%.4f,%.4f) parentAccumScale=(%.4f,%.4f)\n",
+        name,(void*)pane,tag,user,(unsigned)pane->getTypeID(),
+        pane->isVisible()?1:0,(unsigned)pane->getAlpha(),
+        (double)b.i.x,(double)b.i.y,(double)b.getWidth(),(double)b.getHeight(),
+        (double)gb.i.x,(double)gb.i.y,(double)gb.getWidth(),(double)gb.getHeight(),
+        (double)pane->getScaleX(),(double)pane->getScaleY(),
+        (double)parentSX,(double)parentSY);
+    out+=line;
+
+    int depth=0;
+    for(J2DPane* p=pane->getParentPane();p!=nullptr && depth<10;p=p->getParentPane(),++depth) {
+        const auto& pb=p->getBounds();
+        const auto& pgb=p->getGlbBounds();
+        char ptag[9],puser[9];
+        tag_to_text(p->mInfoTag,ptag);
+        tag_to_text(p->getUserInfo(),puser);
+        std::snprintf(line,sizeof(line),
+            "    parent[%d]: ptr=%p tag='%s' user='%s' type=%u vis=%d alpha=%u "
+            "local=(%.3f,%.3f %.3fx%.3f) global=(%.3f,%.3f %.3fx%.3f) scale=(%.4f,%.4f)\n",
+            depth,(void*)p,ptag,puser,(unsigned)p->getTypeID(),
+            p->isVisible()?1:0,(unsigned)p->getAlpha(),
+            (double)pb.i.x,(double)pb.i.y,(double)pb.getWidth(),(double)pb.getHeight(),
+            (double)pgb.i.x,(double)pgb.i.y,(double)pgb.getWidth(),(double)pgb.getHeight(),
+            (double)p->getScaleX(),(double)p->getScaleY());
+        out+=line;
+    }
+}
+
+static void capture_midna_diagnostic_snapshot(const char* reason,dMeter2Draw_c* meter,J2DScreen* explicitScreen=nullptr) {
+    if (!kDeveloperOptions) return;
+    if (s_midnaDiagnostic.size()>120000) return;
+
+    char header[512];
+    std::snprintf(header,sizeof(header),
+        "\n=== SNAPSHOT: %s ===\n"
+        "eventRunning=%d externalMidnaOwner=%d configuredMidna=(x=%lld y=%lld scale=%lld)\n",
+        reason,
+        dComIfGp_event_runCheck()?1:0,
+        s_externalMidnaPromptOwner?1:0,
+        (long long)cfg_int(g_midnaX,80),
+        (long long)cfg_int(g_midnaY,-90),
+        (long long)cfg_int(g_midnaScale,65));
+    s_midnaDiagnostic+=header;
+
+    J2DScreen* screen=explicitScreen;
+    if (screen==nullptr && meter!=nullptr) screen=meter->getMainScreenPtr();
+
+    if (screen!=nullptr) {
+        append_midna_pane_diag(s_midnaDiagnostic,"screen.midona_n",screen->search(MULTI_CHAR('midona_n')));
+        append_midna_pane_diag(s_midnaDiagnostic,"screen.midona_s",screen->search(MULTI_CHAR('midona_s')));
+        append_midna_pane_diag(s_midnaDiagnostic,"screen.midona",screen->search(MULTI_CHAR('midona')));
+        append_midna_pane_diag(s_midnaDiagnostic,"screen.j_light1",screen->search(MULTI_CHAR('j_light1')));
+        append_midna_pane_diag(s_midnaDiagnostic,"screen.juji_n",screen->search(MULTI_CHAR('juji_n')));
+    } else {
+        s_midnaDiagnostic+="  main screen: <null>\n";
+    }
+
+    if (meter!=nullptr && meter->mpButtonMidona!=nullptr)
+        append_midna_pane_diag(s_midnaDiagnostic,"meter.mpButtonMidona",meter->mpButtonMidona->getPanePtr());
+
+    for(int i=0;i<3;++i) {
+        char label[64];
+        std::snprintf(label,sizeof(label),"storedBaseline[%d]",i);
+        char line[512];
+        const auto& st=s_midnaPictures[i];
+        if (!st.captured) {
+            std::snprintf(line,sizeof(line),"  %s: <not captured>\n",label);
+        } else {
+            std::snprintf(line,sizeof(line),
+                "  %s: pane=%p base=(%.3f,%.3f %.3fx%.3f) baseParentScale=(%.4f,%.4f) last=(dx=%.3f dy=%.3f scale=%.4f)\n",
+                label,(void*)st.pane,
+                (double)st.base.i.x,(double)st.base.i.y,
+                (double)st.base.getWidth(),(double)st.base.getHeight(),
+                (double)st.baseParentScaleX,(double)st.baseParentScaleY,
+                (double)st.lastDx,(double)st.lastDy,(double)st.lastScale);
+        }
+        s_midnaDiagnostic+=line;
+    }
+}
+
+
 static void log_picture_tree(J2DPane* pane,int depth,int& count) {
     if(pane==nullptr || svc_log==nullptr || count>=240 || depth>10) return;
     if(pane->getTypeID()==18) {
@@ -2741,6 +2893,31 @@ void apply_wolf_text_config(dMeter2Draw_c* meter) {
 }
 
 void after_meter_draw(ModContext*, void* args, void*, void*) {
+    auto* midnaDiagMeter = args != nullptr ? mods::arg<dMeter2Draw_c*>(args,0) : nullptr;
+    if (kDeveloperOptions) {
+        const bool eventNow=dComIfGp_event_runCheck();
+        if (!s_midnaDiagLastEvent && eventNow) {
+            capture_midna_diagnostic_snapshot("event-start",midnaDiagMeter);
+            s_midnaDiagPostEventFrame=-1;
+        } else if (s_midnaDiagLastEvent && !eventNow) {
+            capture_midna_diagnostic_snapshot("event-end-frame0",midnaDiagMeter);
+            s_midnaDiagPostEventFrame=0;
+        }
+        s_midnaDiagLastEvent=eventNow;
+
+        if (!eventNow && s_midnaDiagPostEventFrame>=0) {
+            ++s_midnaDiagPostEventFrame;
+            if (s_midnaDiagPostEventFrame==1)
+                capture_midna_diagnostic_snapshot("post-event-frame1",midnaDiagMeter);
+            else if (s_midnaDiagPostEventFrame==3)
+                capture_midna_diagnostic_snapshot("post-event-frame3",midnaDiagMeter);
+            else if (s_midnaDiagPostEventFrame==10) {
+                capture_midna_diagnostic_snapshot("post-event-frame10",midnaDiagMeter);
+                s_midnaDiagPostEventFrame=-1;
+            }
+        }
+    }
+
     if (s_fishingCheckPane != nullptr) {
         s_fishingCheckPane->translate(s_fishingCheckBaseX, s_fishingCheckBaseY);
         s_fishingCheckPane->scale(s_fishingCheckBaseSX, s_fishingCheckBaseSY);
@@ -4811,6 +4988,7 @@ void after_meter_button_screen_init(ModContext*, void* args, void*, void*) {
     if (self == nullptr || self->mpButtonScreen == nullptr) return;
 
     capture_midna_baselines_from_screen(self->mpButtonScreen);
+    capture_midna_diagnostic_snapshot("screenInitButton",nullptr,self->mpButtonScreen);
 
     // Fishing uses these exact faces in zelda_game_image_button_info.blo.
     // Change only artwork; directional arrows and the combined-prompt plus
@@ -5902,6 +6080,9 @@ MOD_EXPORT ModResult mod_shutdown(ModError*) {
     s_midnaPromptOriginalTexture = nullptr;
     s_externalMidnaPromptOwner = false;
     for (auto& st : s_midnaPictures) st = {};
+    s_midnaDiagnostic.clear();
+    s_midnaDiagLastEvent=false;
+    s_midnaDiagPostEventFrame=-1;
     g_publicWindow = 0;
     g_layoutWindow = 0;
     g_visualHudEditorEnabled = 0;
