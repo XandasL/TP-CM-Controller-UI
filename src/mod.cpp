@@ -10,6 +10,7 @@
 #include "d/d_meter2_info.h"
 #include "d/d_menu_collect.h"
 #include "d/d_menu_window.h"
+#include "d/d_menu_ring.h"
 #include "d/d_item_data.h"
 #include "d/d_pane_class.h"
 #include "JSystem/J2DGraph/J2DPane.h"
@@ -763,7 +764,7 @@ DEFINE_HOOK(&CPaneMgr::paneTrans, PaneTransHook);
 DEFINE_HOOK(&J2DScreen::draw, ScreenDrawHook);
 DEFINE_HOOK(&dMenu_Collect2DTop_c::draw, CollectTopDrawHook);
 DEFINE_HOOK(&dMenu_Collect2D_c::_draw, CollectMainDrawHook);
-DEFINE_HOOK(&dMw_c::dMw_ring_create, RingCreateCompatHook);
+DEFINE_HOOK(&dMenu_Ring_c::_create, RingCreateCompatHook);
 DEFINE_HOOK(&dDlst_FileSel_c::draw, FileSelDrawHook);
 DEFINE_HOOK(&COutFont_c::createPane, OutFontCreatePaneHook);
 DEFINE_HOOK(&COutFont_c::drawFont, OutFontDrawFontHook);
@@ -3771,9 +3772,9 @@ dMenu_Collect2D_c* s_compatCollectMainOwner = nullptr;
 // ring is created asks Twilit to rebuild only its cached radial resources
 // without deleting the actual vanilla ring object.
 void after_ring_create_compat(ModContext*, void* args, void*, void*) {
-    dMw_c* mw = args != nullptr ? mods::arg<dMw_c*>(args, 0) : nullptr;
-    if (mw != nullptr && mw->mpMenuRing != nullptr)
-        mw->mpMenuRing->_delete();
+    dMenu_Ring_c* ring = args != nullptr ? mods::arg<dMenu_Ring_c*>(args, 0) : nullptr;
+    if (ring != nullptr)
+        ring->_delete();
 }
 
 dMenu_Collect2D_c* s_collectionRefreshOwner = nullptr;
@@ -4221,7 +4222,7 @@ ModResult mod_initialize(ModError* error) {
         mods::hook::uninstall<CollectMainDrawHook>();
         mods::hook::uninstall<PaneTransHook>();
         free_resources();
-        return mods::set_error(error, ringCreatePost, "failed to install POST hook for dMw_c::dMw_ring_create");
+        return mods::set_error(error, ringCreatePost, "failed to install POST hook for dMenu_Ring_c::_create");
     }
 
     ModResult psd = mods::hook::add_pre<ScreenDrawHook>(before_screen_draw, nullptr);
@@ -4290,7 +4291,7 @@ ModResult mod_initialize(ModError* error) {
 MOD_EXPORT ModResult mod_update(ModError*) {
     if (s_collectionRefreshPending) {
         dMw_c* mw = dMeter2Info_getMenuWindowClass();
-        if (mw != nullptr && mw->isPauseWindow() && mw->mpMenuCollect != nullptr) {
+        if (mw != nullptr && mw->isPauseWindow()) {
             s_collectionRefreshPending = false;
             s_collectionRefreshOwner = nullptr;
             s_collectionHadSubwindow = false;
