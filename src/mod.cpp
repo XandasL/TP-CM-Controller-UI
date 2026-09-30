@@ -3911,6 +3911,13 @@ void after_screen_draw(ModContext*, void* args, void*, void*) {
 }
 
 ModResult mod_initialize(ModError* error) {
+    // Hardest possible compatibility diagnostic: keep only the package/mod ID
+    // enabled. Do not register config/UI, load resources, or install any hook.
+    // This distinguishes "TP Classic code/resources" from Twilit's behavior that
+    // is activated solely because org.dusklight.tp_classic_buttons is enabled.
+    (void)error;
+    return MOD_OK;
+
     ModResult styleResult=reg_int("controllerStyle",0,g_controllerStyle,error);
     if(styleResult!=MOD_OK) return styleResult;
     s_controllerStyleLocked=false; s_useXbox=false;
@@ -4205,6 +4212,9 @@ ModResult mod_initialize(ModError* error) {
 MOD_EXPORT ModResult mod_update(ModError*) { return MOD_OK; }
 
 MOD_EXPORT ModResult mod_shutdown(ModError*) {
+    // No resources/hooks/UI were installed in the hard no-op diagnostic.
+    return MOD_OK;
+
     mods::hook::uninstall<CollectCompatDrawHook>();
     mods::hook::uninstall<MeterButtonScreenInitHook>();
     if (s_buttonCrossHookInstalled) {
