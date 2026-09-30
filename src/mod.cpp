@@ -554,6 +554,11 @@ void add_button(UiElementHandle pane,const char* label,UiPressedFn fn,const char
     svc_ui->pane_add_control(mod_ctx,pane,&c,nullptr);
 }
 
+bool base_xy_preset_selected(ModContext*,void*);
+bool swap_xy_preset_selected(ModContext*,void*);
+void select_base_xy_preset(ModContext*,void*);
+void select_swap_xy_preset(ModContext*,void*);
+
 ModResult build_base_xy_preset_panel(ModContext*,UiWindowHandle,UiElementHandle pane,UiElementHandle,void*,ModError*) {
     svc_ui->pane_add_text(mod_ctx,pane,"Base X/Y layout. Activate this preset before calibrating these controls.",nullptr);
     UiControlDesc activate=UI_CONTROL_DESC_INIT;
