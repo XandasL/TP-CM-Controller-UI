@@ -2513,14 +2513,12 @@ static void adjust_sword_picture(J2DPicture* pane,float dx,float dy,float sc) {
 struct MidnaPictureState {
     J2DPane* pane = nullptr;
     JGeometry::TBox2<f32> base{};
-    float baseGlobalWidth = 0.0f;
-    float baseGlobalHeight = 0.0f;
+    float baseParentScaleX = 1.0f;
+    float baseParentScaleY = 1.0f;
     float lastDx = 0.0f, lastDy = 0.0f, lastScale = 1.0f;
     bool captured = false;
 };
 MidnaPictureState s_midnaPictures[3]{};
-bool s_midnaEventWasRunning=false;
-int s_midnaPostEventCaptureDelay=0;
 
 static bool nearf(float a,float b,float eps=0.25f) {
     return (a>b ? a-b : b-a) <= eps;
@@ -2552,44 +2550,54 @@ static int midna_slot_for(J2DPane* pane) {
     return -1;
 }
 
+static void capture_midna_baseline(J2DPane* pane) {
+    const int slot=midna_slot_for(pane);
+    if (slot<0 || pane==nullptr) return;
+
+    MidnaPictureState& st=s_midnaPictures[slot];
+    st.pane=pane;
+    st.base=pane->getBounds();
+    midna_parent_scale(pane,st.baseParentScaleX,st.baseParentScaleY);
+    st.lastDx=0.0f;
+    st.lastDy=0.0f;
+    st.lastScale=1.0f;
+    st.captured=true;
+}
+
+static void capture_midna_baselines_from_screen(J2DScreen* screen) {
+    if (screen==nullptr) return;
+
+    // screenInitButton is our clean construction point. Capture local geometry
+    // here before TP Classic ever scales the portrait and before Essentials
+    // later takes ownership of its contextual Midna/Z layout.
+    const u64 tags[3] = {
+        MULTI_CHAR('midona_s'),
+        MULTI_CHAR('midona'),
+        MULTI_CHAR('j_light1'),
+    };
+    for (u64 tag : tags) {
+        J2DPane* pane=screen->search(tag);
+        if (is_midna_picture(pane))
+            capture_midna_baseline(pane);
+    }
+}
+
 static MidnaPictureState* midna_state_for(J2DPane* pane) {
     const int slot=midna_slot_for(pane);
     if (slot<0) return nullptr;
 
     MidnaPictureState& st=s_midnaPictures[slot];
-
-    // Canonical baseline is keyed by the vanilla pane tag, not by the pane
-    // address. Cutscenes may destroy/recreate HUD panes while their temporary
-    // transforms are still active; never learn those transient bounds.
     if (st.captured) {
         st.pane=pane;
         return &st;
     }
 
-    // Do not establish the first canonical baseline during a cutscene or in
-    // the first few HUD frames after it ends. If a canonical baseline already
-    // exists, the block above reuses it immediately.
-    if (dComIfGp_event_runCheck() || s_midnaPostEventCaptureDelay>0)
+    // Fallback only. Normally screenInitButton has already captured this.
+    // Never learn a baseline from a live cutscene frame.
+    if (dComIfGp_event_runCheck())
         return nullptr;
 
-    st.pane=pane;
-    st.base=pane->getBounds();
-    const auto& gb=pane->getGlbBounds();
-    st.baseGlobalWidth=gb.getWidth();
-    st.baseGlobalHeight=gb.getHeight();
-
-    // Fallback for the rare case where global bounds have not been evaluated
-    // yet on the first clean HUD frame.
-    if (fabsf(st.baseGlobalWidth)<0.0001f || fabsf(st.baseGlobalHeight)<0.0001f) {
-        float psx=1.0f,psy=1.0f;
-        midna_parent_scale(pane,psx,psy);
-        st.baseGlobalWidth=st.base.getWidth()*fabsf(psx);
-        st.baseGlobalHeight=st.base.getHeight()*fabsf(psy);
-    }
-
-    st.lastDx=st.lastDy=0.0f;
-    st.lastScale=1.0f;
-    st.captured=true;
+    capture_midna_baseline(pane);
     return &st;
 }
 
@@ -2598,60 +2606,36 @@ static void adjust_midna_pictures(J2DPane* pane,float dx,float dy,float sc) {
     if(is_midna_picture(pane)) {
         MidnaPictureState* st=midna_state_for(pane);
         if (st==nullptr) {
-            for(J2DPane* c=pane->getFirstChildPane();c!=nullptr;c=c->getNextChildPane())
-                adjust_midna_pictures(c,dx,dy,sc);
+            for(J2DPane* child=pane->getFirstChildPane();child!=nullptr;child=child->getNextChildPane())
+                adjust_midna_pictures(child,dx,dy,sc);
             return;
         }
-        const auto& cur=pane->getBounds();
-        const float bw=st->base.getWidth(), bh=st->base.getHeight();
-        const float prevW=bw*st->lastScale, prevH=bh*st->lastScale;
-        const float prevX=st->base.i.x+st->lastDx-(prevW-bw)*0.5f;
-        const float prevY=st->base.i.y+st->lastDy-(prevH-bh)*0.5f;
 
-        // Do not learn a new baseline from arbitrary live geometry changes.
-        // Area transitions and contextual HUD animations can temporarily scale/
-        // reposition Midna; treating those frames as a fresh baseline compounds
-        // our configured scale until another HUD event happens.  A new pane
-        // pointer is captured by midna_state_for(); for the same pane, always
-        // reapply from the original clean bounds.
-        (void)cur;
-        (void)prevX; (void)prevY; (void)prevW; (void)prevH;
+        const float bw=st->base.getWidth();
+        const float bh=st->base.getHeight();
 
-        const float nbw=st->base.getWidth(), nbh=st->base.getHeight();
+        // Parent/root transforms can change across area transitions or events.
+        // Compensate relative to the clean parent scale captured at screen init,
+        // but never recapture the portrait from a live gameplay/cutscene frame.
+        float parentScaleX=1.0f,parentScaleY=1.0f;
+        midna_parent_scale(pane,parentScaleX,parentScaleY);
+        float compensateX=st->baseParentScaleX/parentScaleX;
+        float compensateY=st->baseParentScaleY/parentScaleY;
+        if (!std::isfinite(compensateX) || fabsf(compensateX)<0.0001f) compensateX=1.0f;
+        if (!std::isfinite(compensateY) || fabsf(compensateY)<0.0001f) compensateY=1.0f;
 
-        // Stabilize against the FINAL J2D result rather than trying to infer
-        // which ancestor scale/animation changed. Cutscenes can leave a
-        // transform matrix active that is not represented cleanly by the
-        // individual getScaleX()/getScaleY() values.
-        const auto& globalNow=pane->getGlbBounds();
-        const auto& localNow=pane->getBounds();
-        const float globalW=fabsf(globalNow.getWidth());
-        const float globalH=fabsf(globalNow.getHeight());
-        const float targetGlobalW=fabsf(st->baseGlobalWidth*sc);
-        const float targetGlobalH=fabsf(st->baseGlobalHeight*sc);
-
-        float nw=nbw*sc;
-        float nh=nbh*sc;
-
-        if (globalW>0.0001f && globalH>0.0001f &&
-            targetGlobalW>0.0001f && targetGlobalH>0.0001f) {
-            const float fx=targetGlobalW/globalW;
-            const float fy=targetGlobalH/globalH;
-            if (std::isfinite(fx) && fx>0.0001f)
-                nw=fabsf(localNow.getWidth())*fx;
-            if (std::isfinite(fy) && fy>0.0001f)
-                nh=fabsf(localNow.getHeight())*fy;
-        }
-
-        // Keep the canonical local center/offset; only the local dimensions are
-        // compensated. Parent visibility/alpha/animation remain vanilla.
-        pane->move(st->base.i.x+dx-(nw-nbw)*0.5f,
-                   st->base.i.y+dy-(nh-nbh)*0.5f);
+        const float nw=bw*sc*compensateX;
+        const float nh=bh*sc*compensateY;
+        pane->move(st->base.i.x+dx-(nw-bw)*0.5f,
+                   st->base.i.y+dy-(nh-bh)*0.5f);
         pane->resize(nw,nh);
-        st->lastDx=dx; st->lastDy=dy; st->lastScale=sc;
+        st->lastDx=dx;
+        st->lastDy=dy;
+        st->lastScale=sc;
     }
-    for(J2DPane* c=pane->getFirstChildPane();c!=nullptr;c=c->getNextChildPane())
-        adjust_midna_pictures(c,dx,dy,sc);
+
+    for(J2DPane* child=pane->getFirstChildPane();child!=nullptr;child=child->getNextChildPane())
+        adjust_midna_pictures(child,dx,dy,sc);
 }
 
 static void tag_to_text(u64 tag,char out[9]) {
@@ -2757,13 +2741,6 @@ void apply_wolf_text_config(dMeter2Draw_c* meter) {
 }
 
 void after_meter_draw(ModContext*, void* args, void*, void*) {
-    const bool eventRunning=dComIfGp_event_runCheck();
-    if (s_midnaEventWasRunning && !eventRunning)
-        s_midnaPostEventCaptureDelay=3;
-    s_midnaEventWasRunning=eventRunning;
-    if (!eventRunning && s_midnaPostEventCaptureDelay>0)
-        --s_midnaPostEventCaptureDelay;
-
     if (s_fishingCheckPane != nullptr) {
         s_fishingCheckPane->translate(s_fishingCheckBaseX, s_fishingCheckBaseY);
         s_fishingCheckPane->scale(s_fishingCheckBaseSX, s_fishingCheckBaseSY);
@@ -4833,6 +4810,8 @@ void after_meter_button_screen_init(ModContext*, void* args, void*, void*) {
     dMeterButton_c* self = args != nullptr ? mods::arg<dMeterButton_c*>(args, 0) : nullptr;
     if (self == nullptr || self->mpButtonScreen == nullptr) return;
 
+    capture_midna_baselines_from_screen(self->mpButtonScreen);
+
     // Fishing uses these exact faces in zelda_game_image_button_info.blo.
     // Change only artwork; directional arrows and the combined-prompt plus
     // sign are separate panes and remain under native visibility control.
@@ -5923,8 +5902,6 @@ MOD_EXPORT ModResult mod_shutdown(ModError*) {
     s_midnaPromptOriginalTexture = nullptr;
     s_externalMidnaPromptOwner = false;
     for (auto& st : s_midnaPictures) st = {};
-    s_midnaEventWasRunning=false;
-    s_midnaPostEventCaptureDelay=0;
     g_publicWindow = 0;
     g_layoutWindow = 0;
     g_visualHudEditorEnabled = 0;
