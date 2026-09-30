@@ -4,6 +4,7 @@
 #include <string>
 #include <dolphin/dvd.h>
 #include "d/d_meter2_draw.h"
+#include "d/actor/d_a_player.h"
 #include "d/d_meter_button.h"
 #include "d/d_file_select.h"
 #include "d/d_msg_out_font.h"
@@ -119,6 +120,19 @@ ConfigVarHandle g_swapShopBackX=0,g_swapShopBackY=0,g_swapShopBackScale=0;
 ConfigVarHandle g_ybShopBackX=0,g_ybShopBackY=0,g_ybShopBackScale=0;
 ConfigVarHandle g_xyxbShopBackX=0,g_xyxbShopBackY=0,g_xyxbShopBackScale=0;
 ConfigVarHandle g_dialogActionTextX=0, g_dialogActionTextY=0;
+ConfigVarHandle g_swapDialogActionTextX=0, g_swapDialogActionTextY=0;
+ConfigVarHandle g_ybDialogActionTextX=0, g_ybDialogActionTextY=0;
+ConfigVarHandle g_xyxbDialogActionTextX=0, g_xyxbDialogActionTextY=0;
+
+ConfigVarHandle g_whistleActionX=0,g_whistleActionY=0,g_whistleActionScale=0;
+ConfigVarHandle g_swapWhistleActionX=0,g_swapWhistleActionY=0,g_swapWhistleActionScale=0;
+ConfigVarHandle g_ybWhistleActionX=0,g_ybWhistleActionY=0,g_ybWhistleActionScale=0;
+ConfigVarHandle g_xyxbWhistleActionX=0,g_xyxbWhistleActionY=0,g_xyxbWhistleActionScale=0;
+ConfigVarHandle g_whistleBackX=0,g_whistleBackY=0,g_whistleBackScale=0;
+ConfigVarHandle g_swapWhistleBackX=0,g_swapWhistleBackY=0,g_swapWhistleBackScale=0;
+ConfigVarHandle g_ybWhistleBackX=0,g_ybWhistleBackY=0,g_ybWhistleBackScale=0;
+ConfigVarHandle g_xyxbWhistleBackX=0,g_xyxbWhistleBackY=0,g_xyxbWhistleBackScale=0;
+
 ConfigVarHandle g_backTextX=0, g_backTextY=0, g_backTextScale=0;
 ConfigVarHandle g_ybBackTextX=0, g_ybBackTextY=0, g_ybBackTextScale=0;
 ConfigVarHandle g_xyxbBackTextX=0, g_xyxbBackTextY=0, g_xyxbBackTextScale=0;
@@ -131,6 +145,9 @@ ConfigVarHandle g_ybWolfDigX=0, g_ybWolfDigY=0, g_ybWolfDigScale=0;
 ConfigVarHandle g_xyxbWolfSenseX=0, g_xyxbWolfSenseY=0, g_xyxbWolfSenseScale=0;
 ConfigVarHandle g_xyxbWolfDigX=0, g_xyxbWolfDigY=0, g_xyxbWolfDigScale=0;
 ConfigVarHandle g_backButtonAnim=0, g_backTextAnim=0;
+ConfigVarHandle g_swapBackButtonAnim=0, g_swapBackTextAnim=0;
+ConfigVarHandle g_ybBackButtonAnim=0, g_ybBackTextAnim=0;
+ConfigVarHandle g_xyxbBackButtonAnim=0, g_xyxbBackTextAnim=0;
 ConfigVarHandle g_actionGlowEnabled=0, g_actionGlowX=0, g_actionGlowY=0, g_actionGlowScale=0;
 ConfigVarHandle g_backGlowEnabled=0, g_backGlowX=0, g_backGlowY=0, g_backGlowScale=0;
 ConfigVarHandle g_ybBackGlowEnabled=0, g_ybBackGlowX=0, g_ybBackGlowY=0, g_ybBackGlowScale=0;
@@ -522,6 +539,8 @@ void reset_layout(ModContext*, void*) {
     svc_config->set_int(mod_ctx,g_actionTextScale,55);
     svc_config->set_int(mod_ctx,g_dialogActionTextX,200);
     svc_config->set_int(mod_ctx,g_dialogActionTextY,480);
+    svc_config->set_int(mod_ctx,g_whistleActionX,250); svc_config->set_int(mod_ctx,g_whistleActionY,220); svc_config->set_int(mod_ctx,g_whistleActionScale,55);
+    svc_config->set_int(mod_ctx,g_whistleBackX,820); svc_config->set_int(mod_ctx,g_whistleBackY,-350); svc_config->set_int(mod_ctx,g_whistleBackScale,55);
     svc_config->set_int(mod_ctx,g_backTextX,820);
     svc_config->set_int(mod_ctx,g_backTextY,-350);
     svc_config->set_int(mod_ctx,g_backTextScale,55);
@@ -641,6 +660,10 @@ void reset_layout(ModContext*, void*) {
         svc_config->set_int(mod_ctx,g_swapSquareX,971); svc_config->set_int(mod_ctx,g_swapSquareY,380); svc_config->set_int(mod_ctx,g_swapSquareScale,90);
         svc_config->set_int(mod_ctx,g_swapItemSquareX,-690); svc_config->set_int(mod_ctx,g_swapItemSquareY,-380); svc_config->set_int(mod_ctx,g_swapItemSquareScale,50);
         svc_config->set_int(mod_ctx,g_swapItemTriangleX,480); svc_config->set_int(mod_ctx,g_swapItemTriangleY,-30); svc_config->set_int(mod_ctx,g_swapItemTriangleScale,50);
+        svc_config->set_int(mod_ctx,g_swapDialogActionTextX,200); svc_config->set_int(mod_ctx,g_swapDialogActionTextY,480);
+        svc_config->set_bool(mod_ctx,g_swapBackButtonAnim,false); svc_config->set_bool(mod_ctx,g_swapBackTextAnim,false);
+        svc_config->set_int(mod_ctx,g_swapWhistleActionX,250); svc_config->set_int(mod_ctx,g_swapWhistleActionY,220); svc_config->set_int(mod_ctx,g_swapWhistleActionScale,55);
+        svc_config->set_int(mod_ctx,g_swapWhistleBackX,820); svc_config->set_int(mod_ctx,g_swapWhistleBackY,-350); svc_config->set_int(mod_ctx,g_swapWhistleBackScale,55);
         svc_config->set_int(mod_ctx,g_swapHowlActionX,440); svc_config->set_int(mod_ctx,g_swapHowlActionY,830); svc_config->set_int(mod_ctx,g_swapHowlActionScale,65);
         svc_config->set_int(mod_ctx,g_swapHowlBackX,910); svc_config->set_int(mod_ctx,g_swapHowlBackY,300); svc_config->set_int(mod_ctx,g_swapHowlBackScale,65);
         svc_config->set_int(mod_ctx,g_swapShopActionX,450); svc_config->set_int(mod_ctx,g_swapShopActionY,830); svc_config->set_int(mod_ctx,g_swapShopActionScale,65);
@@ -654,10 +677,18 @@ void reset_layout(ModContext*, void*) {
         svc_config->set_bool(mod_ctx,g_swapItemSquareFlipH,false); svc_config->set_bool(mod_ctx,g_swapItemSquareFlipV,false);
         svc_config->set_bool(mod_ctx,g_swapItemTriangleFlipH,false); svc_config->set_bool(mod_ctx,g_swapItemTriangleFlipV,false);
         svc_config->set_bool(mod_ctx,g_swapWolfXGlowEnabled,true); svc_config->set_bool(mod_ctx,g_swapWolfYGlowEnabled,true);
+        svc_config->set_int(mod_ctx,g_ybDialogActionTextX,200); svc_config->set_int(mod_ctx,g_ybDialogActionTextY,480);
+        svc_config->set_bool(mod_ctx,g_ybBackButtonAnim,false); svc_config->set_bool(mod_ctx,g_ybBackTextAnim,false);
+        svc_config->set_int(mod_ctx,g_ybWhistleActionX,250); svc_config->set_int(mod_ctx,g_ybWhistleActionY,220); svc_config->set_int(mod_ctx,g_ybWhistleActionScale,55);
+        svc_config->set_int(mod_ctx,g_ybWhistleBackX,820); svc_config->set_int(mod_ctx,g_ybWhistleBackY,-350); svc_config->set_int(mod_ctx,g_ybWhistleBackScale,55);
         svc_config->set_int(mod_ctx,g_ybHowlActionX,440); svc_config->set_int(mod_ctx,g_ybHowlActionY,830); svc_config->set_int(mod_ctx,g_ybHowlActionScale,65);
         svc_config->set_int(mod_ctx,g_ybHowlBackX,910); svc_config->set_int(mod_ctx,g_ybHowlBackY,300); svc_config->set_int(mod_ctx,g_ybHowlBackScale,65);
         svc_config->set_int(mod_ctx,g_ybShopActionX,450); svc_config->set_int(mod_ctx,g_ybShopActionY,830); svc_config->set_int(mod_ctx,g_ybShopActionScale,65);
         svc_config->set_int(mod_ctx,g_ybShopBackX,900); svc_config->set_int(mod_ctx,g_ybShopBackY,300); svc_config->set_int(mod_ctx,g_ybShopBackScale,65);
+        svc_config->set_int(mod_ctx,g_xyxbDialogActionTextX,200); svc_config->set_int(mod_ctx,g_xyxbDialogActionTextY,480);
+        svc_config->set_bool(mod_ctx,g_xyxbBackButtonAnim,false); svc_config->set_bool(mod_ctx,g_xyxbBackTextAnim,false);
+        svc_config->set_int(mod_ctx,g_xyxbWhistleActionX,250); svc_config->set_int(mod_ctx,g_xyxbWhistleActionY,220); svc_config->set_int(mod_ctx,g_xyxbWhistleActionScale,55);
+        svc_config->set_int(mod_ctx,g_xyxbWhistleBackX,820); svc_config->set_int(mod_ctx,g_xyxbWhistleBackY,-350); svc_config->set_int(mod_ctx,g_xyxbWhistleBackScale,55);
         svc_config->set_int(mod_ctx,g_xyxbHowlActionX,440); svc_config->set_int(mod_ctx,g_xyxbHowlActionY,830); svc_config->set_int(mod_ctx,g_xyxbHowlActionScale,65);
         svc_config->set_int(mod_ctx,g_xyxbHowlBackX,910); svc_config->set_int(mod_ctx,g_xyxbHowlBackY,300); svc_config->set_int(mod_ctx,g_xyxbHowlBackScale,65);
         svc_config->set_int(mod_ctx,g_xyxbShopActionX,450); svc_config->set_int(mod_ctx,g_xyxbShopActionY,830); svc_config->set_int(mod_ctx,g_xyxbShopActionScale,65);
@@ -731,6 +762,10 @@ void export_calibration(ModContext*,void*) {
     json_int(json,"itemY.x",g_itemTriangleX,first); json_int(json,"itemY.y",g_itemTriangleY,first); json_int(json,"itemY.scale",g_itemTriangleScale,first);
     json_bool(json,"itemY.flipH",g_itemTriangleFlipH,first); json_bool(json,"itemY.flipV",g_itemTriangleFlipV,first);
     json_int(json,"sensesText.x",g_wolfSenseX,first); json_int(json,"sensesText.y",g_wolfSenseY,first); json_int(json,"sensesText.scale",g_wolfSenseScale,first);
+    json_int(json,"dialogueAction.x",g_dialogActionTextX,first); json_int(json,"dialogueAction.y",g_dialogActionTextY,first);
+    json_bool(json,"dialogueBack.buttonAnimation",g_backButtonAnim,first); json_bool(json,"dialogueBack.textAnimation",g_backTextAnim,first);
+    json_int(json,"whistleAction.x",g_whistleActionX,first); json_int(json,"whistleAction.y",g_whistleActionY,first); json_int(json,"whistleAction.scale",g_whistleActionScale,first);
+    json_int(json,"whistleBack.x",g_whistleBackX,first); json_int(json,"whistleBack.y",g_whistleBackY,first); json_int(json,"whistleBack.scale",g_whistleBackScale,first);
     json_int(json,"howl.x",g_howlActionX,first); json_int(json,"howl.y",g_howlActionY,first); json_int(json,"howl.scale",g_howlActionScale,first);
     json_int(json,"howlExit.x",g_howlBackX,first); json_int(json,"howlExit.y",g_howlBackY,first); json_int(json,"howlExit.scale",g_howlBackScale,first);
     json_int(json,"shopConfirm.x",g_shopActionX,first); json_int(json,"shopConfirm.y",g_shopActionY,first); json_int(json,"shopConfirm.scale",g_shopActionScale,first);
@@ -753,6 +788,10 @@ void export_calibration(ModContext*,void*) {
     json_int(json,"itemY.x",g_swapItemTriangleX,first); json_int(json,"itemY.y",g_swapItemTriangleY,first); json_int(json,"itemY.scale",g_swapItemTriangleScale,first);
     json_bool(json,"itemY.flipH",g_swapItemTriangleFlipH,first); json_bool(json,"itemY.flipV",g_swapItemTriangleFlipV,first);
     json_int(json,"sensesText.x",g_swapWolfSenseX,first); json_int(json,"sensesText.y",g_swapWolfSenseY,first); json_int(json,"sensesText.scale",g_swapWolfSenseScale,first);
+    json_int(json,"dialogueAction.x",g_swapDialogActionTextX,first); json_int(json,"dialogueAction.y",g_swapDialogActionTextY,first);
+    json_bool(json,"dialogueBack.buttonAnimation",g_swapBackButtonAnim,first); json_bool(json,"dialogueBack.textAnimation",g_swapBackTextAnim,first);
+    json_int(json,"whistleAction.x",g_swapWhistleActionX,first); json_int(json,"whistleAction.y",g_swapWhistleActionY,first); json_int(json,"whistleAction.scale",g_swapWhistleActionScale,first);
+    json_int(json,"whistleBack.x",g_swapWhistleBackX,first); json_int(json,"whistleBack.y",g_swapWhistleBackY,first); json_int(json,"whistleBack.scale",g_swapWhistleBackScale,first);
     json_int(json,"howl.x",g_swapHowlActionX,first); json_int(json,"howl.y",g_swapHowlActionY,first); json_int(json,"howl.scale",g_swapHowlActionScale,first);
     json_int(json,"howlExit.x",g_swapHowlBackX,first); json_int(json,"howlExit.y",g_swapHowlBackY,first); json_int(json,"howlExit.scale",g_swapHowlBackScale,first);
     json_int(json,"shopConfirm.x",g_swapShopActionX,first); json_int(json,"shopConfirm.y",g_swapShopActionY,first); json_int(json,"shopConfirm.scale",g_swapShopActionScale,first);
@@ -780,6 +819,10 @@ void export_calibration(ModContext*,void*) {
     json_int(json,"backGlow.x",g_ybBackGlowX,first); json_int(json,"backGlow.y",g_ybBackGlowY,first); json_int(json,"backGlow.scale",g_ybBackGlowScale,first);
     json_bool(json,"backGlow.enabled",g_ybBackGlowEnabled,first);
     json_int(json,"sensesText.x",g_ybWolfSenseX,first); json_int(json,"sensesText.y",g_ybWolfSenseY,first); json_int(json,"sensesText.scale",g_ybWolfSenseScale,first);
+    json_int(json,"dialogueAction.x",g_ybDialogActionTextX,first); json_int(json,"dialogueAction.y",g_ybDialogActionTextY,first);
+    json_bool(json,"dialogueBack.buttonAnimation",g_ybBackButtonAnim,first); json_bool(json,"dialogueBack.textAnimation",g_ybBackTextAnim,first);
+    json_int(json,"whistleAction.x",g_ybWhistleActionX,first); json_int(json,"whistleAction.y",g_ybWhistleActionY,first); json_int(json,"whistleAction.scale",g_ybWhistleActionScale,first);
+    json_int(json,"whistleBack.x",g_ybWhistleBackX,first); json_int(json,"whistleBack.y",g_ybWhistleBackY,first); json_int(json,"whistleBack.scale",g_ybWhistleBackScale,first);
     json_int(json,"howl.x",g_ybHowlActionX,first); json_int(json,"howl.y",g_ybHowlActionY,first); json_int(json,"howl.scale",g_ybHowlActionScale,first);
     json_int(json,"howlExit.x",g_ybHowlBackX,first); json_int(json,"howlExit.y",g_ybHowlBackY,first); json_int(json,"howlExit.scale",g_ybHowlBackScale,first);
     json_int(json,"shopConfirm.x",g_ybShopActionX,first); json_int(json,"shopConfirm.y",g_ybShopActionY,first); json_int(json,"shopConfirm.scale",g_ybShopActionScale,first);
@@ -805,6 +848,10 @@ void export_calibration(ModContext*,void*) {
     json_int(json,"backGlow.x",g_xyxbBackGlowX,first); json_int(json,"backGlow.y",g_xyxbBackGlowY,first); json_int(json,"backGlow.scale",g_xyxbBackGlowScale,first);
     json_bool(json,"backGlow.enabled",g_xyxbBackGlowEnabled,first);
     json_int(json,"sensesText.x",g_xyxbWolfSenseX,first); json_int(json,"sensesText.y",g_xyxbWolfSenseY,first); json_int(json,"sensesText.scale",g_xyxbWolfSenseScale,first);
+    json_int(json,"dialogueAction.x",g_xyxbDialogActionTextX,first); json_int(json,"dialogueAction.y",g_xyxbDialogActionTextY,first);
+    json_bool(json,"dialogueBack.buttonAnimation",g_xyxbBackButtonAnim,first); json_bool(json,"dialogueBack.textAnimation",g_xyxbBackTextAnim,first);
+    json_int(json,"whistleAction.x",g_xyxbWhistleActionX,first); json_int(json,"whistleAction.y",g_xyxbWhistleActionY,first); json_int(json,"whistleAction.scale",g_xyxbWhistleActionScale,first);
+    json_int(json,"whistleBack.x",g_xyxbWhistleBackX,first); json_int(json,"whistleBack.y",g_xyxbWhistleBackY,first); json_int(json,"whistleBack.scale",g_xyxbWhistleBackScale,first);
     json_int(json,"howl.x",g_xyxbHowlActionX,first); json_int(json,"howl.y",g_xyxbHowlActionY,first); json_int(json,"howl.scale",g_xyxbHowlActionScale,first);
     json_int(json,"howlExit.x",g_xyxbHowlBackX,first); json_int(json,"howlExit.y",g_xyxbHowlBackY,first); json_int(json,"howlExit.scale",g_xyxbHowlBackScale,first);
     json_int(json,"shopConfirm.x",g_xyxbShopActionX,first); json_int(json,"shopConfirm.y",g_xyxbShopActionY,first); json_int(json,"shopConfirm.scale",g_xyxbShopActionScale,first);
@@ -884,6 +931,10 @@ ModResult build_derived_b_swap_panel(UiElementHandle pane,bool xyBase) {
     ConfigVarHandle swh=xyxb?g_xyxbSwordFlipH:g_ybSwordFlipH, swv=xyxb?g_xyxbSwordFlipV:g_ybSwordFlipV;
     ConfigVarHandle btx=xyxb?g_xyxbBackTextX:g_ybBackTextX, bty=xyxb?g_xyxbBackTextY:g_ybBackTextY, bts=xyxb?g_xyxbBackTextScale:g_ybBackTextScale;
     ConfigVarHandle bgx=xyxb?g_xyxbBackGlowX:g_ybBackGlowX, bgy=xyxb?g_xyxbBackGlowY:g_ybBackGlowY, bgs=xyxb?g_xyxbBackGlowScale:g_ybBackGlowScale, bge=xyxb?g_xyxbBackGlowEnabled:g_ybBackGlowEnabled;
+    ConfigVarHandle dax=xyxb?g_xyxbDialogActionTextX:g_ybDialogActionTextX, day=xyxb?g_xyxbDialogActionTextY:g_ybDialogActionTextY;
+    ConfigVarHandle dbba=xyxb?g_xyxbBackButtonAnim:g_ybBackButtonAnim, dbta=xyxb?g_xyxbBackTextAnim:g_ybBackTextAnim;
+    ConfigVarHandle wax=xyxb?g_xyxbWhistleActionX:g_ybWhistleActionX, way=xyxb?g_xyxbWhistleActionY:g_ybWhistleActionY, was=xyxb?g_xyxbWhistleActionScale:g_ybWhistleActionScale;
+    ConfigVarHandle wbx=xyxb?g_xyxbWhistleBackX:g_ybWhistleBackX, wby=xyxb?g_xyxbWhistleBackY:g_ybWhistleBackY, wbs=xyxb?g_xyxbWhistleBackScale:g_ybWhistleBackScale;
     ConfigVarHandle hax=xyxb?g_xyxbHowlActionX:g_ybHowlActionX, hay=xyxb?g_xyxbHowlActionY:g_ybHowlActionY, has=xyxb?g_xyxbHowlActionScale:g_ybHowlActionScale;
     ConfigVarHandle hbx=xyxb?g_xyxbHowlBackX:g_ybHowlBackX, hby=xyxb?g_xyxbHowlBackY:g_ybHowlBackY, hbs=xyxb?g_xyxbHowlBackScale:g_ybHowlBackScale;
     ConfigVarHandle sax=xyxb?g_xyxbShopActionX:g_ybShopActionX, say=xyxb?g_xyxbShopActionY:g_ybShopActionY, sas=xyxb?g_xyxbShopActionScale:g_ybShopActionScale;
@@ -926,6 +977,20 @@ ModResult build_derived_b_swap_panel(UiElementHandle pane,bool xyBase) {
     add_num(pane,"Back Glow - Scale",bgs,25,300,1,"%","Preset-local Pikari glow scale for the GC B function.");
     add_toggle(pane,"Back Glow Enabled",bge,"Enable the GC B Pikari glow in this preset.");
     add_toggle(pane,"Glow Adjustment Preview",g_glowPreview,"Force Action/Back glows visible while calibrating.");
+
+    svc_ui->pane_add_section(mod_ctx,pane,"Whistle / Hawk Text");
+    add_num(pane,"Whistle Action - X",wax,-3000,3000,10,"/10 px","Preset-local Assoprar/action text offset.");
+    add_num(pane,"Whistle Action - Y",way,-3000,3000,10,"/10 px","Preset-local Assoprar/action text offset.");
+    add_num(pane,"Whistle Action - Scale",was,25,250,1,"%","Preset-local Assoprar/action text scale.");
+    add_num(pane,"Whistle Back - X",wbx,-3000,3000,10,"/10 px","Preset-local Voltar text offset.");
+    add_num(pane,"Whistle Back - Y",wby,-3000,3000,10,"/10 px","Preset-local Voltar text offset.");
+    add_num(pane,"Whistle Back - Scale",wbs,25,250,1,"%","Preset-local Voltar text scale.");
+
+    svc_ui->pane_add_section(mod_ctx,pane,"Dialogue");
+    add_num(pane,"Dialogue Action Text - X",dax,-3000,3000,10,"/10 px","Preset-local additional action-text offset during dialogue.");
+    add_num(pane,"Dialogue Action Text - Y",day,-3000,3000,10,"/10 px","Preset-local additional action-text offset during dialogue.");
+    add_toggle(pane,"Dialogue Back Button Animation",dbba,"Keep the original GC B dialogue-prompt animation.");
+    add_toggle(pane,"Dialogue Back Text Animation",dbta,"Keep the original dialogue Back-text animation.");
 
     svc_ui->pane_add_section(mod_ctx,pane,"Howling Text");
     add_num(pane,"Howl - X",hax,-3000,3000,10,"/10 px","Preset-local Howl text offset.");
@@ -1022,6 +1087,20 @@ ModResult build_base_xy_preset_panel(ModContext*,UiWindowHandle,UiElementHandle 
     add_toggle(pane,"Y Item - Flip H",g_itemTriangleFlipH,"Base-preset horizontal flip.");
     add_toggle(pane,"Y Item - Flip V",g_itemTriangleFlipV,"Base-preset vertical flip.");
 
+    svc_ui->pane_add_section(mod_ctx,pane,"Whistle / Hawk Text");
+    add_num(pane,"Whistle Action - X",g_whistleActionX,-3000,3000,10,"/10 px","Base-preset Assoprar/action text offset.");
+    add_num(pane,"Whistle Action - Y",g_whistleActionY,-3000,3000,10,"/10 px","Base-preset Assoprar/action text offset.");
+    add_num(pane,"Whistle Action - Scale",g_whistleActionScale,25,250,1,"%","Base-preset Assoprar/action text scale.");
+    add_num(pane,"Whistle Back - X",g_whistleBackX,-3000,3000,10,"/10 px","Base-preset Voltar text offset.");
+    add_num(pane,"Whistle Back - Y",g_whistleBackY,-3000,3000,10,"/10 px","Base-preset Voltar text offset.");
+    add_num(pane,"Whistle Back - Scale",g_whistleBackScale,25,250,1,"%","Base-preset Voltar text scale.");
+
+    svc_ui->pane_add_section(mod_ctx,pane,"Dialogue");
+    add_num(pane,"Dialogue Action Text - X",g_dialogActionTextX,-3000,3000,10,"/10 px","Base-preset additional action-text offset while dialogue is active.");
+    add_num(pane,"Dialogue Action Text - Y",g_dialogActionTextY,-3000,3000,10,"/10 px","Base-preset additional action-text offset while dialogue is active.");
+    add_toggle(pane,"Dialogue Back Button Animation",g_backButtonAnim,"Keep the original GC B dialogue-prompt animation.");
+    add_toggle(pane,"Dialogue Back Text Animation",g_backTextAnim,"Keep the original dialogue Back-text animation.");
+
     svc_ui->pane_add_section(mod_ctx,pane,"Howling Text");
     add_num(pane,"Howl - X",g_howlActionX,-3000,3000,10,"/10 px","Base-preset Howl text offset.");
     add_num(pane,"Howl - Y",g_howlActionY,-3000,3000,10,"/10 px","Base-preset Howl text offset.");
@@ -1100,6 +1179,20 @@ ModResult build_swap_xy_preset_panel(ModContext*,UiWindowHandle,UiElementHandle 
     add_num(pane,"Y Item - Scale",g_swapItemTriangleScale,30,200,1,"%","Swap-preset item scale.");
     add_toggle(pane,"Y Item - Flip H",g_swapItemTriangleFlipH,"Swap-preset horizontal flip.");
     add_toggle(pane,"Y Item - Flip V",g_swapItemTriangleFlipV,"Swap-preset vertical flip.");
+
+    svc_ui->pane_add_section(mod_ctx,pane,"Whistle / Hawk Text");
+    add_num(pane,"Whistle Action - X",g_swapWhistleActionX,-3000,3000,10,"/10 px","Swap X/Y Assoprar/action text offset.");
+    add_num(pane,"Whistle Action - Y",g_swapWhistleActionY,-3000,3000,10,"/10 px","Swap X/Y Assoprar/action text offset.");
+    add_num(pane,"Whistle Action - Scale",g_swapWhistleActionScale,25,250,1,"%","Swap X/Y Assoprar/action text scale.");
+    add_num(pane,"Whistle Back - X",g_swapWhistleBackX,-3000,3000,10,"/10 px","Swap X/Y Voltar text offset.");
+    add_num(pane,"Whistle Back - Y",g_swapWhistleBackY,-3000,3000,10,"/10 px","Swap X/Y Voltar text offset.");
+    add_num(pane,"Whistle Back - Scale",g_swapWhistleBackScale,25,250,1,"%","Swap X/Y Voltar text scale.");
+
+    svc_ui->pane_add_section(mod_ctx,pane,"Dialogue");
+    add_num(pane,"Dialogue Action Text - X",g_swapDialogActionTextX,-3000,3000,10,"/10 px","Swap X/Y additional action-text offset while dialogue is active.");
+    add_num(pane,"Dialogue Action Text - Y",g_swapDialogActionTextY,-3000,3000,10,"/10 px","Swap X/Y additional action-text offset while dialogue is active.");
+    add_toggle(pane,"Dialogue Back Button Animation",g_swapBackButtonAnim,"Keep the original GC B dialogue-prompt animation.");
+    add_toggle(pane,"Dialogue Back Text Animation",g_swapBackTextAnim,"Keep the original dialogue Back-text animation.");
 
     svc_ui->pane_add_section(mod_ctx,pane,"Howling Text");
     add_num(pane,"Howl - X",g_swapHowlActionX,-3000,3000,10,"/10 px","Swap X/Y Howl text offset.");
@@ -1419,13 +1512,9 @@ ModResult build_settings_11_panel(ModContext*,UiWindowHandle,UiElementHandle pan
 }
 
 ModResult build_dialogue_panel(ModContext*,UiWindowHandle,UiElementHandle pane,UiElementHandle,void*,ModError*) {
-    svc_ui->pane_add_text(mod_ctx,pane,"Text offsets and Circle prompt animations used during dialogue.",nullptr);
-    svc_ui->pane_add_section(mod_ctx,pane,"Action Text Offset");
-    add_num(pane,"Dialogue A (GC) / Cross (PS) / A (XB) Text - X",g_dialogActionTextX,-3000,3000,10,"/10 px","Additional A-text offset used only while dialogue is active.");
-    add_num(pane,"Dialogue A (GC) / Cross (PS) / A (XB) Text - Y",g_dialogActionTextY,-3000,3000,10,"/10 px","Additional A-text offset used only while dialogue is active.");
-    svc_ui->pane_add_section(mod_ctx,pane,"B (GC) / Circle (PS) / B (XB) Prompt Animations");
-    add_toggle(pane,"Dialogue B (GC) / Circle (PS) / B (XB) - Button Animation",g_backButtonAnim,"On: keeps the original Circle dialogue-prompt animation. Off: keeps the button at the configured position.");
-    add_toggle(pane,"Dialogue B (GC) / Circle (PS) / B (XB) - Text Animation",g_backTextAnim,"On: keeps the original text animation beside the Circle dialogue prompt. Off: keeps the text static at the configured position.");
+    svc_ui->pane_add_text(mod_ctx,pane,
+        "Dialogue offsets and Back-prompt animation settings are preset-specific. Use the active preset tab to adjust them.",
+        nullptr);
     return MOD_OK;
 }
 
@@ -1449,12 +1538,13 @@ void select_swap_yb_preset(ModContext*,void*) { if(g_buttonLayoutPreset!=0) svc_
 void select_swap_xyxb_preset(ModContext*,void*) { if(g_buttonLayoutPreset!=0) svc_config->set_int(mod_ctx,g_buttonLayoutPreset,3); }
 
 bool public_back_animation_selected(ModContext*,void*) {
-    return cfg_bool(g_backButtonAnim,false) && cfg_bool(g_backTextAnim,false);
+    return cfg_bool(layout_handle4(g_backButtonAnim,g_swapBackButtonAnim,g_ybBackButtonAnim,g_xyxbBackButtonAnim),false) &&
+           cfg_bool(layout_handle4(g_backTextAnim,g_swapBackTextAnim,g_ybBackTextAnim,g_xyxbBackTextAnim),false);
 }
 void toggle_public_back_animation(ModContext*,void*) {
     const bool next = !public_back_animation_selected(nullptr,nullptr);
-    svc_config->set_bool(mod_ctx,g_backButtonAnim,next);
-    svc_config->set_bool(mod_ctx,g_backTextAnim,next);
+    svc_config->set_bool(mod_ctx,layout_handle4(g_backButtonAnim,g_swapBackButtonAnim,g_ybBackButtonAnim,g_xyxbBackButtonAnim),next);
+    svc_config->set_bool(mod_ctx,layout_handle4(g_backTextAnim,g_swapBackTextAnim,g_ybBackTextAnim,g_xyxbBackTextAnim),next);
 }
 
 bool public_hud_glows_selected(ModContext*,void*) {
@@ -2217,6 +2307,34 @@ HookAction before_pane_trans(ModContext*, void* args, void*, void*) {
         return HOOK_CONTINUE;
     }
 
+    // Grass whistle / hawk-call HUD owns its own preset-local text layout.
+    // Use the same player state checks as the vanilla meter instead of matching
+    // localized strings such as "Assoprar" / "Voltar".
+    {
+        daPy_py_c* player=daPy_getPlayerActorClass();
+        const bool whistleContext =
+            player != nullptr && (player->checkGrassWhistle() || player->checkHawkWait());
+        if (whistleContext && (mgr == s_activeMeter->mpTextA || mgr == s_activeMeter->mpTextB)) {
+            const bool action = mgr == s_activeMeter->mpTextA;
+            const ConfigVarHandle xh = action
+                ? layout_handle4(g_whistleActionX,g_swapWhistleActionX,g_ybWhistleActionX,g_xyxbWhistleActionX)
+                : layout_handle4(g_whistleBackX,g_swapWhistleBackX,g_ybWhistleBackX,g_xyxbWhistleBackX);
+            const ConfigVarHandle yh = action
+                ? layout_handle4(g_whistleActionY,g_swapWhistleActionY,g_ybWhistleActionY,g_xyxbWhistleActionY)
+                : layout_handle4(g_whistleBackY,g_swapWhistleBackY,g_ybWhistleBackY,g_xyxbWhistleBackY);
+            const ConfigVarHandle sh = action
+                ? layout_handle4(g_whistleActionScale,g_swapWhistleActionScale,g_ybWhistleActionScale,g_xyxbWhistleActionScale)
+                : layout_handle4(g_whistleBackScale,g_swapWhistleBackScale,g_ybWhistleBackScale,g_xyxbWhistleBackScale);
+            mods::arg_ref<f32>(args,1) += cfg_pos(xh,0.0f);
+            mods::arg_ref<f32>(args,2) += cfg_pos(yh,0.0f);
+            if (J2DPane* pane=mgr->getPanePtr()) {
+                const float factor=cfg_scale(sh,1.0f);
+                pane->scale(pane->getScaleX()*factor,pane->getScaleY()*factor);
+            }
+            return HOOK_CONTINUE;
+        }
+    }
+
     // Howling owns separate settings: bypass general action/dialogue/back
     // offsets and the Back position lock instead of stacking on top of them.
     if (dMsgObject_getMsgObjectClass() != nullptr &&
@@ -2273,8 +2391,10 @@ HookAction before_pane_trans(ModContext*, void* args, void*, void*) {
         // This distinguishes the dialogue presentation of mpTextA (e.g. "Seguinte")
         // from its normal HUD actions without moving the Cross button.
         if (dMsgObject_isTalkNowCheck()) {
-            mods::arg_ref<f32>(args, 1) += cfg_pos(g_dialogActionTextX,0.0f);
-            mods::arg_ref<f32>(args, 2) += cfg_pos(g_dialogActionTextY,0.0f);
+            mods::arg_ref<f32>(args, 1) += cfg_pos(
+                layout_handle4(g_dialogActionTextX,g_swapDialogActionTextX,g_ybDialogActionTextX,g_xyxbDialogActionTextX),0.0f);
+            mods::arg_ref<f32>(args, 2) += cfg_pos(
+                layout_handle4(g_dialogActionTextY,g_swapDialogActionTextY,g_ybDialogActionTextY,g_xyxbDialogActionTextY),0.0f);
         }
         if (J2DPane* pane=mgr->getPanePtr()) {
             const float factor=cfg_scale(g_actionTextScale,1.0f);
@@ -2289,7 +2409,9 @@ HookAction before_pane_trans(ModContext*, void* args, void*, void*) {
         static bool baseValid=false;
         static float baseX=0.0f, baseY=0.0f;
         static bool lastLock=false;
-        const bool lock=!cfg_bool(g_backTextAnim,true);
+        const ConfigVarHandle backTextAnim =
+            layout_handle4(g_backTextAnim,g_swapBackTextAnim,g_ybBackTextAnim,g_xyxbBackTextAnim);
+        const bool lock=!cfg_bool(backTextAnim,true);
         float& tx=mods::arg_ref<f32>(args, 1);
         float& ty=mods::arg_ref<f32>(args, 2);
         if (lock!=lastLock) { baseValid=false; lastLock=lock; }
@@ -2320,7 +2442,9 @@ HookAction before_pane_trans(ModContext*, void* args, void*, void*) {
         const float vanillaX=mods::arg_ref<f32>(args, 1);
         const float vanillaY=mods::arg_ref<f32>(args, 2);
         float animX=0.0f, animY=0.0f;
-        if (cfg_bool(g_backButtonAnim,false)) {
+        const ConfigVarHandle backButtonAnim =
+            layout_handle4(g_backButtonAnim,g_swapBackButtonAnim,g_ybBackButtonAnim,g_xyxbBackButtonAnim);
+        if (cfg_bool(backButtonAnim,false)) {
             animX=vanillaX+2.2f;
             animY=vanillaY+1.3f;
         }
@@ -5315,6 +5439,8 @@ ModResult mod_initialize(ModError* error) {
         {"shopBackX",900,&g_shopBackX},{"shopBackY",300,&g_shopBackY},{"shopBackScale",65,&g_shopBackScale},
         {"actionTextX",250,&g_actionTextX},{"actionTextY",220,&g_actionTextY},{"actionTextScale",55,&g_actionTextScale},
         {"dialogActionTextX",200,&g_dialogActionTextX},{"dialogActionTextY",480,&g_dialogActionTextY},
+        {"whistleActionX",250,&g_whistleActionX},{"whistleActionY",220,&g_whistleActionY},{"whistleActionScale",55,&g_whistleActionScale},
+        {"whistleBackX",820,&g_whistleBackX},{"whistleBackY",-350,&g_whistleBackY},{"whistleBackScale",55,&g_whistleBackScale},
         {"backTextX",820,&g_backTextX},{"backTextY",-350,&g_backTextY},{"backTextScale",55,&g_backTextScale},
         {"wolfSenseX",-670,&g_wolfSenseX},{"wolfSenseY",-760,&g_wolfSenseY},{"wolfSenseScale",55,&g_wolfSenseScale},
         {"wolfDigX",490,&g_wolfDigX},{"wolfDigY",575,&g_wolfDigY},{"wolfDigScale",55,&g_wolfDigScale},
@@ -5402,6 +5528,12 @@ ModResult mod_initialize(ModError* error) {
     if (kDeveloperOptions) {
         ModResult rr=reg_bool("visualHudEditorEnabled",false,g_visualHudEditorEnabled,error);
         if(rr!=MOD_OK) return rr;
+        rr=reg_bool("swapBackButtonAnim",false,g_swapBackButtonAnim,error); if(rr!=MOD_OK) return rr;
+        rr=reg_bool("swapBackTextAnim",false,g_swapBackTextAnim,error); if(rr!=MOD_OK) return rr;
+        rr=reg_bool("ybBackButtonAnim",false,g_ybBackButtonAnim,error); if(rr!=MOD_OK) return rr;
+        rr=reg_bool("ybBackTextAnim",false,g_ybBackTextAnim,error); if(rr!=MOD_OK) return rr;
+        rr=reg_bool("xyxbBackButtonAnim",false,g_xyxbBackButtonAnim,error); if(rr!=MOD_OK) return rr;
+        rr=reg_bool("xyxbBackTextAnim",false,g_xyxbBackTextAnim,error); if(rr!=MOD_OK) return rr;
         rr=reg_bool("swapXYButtonLayout",false,g_swapXYButtonLayout,error);
         if(rr!=MOD_OK) return rr;
         rr=reg_int("buttonLayoutPreset",0,g_buttonLayoutPreset,error);
@@ -5413,6 +5545,9 @@ ModResult mod_initialize(ModError* error) {
             {"swapSquareX",972,&g_swapSquareX},{"swapSquareY",379,&g_swapSquareY},{"swapSquareScale",90,&g_swapSquareScale},
             {"swapItemSquareX",-670,&g_swapItemSquareX},{"swapItemSquareY",-380,&g_swapItemSquareY},{"swapItemSquareScale",50,&g_swapItemSquareScale},
             {"swapItemTriangleX",480,&g_swapItemTriangleX},{"swapItemTriangleY",-30,&g_swapItemTriangleY},{"swapItemTriangleScale",50,&g_swapItemTriangleScale},
+            {"swapDialogActionTextX",200,&g_swapDialogActionTextX},{"swapDialogActionTextY",480,&g_swapDialogActionTextY},
+            {"swapWhistleActionX",250,&g_swapWhistleActionX},{"swapWhistleActionY",220,&g_swapWhistleActionY},{"swapWhistleActionScale",55,&g_swapWhistleActionScale},
+            {"swapWhistleBackX",820,&g_swapWhistleBackX},{"swapWhistleBackY",-350,&g_swapWhistleBackY},{"swapWhistleBackScale",55,&g_swapWhistleBackScale},
             {"swapHowlActionX",440,&g_swapHowlActionX},{"swapHowlActionY",830,&g_swapHowlActionY},{"swapHowlActionScale",65,&g_swapHowlActionScale},
             {"swapHowlBackX",910,&g_swapHowlBackX},{"swapHowlBackY",300,&g_swapHowlBackY},{"swapHowlBackScale",65,&g_swapHowlBackScale},
             {"swapShopActionX",450,&g_swapShopActionX},{"swapShopActionY",830,&g_swapShopActionY},{"swapShopActionScale",65,&g_swapShopActionScale},
@@ -5433,6 +5568,9 @@ ModResult mod_initialize(ModError* error) {
             {"ybSwordX",83,&g_ybSwordX},{"ybSwordY",-52,&g_ybSwordY},{"ybSwordScale",50,&g_ybSwordScale},
             {"ybBackTextX",820,&g_ybBackTextX},{"ybBackTextY",-350,&g_ybBackTextY},{"ybBackTextScale",55,&g_ybBackTextScale},
             {"ybBackGlowX",10,&g_ybBackGlowX},{"ybBackGlowY",30,&g_ybBackGlowY},{"ybBackGlowScale",100,&g_ybBackGlowScale},
+            {"ybDialogActionTextX",200,&g_ybDialogActionTextX},{"ybDialogActionTextY",480,&g_ybDialogActionTextY},
+            {"ybWhistleActionX",250,&g_ybWhistleActionX},{"ybWhistleActionY",220,&g_ybWhistleActionY},{"ybWhistleActionScale",55,&g_ybWhistleActionScale},
+            {"ybWhistleBackX",820,&g_ybWhistleBackX},{"ybWhistleBackY",-350,&g_ybWhistleBackY},{"ybWhistleBackScale",55,&g_ybWhistleBackScale},
             {"ybHowlActionX",440,&g_ybHowlActionX},{"ybHowlActionY",830,&g_ybHowlActionY},{"ybHowlActionScale",65,&g_ybHowlActionScale},
             {"ybHowlBackX",910,&g_ybHowlBackX},{"ybHowlBackY",300,&g_ybHowlBackY},{"ybHowlBackScale",65,&g_ybHowlBackScale},
             {"ybShopActionX",450,&g_ybShopActionX},{"ybShopActionY",830,&g_ybShopActionY},{"ybShopActionScale",65,&g_ybShopActionScale},
@@ -5453,6 +5591,9 @@ ModResult mod_initialize(ModError* error) {
             {"xyxbSwordX",83,&g_xyxbSwordX},{"xyxbSwordY",-52,&g_xyxbSwordY},{"xyxbSwordScale",50,&g_xyxbSwordScale},
             {"xyxbBackTextX",820,&g_xyxbBackTextX},{"xyxbBackTextY",-350,&g_xyxbBackTextY},{"xyxbBackTextScale",55,&g_xyxbBackTextScale},
             {"xyxbBackGlowX",10,&g_xyxbBackGlowX},{"xyxbBackGlowY",30,&g_xyxbBackGlowY},{"xyxbBackGlowScale",100,&g_xyxbBackGlowScale},
+            {"xyxbDialogActionTextX",200,&g_xyxbDialogActionTextX},{"xyxbDialogActionTextY",480,&g_xyxbDialogActionTextY},
+            {"xyxbWhistleActionX",250,&g_xyxbWhistleActionX},{"xyxbWhistleActionY",220,&g_xyxbWhistleActionY},{"xyxbWhistleActionScale",55,&g_xyxbWhistleActionScale},
+            {"xyxbWhistleBackX",820,&g_xyxbWhistleBackX},{"xyxbWhistleBackY",-350,&g_xyxbWhistleBackY},{"xyxbWhistleBackScale",55,&g_xyxbWhistleBackScale},
             {"xyxbHowlActionX",440,&g_xyxbHowlActionX},{"xyxbHowlActionY",830,&g_xyxbHowlActionY},{"xyxbHowlActionScale",65,&g_xyxbHowlActionScale},
             {"xyxbHowlBackX",910,&g_xyxbHowlBackX},{"xyxbHowlBackY",300,&g_xyxbHowlBackY},{"xyxbHowlBackScale",65,&g_xyxbHowlBackScale},
             {"xyxbShopActionX",450,&g_xyxbShopActionX},{"xyxbShopActionY",830,&g_xyxbShopActionY},{"xyxbShopActionScale",65,&g_xyxbShopActionScale},
