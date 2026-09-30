@@ -3961,6 +3961,18 @@ HookAction before_ring_controller_overlay(ModContext*, void* args, void*, void*)
 
     s_ringDrawOwner=ring;
 
+    // When the wolf Item Wheel opens an item explanation/message, the vanilla
+    // ring fades its control prompt group. Our independent overlays are drawn
+    // outside that tree, so they would otherwise stay visible over the message.
+    // In explanation states, leave the wolf wheel entirely to the vanilla draw;
+    // the native prompt alpha/visibility then behaves correctly.
+    if (ring->mPlayerIsWolf &&
+        (ring->mStatus == dMenu_Ring_c::STATUS_EXPLAIN ||
+         ring->mStatus == dMenu_Ring_c::STATUS_EXPLAIN_FORCE)) {
+        s_ringDrawOwner=nullptr;
+        return HOOK_CONTINUE;
+    }
+
     // The analog prompts exist in both the human and wolf Item Wheel. Use the
     // same independent overlay path for both so the wolf wheel no longer falls
     // back to the original GameCube C-stick artwork.
