@@ -958,8 +958,8 @@ void export_midna_diagnostic(ModContext*,void*) {
 ModResult build_derived_b_swap_panel(UiElementHandle pane,bool xyBase) {
     const bool xyxb=xyBase;
     svc_ui->pane_add_text(mod_ctx,pane,
-        xyxb ? "Swap X/Y base with the original GC X and GC B faces exchanged. GC B keeps the sword function. Activating it also updates Port 1 face bindings in Dusklight."
-             : "Base layout with the original GC Y and GC B faces exchanged. GC B keeps the sword function. Activating it also updates Port 1 face bindings in Dusklight.",
+        xyxb ? "Swap X/Y base with the original GC X and GC B faces exchanged. GC B keeps the sword function."
+             : "Base layout with the original GC Y and GC B faces exchanged. GC B keeps the sword function.",
         nullptr);
     UiControlDesc activate=UI_CONTROL_DESC_INIT;
     activate.kind=UI_CONTROL_BUTTON;
@@ -1106,7 +1106,7 @@ ModResult build_swap_xyxb_preset_panel(ModContext*,UiWindowHandle,UiElementHandl
 
 ModResult build_base_xy_preset_panel(ModContext*,UiWindowHandle,UiElementHandle pane,UiElementHandle,void*,ModError*) {
     svc_ui->pane_add_text(mod_ctx,pane,
-        "Base X/Y layout. Activating a preset also updates Port 1 face-button bindings in Dusklight's own Controller settings. Keyboard bindings are never changed.",
+        "Base X/Y layout. Activate this preset before calibrating these controls.",
         nullptr);
     UiControlDesc activate=UI_CONTROL_DESC_INIT;
     activate.kind=UI_CONTROL_BUTTON;
@@ -1201,7 +1201,7 @@ ModResult build_base_xy_preset_panel(ModContext*,UiWindowHandle,UiElementHandle 
 
 ModResult build_swap_xy_preset_panel(ModContext*,UiWindowHandle,UiElementHandle pane,UiElementHandle,void*,ModError*) {
     svc_ui->pane_add_text(mod_ctx,pane,
-        "Alternate X/Y layout. Activating a preset also updates Port 1 face-button bindings in Dusklight's own Controller settings. Keyboard bindings are never changed.",
+        "Alternate X/Y layout. Activate this preset before calibrating these controls.",
         nullptr);
     UiControlDesc activate=UI_CONTROL_DESC_INIT;
     activate.kind=UI_CONTROL_BUTTON;
@@ -1538,7 +1538,7 @@ ModResult build_settings_11_panel(ModContext*,UiWindowHandle,UiElementHandle pan
     svc_ui->pane_add_text(mod_ctx,pane,"Calibration and restoring the saved default preset.",nullptr);
     svc_ui->pane_add_section(mod_ctx,pane,"Button Layout Presets");
     svc_ui->pane_add_text(mod_ctx,pane,
-        "Selecting a preset also permutes only Port 1 A/B/X/Y gamepad bindings through Dusklight's native Controller mapping and serializes them there. Keyboard, triggers, sticks, D-Pad and other bindings are untouched.",
+        "Preset selection is visual-only. The public CONTROLLER UI contains the explicit input-sync button; calibration controls remain developer-only.",
         nullptr);
     svc_ui->pane_add_section(mod_ctx,pane,"Calibration Export");
     svc_ui->pane_add_text(mod_ctx,pane,
@@ -1677,19 +1677,23 @@ bool swap_yb_preset_selected(ModContext*,void*) { return current_layout_preset()
 bool swap_xyxb_preset_selected(ModContext*,void*) { return current_layout_preset()==ButtonLayoutPreset::SwapXYXB; }
 void select_base_xy_preset(ModContext*,void*) {
     if(g_buttonLayoutPreset!=0) svc_config->set_int(mod_ctx,g_buttonLayoutPreset,0);
-    sync_dusklight_face_inputs(ButtonLayoutPreset::Base);
 }
 void select_swap_xy_preset(ModContext*,void*) {
     if(g_buttonLayoutPreset!=0) svc_config->set_int(mod_ctx,g_buttonLayoutPreset,1);
-    sync_dusklight_face_inputs(ButtonLayoutPreset::SwapXY);
 }
 void select_swap_yb_preset(ModContext*,void*) {
     if(g_buttonLayoutPreset!=0) svc_config->set_int(mod_ctx,g_buttonLayoutPreset,2);
-    sync_dusklight_face_inputs(ButtonLayoutPreset::SwapYB);
 }
 void select_swap_xyxb_preset(ModContext*,void*) {
     if(g_buttonLayoutPreset!=0) svc_config->set_int(mod_ctx,g_buttonLayoutPreset,3);
-    sync_dusklight_face_inputs(ButtonLayoutPreset::SwapXYXB);
+}
+
+void sync_selected_layout_preset(ModContext*,void*) {
+    const ButtonLayoutPreset preset=current_layout_preset();
+    if (!sync_dusklight_face_inputs(preset) && svc_log!=nullptr) {
+        svc_log->warn(mod_ctx,
+            "Controller input sync skipped: no gamepad mapping is active on Port 1. Keyboard bindings were not changed.");
+    }
 }
 
 bool public_back_animation_selected(ModContext*,void*) {
@@ -1739,6 +1743,44 @@ ModResult build_layout_panel(ModContext*,UiElementHandle pane,void*,ModError*) {
 
 ModResult build_public_general_panel(ModContext*,UiWindowHandle,UiElementHandle pane,UiElementHandle,void*,ModError*) {
     svc_ui->pane_add_text(mod_ctx,pane,"Simple presentation options. Button positions and scales use the calibrated layout included with the mod.",nullptr);
+
+    svc_ui->pane_add_section(mod_ctx,pane,"Button Layout Preset");
+    svc_ui->pane_add_text(mod_ctx,pane,
+        "Choose the visual layout first. This does not change controller inputs until you press the sync button below.",
+        nullptr);
+
+    UiControlDesc preset=UI_CONTROL_DESC_INIT;
+    preset.kind=UI_CONTROL_BUTTON;
+    preset.label="Base";
+    preset.help_rml="Original TP Classic face-button arrangement.";
+    preset.on_pressed=select_base_xy_preset;
+    preset.is_selected=base_xy_preset_selected;
+    svc_ui->pane_add_control(mod_ctx,pane,&preset,nullptr);
+
+    preset.label="Swap X/Y";
+    preset.help_rml="Exchange the original GC X and GC Y face assignments.";
+    preset.on_pressed=select_swap_xy_preset;
+    preset.is_selected=swap_xy_preset_selected;
+    svc_ui->pane_add_control(mod_ctx,pane,&preset,nullptr);
+
+    preset.label="Swap Y/B";
+    preset.help_rml="Exchange the original GC Y and GC B face assignments.";
+    preset.on_pressed=select_swap_yb_preset;
+    preset.is_selected=swap_yb_preset_selected;
+    svc_ui->pane_add_control(mod_ctx,pane,&preset,nullptr);
+
+    preset.label="Swap X/Y + X/B";
+    preset.help_rml="Use the combined X/Y and X/B face assignment preset.";
+    preset.on_pressed=select_swap_xyxb_preset;
+    preset.is_selected=swap_xyxb_preset_selected;
+    svc_ui->pane_add_control(mod_ctx,pane,&preset,nullptr);
+
+    svc_ui->pane_add_section(mod_ctx,pane,"Controller Input Sync");
+    svc_ui->pane_add_text(mod_ctx,pane,
+        "After choosing a preset, sync only Port 1 gamepad A/B/X/Y through Dusklight's own Controller mapping. Keyboard, triggers, sticks, D-Pad and other bindings are untouched.",
+        nullptr);
+    add_button(pane,"Sync Controller Inputs with Preset",sync_selected_layout_preset,
+        "Apply the selected visual preset to Dusklight's current Port 1 gamepad face-button bindings.");
 
     svc_ui->pane_add_section(mod_ctx,pane,"Decorations");
     add_toggle(pane,"HUD Ornament",g_hudOrnamentEnabled,"Show or hide the decorative ornament on the gameplay HUD.");
@@ -5866,17 +5908,20 @@ ModResult mod_initialize(ModError* error) {
         ModResult rr=reg_int("layoutSchemaVersion",0,g_layoutSchemaVersion,error);
         if(rr!=MOD_OK) return rr;
     }
-    if (kDeveloperOptions) {
-        ModResult rr=reg_bool("visualHudEditorEnabled",false,g_visualHudEditorEnabled,error);
-        if(rr!=MOD_OK) return rr;
+    {
+        ModResult rr=MOD_OK;
+        if (kDeveloperOptions) {
+            rr=reg_bool("visualHudEditorEnabled",false,g_visualHudEditorEnabled,error);
+            if(rr!=MOD_OK) return rr;
+            rr=reg_bool("swapXYButtonLayout",false,g_swapXYButtonLayout,error);
+            if(rr!=MOD_OK) return rr;
+        }
         rr=reg_bool("swapBackButtonAnim",false,g_swapBackButtonAnim,error); if(rr!=MOD_OK) return rr;
         rr=reg_bool("swapBackTextAnim",false,g_swapBackTextAnim,error); if(rr!=MOD_OK) return rr;
         rr=reg_bool("ybBackButtonAnim",false,g_ybBackButtonAnim,error); if(rr!=MOD_OK) return rr;
         rr=reg_bool("ybBackTextAnim",false,g_ybBackTextAnim,error); if(rr!=MOD_OK) return rr;
         rr=reg_bool("xyxbBackButtonAnim",false,g_xyxbBackButtonAnim,error); if(rr!=MOD_OK) return rr;
         rr=reg_bool("xyxbBackTextAnim",false,g_xyxbBackTextAnim,error); if(rr!=MOD_OK) return rr;
-        rr=reg_bool("swapXYButtonLayout",false,g_swapXYButtonLayout,error);
-        if(rr!=MOD_OK) return rr;
         rr=reg_int("buttonLayoutPreset",0,g_buttonLayoutPreset,error);
         if(rr!=MOD_OK) return rr;
         rr=reg_int("inputSyncLastPreset",-1,g_inputSyncLastPreset,error);
