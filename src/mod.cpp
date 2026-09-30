@@ -3789,23 +3789,48 @@ bool collection_draw_active() {
     return s_activeCollect!=nullptr;
 }
 
+struct ScreenMutationFrame {
+    J2DScreen* screen = nullptr;
+    bool mutated = false;
+};
+ScreenMutationFrame s_screenMutationStack[16];
+int s_screenMutationDepth = 0;
+
+void push_screen_mutation_frame(J2DScreen* screen, bool mutated) {
+    if (s_screenMutationDepth < 16) {
+        s_screenMutationStack[s_screenMutationDepth++] = {screen, mutated};
+    }
+}
+
+bool pop_screen_mutation_frame(J2DScreen* screen) {
+    if (s_screenMutationDepth <= 0) return false;
+    ScreenMutationFrame frame = s_screenMutationStack[--s_screenMutationDepth];
+    // Hooks are expected to unwind LIFO. If another mod/nested draw makes the
+    // order unusual, fail closed: never restore stale state into an unrelated screen.
+    return frame.screen == screen && frame.mutated;
+}
+
 HookAction before_screen_draw(ModContext* ctx, void* args, void* retval, void* userdata) {
     J2DScreen* screen = mods::arg<J2DScreen*>(args, 0);
 
+    bool genericMutated = false;
     if (is_item_wheel_screen(screen) || is_twilit_quick_access_screen(screen)) {
         // Absolute isolation for both the vanilla ring and Twilit Essentials'
-        // private Quick Access wheel. Diagnostic build: TP Classic does not hook
-        // dMenu_Ring_c::_draw at all, so Twilit owns the complete ring lifecycle.
+        // private Quick Access wheel. Do not even arm a restore for this draw.
+        s_itemWheelTempScreen = nullptr;
+        s_itemWheelTempCount = 0;
     } else if (collection_draw_active()) {
         // Strong compatibility mode for the whole Collection family, including
         // Letters/Skills/Fishing/Options/Save submenus. Do not touch textures,
         // visibility, pane order, bounds or transforms while Twilit is actively
         // managing this menu tree.
     } else {
+        genericMutated = true;
         begin_menu_prompt_draw(screen);
         apply_known_menu_buttons(screen);
         prepare_menu_ornament_before_draw(screen);
     }
+    push_screen_mutation_frame(screen, genericMutated);
 
     dMeter2Draw_c* meter = s_activeMeter != nullptr ? s_activeMeter : s_meterInstance;
     if (meter == nullptr) return HOOK_CONTINUE;
@@ -3859,6 +3884,8 @@ HookAction before_screen_draw(ModContext* ctx, void* args, void* retval, void* u
 void after_screen_draw(ModContext*, void* args, void*, void*) {
     if (args == nullptr) return;
     J2DScreen* screen = mods::arg<J2DScreen*>(args, 0);
+    if (!pop_screen_mutation_frame(screen)) return;
+
     restore_item_wheel_temp_state(screen);
     restore_world_icons(screen);
     restore_world_map_temp_state(screen);
