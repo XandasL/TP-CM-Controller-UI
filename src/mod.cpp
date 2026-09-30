@@ -103,11 +103,17 @@ ConfigVarHandle g_xyxbSwordX=0, g_xyxbSwordY=0, g_xyxbSwordScale=0, g_xyxbSwordF
 ConfigVarHandle g_midnaX=0, g_midnaY=0, g_midnaScale=0;
 ConfigVarHandle g_actionTextX=0, g_actionTextY=0, g_actionTextScale=0;
 ConfigVarHandle g_howlActionX=0,g_howlActionY=0,g_howlActionScale=0;
+ConfigVarHandle g_swapHowlActionX=0,g_swapHowlActionY=0,g_swapHowlActionScale=0;
+ConfigVarHandle g_ybHowlActionX=0,g_ybHowlActionY=0,g_ybHowlActionScale=0;
+ConfigVarHandle g_xyxbHowlActionX=0,g_xyxbHowlActionY=0,g_xyxbHowlActionScale=0;
 ConfigVarHandle g_shopActionX=0,g_shopActionY=0,g_shopActionScale=0;
 ConfigVarHandle g_swapShopActionX=0,g_swapShopActionY=0,g_swapShopActionScale=0;
 ConfigVarHandle g_ybShopActionX=0,g_ybShopActionY=0,g_ybShopActionScale=0;
 ConfigVarHandle g_xyxbShopActionX=0,g_xyxbShopActionY=0,g_xyxbShopActionScale=0;
 ConfigVarHandle g_howlBackX=0,g_howlBackY=0,g_howlBackScale=0;
+ConfigVarHandle g_swapHowlBackX=0,g_swapHowlBackY=0,g_swapHowlBackScale=0;
+ConfigVarHandle g_ybHowlBackX=0,g_ybHowlBackY=0,g_ybHowlBackScale=0;
+ConfigVarHandle g_xyxbHowlBackX=0,g_xyxbHowlBackY=0,g_xyxbHowlBackScale=0;
 ConfigVarHandle g_shopBackX=0,g_shopBackY=0,g_shopBackScale=0;
 ConfigVarHandle g_swapShopBackX=0,g_swapShopBackY=0,g_swapShopBackScale=0;
 ConfigVarHandle g_ybShopBackX=0,g_ybShopBackY=0,g_ybShopBackScale=0;
@@ -635,6 +641,8 @@ void reset_layout(ModContext*, void*) {
         svc_config->set_int(mod_ctx,g_swapSquareX,971); svc_config->set_int(mod_ctx,g_swapSquareY,380); svc_config->set_int(mod_ctx,g_swapSquareScale,90);
         svc_config->set_int(mod_ctx,g_swapItemSquareX,-690); svc_config->set_int(mod_ctx,g_swapItemSquareY,-380); svc_config->set_int(mod_ctx,g_swapItemSquareScale,50);
         svc_config->set_int(mod_ctx,g_swapItemTriangleX,480); svc_config->set_int(mod_ctx,g_swapItemTriangleY,-30); svc_config->set_int(mod_ctx,g_swapItemTriangleScale,50);
+        svc_config->set_int(mod_ctx,g_swapHowlActionX,440); svc_config->set_int(mod_ctx,g_swapHowlActionY,830); svc_config->set_int(mod_ctx,g_swapHowlActionScale,65);
+        svc_config->set_int(mod_ctx,g_swapHowlBackX,910); svc_config->set_int(mod_ctx,g_swapHowlBackY,300); svc_config->set_int(mod_ctx,g_swapHowlBackScale,65);
         svc_config->set_int(mod_ctx,g_swapShopActionX,450); svc_config->set_int(mod_ctx,g_swapShopActionY,830); svc_config->set_int(mod_ctx,g_swapShopActionScale,65);
         svc_config->set_int(mod_ctx,g_swapShopBackX,900); svc_config->set_int(mod_ctx,g_swapShopBackY,300); svc_config->set_int(mod_ctx,g_swapShopBackScale,65);
         svc_config->set_int(mod_ctx,g_swapWolfSenseX,-920); svc_config->set_int(mod_ctx,g_swapWolfSenseY,-500); svc_config->set_int(mod_ctx,g_swapWolfSenseScale,55);
@@ -646,8 +654,12 @@ void reset_layout(ModContext*, void*) {
         svc_config->set_bool(mod_ctx,g_swapItemSquareFlipH,false); svc_config->set_bool(mod_ctx,g_swapItemSquareFlipV,false);
         svc_config->set_bool(mod_ctx,g_swapItemTriangleFlipH,false); svc_config->set_bool(mod_ctx,g_swapItemTriangleFlipV,false);
         svc_config->set_bool(mod_ctx,g_swapWolfXGlowEnabled,true); svc_config->set_bool(mod_ctx,g_swapWolfYGlowEnabled,true);
+        svc_config->set_int(mod_ctx,g_ybHowlActionX,440); svc_config->set_int(mod_ctx,g_ybHowlActionY,830); svc_config->set_int(mod_ctx,g_ybHowlActionScale,65);
+        svc_config->set_int(mod_ctx,g_ybHowlBackX,910); svc_config->set_int(mod_ctx,g_ybHowlBackY,300); svc_config->set_int(mod_ctx,g_ybHowlBackScale,65);
         svc_config->set_int(mod_ctx,g_ybShopActionX,450); svc_config->set_int(mod_ctx,g_ybShopActionY,830); svc_config->set_int(mod_ctx,g_ybShopActionScale,65);
         svc_config->set_int(mod_ctx,g_ybShopBackX,900); svc_config->set_int(mod_ctx,g_ybShopBackY,300); svc_config->set_int(mod_ctx,g_ybShopBackScale,65);
+        svc_config->set_int(mod_ctx,g_xyxbHowlActionX,440); svc_config->set_int(mod_ctx,g_xyxbHowlActionY,830); svc_config->set_int(mod_ctx,g_xyxbHowlActionScale,65);
+        svc_config->set_int(mod_ctx,g_xyxbHowlBackX,910); svc_config->set_int(mod_ctx,g_xyxbHowlBackY,300); svc_config->set_int(mod_ctx,g_xyxbHowlBackScale,65);
         svc_config->set_int(mod_ctx,g_xyxbShopActionX,450); svc_config->set_int(mod_ctx,g_xyxbShopActionY,830); svc_config->set_int(mod_ctx,g_xyxbShopActionScale,65);
         svc_config->set_int(mod_ctx,g_xyxbShopBackX,900); svc_config->set_int(mod_ctx,g_xyxbShopBackY,300); svc_config->set_int(mod_ctx,g_xyxbShopBackScale,65);
         svc_config->set_int(mod_ctx,g_ybBackTextX,820); svc_config->set_int(mod_ctx,g_ybBackTextY,-350); svc_config->set_int(mod_ctx,g_ybBackTextScale,55);
@@ -719,6 +731,8 @@ void export_calibration(ModContext*,void*) {
     json_int(json,"itemY.x",g_itemTriangleX,first); json_int(json,"itemY.y",g_itemTriangleY,first); json_int(json,"itemY.scale",g_itemTriangleScale,first);
     json_bool(json,"itemY.flipH",g_itemTriangleFlipH,first); json_bool(json,"itemY.flipV",g_itemTriangleFlipV,first);
     json_int(json,"sensesText.x",g_wolfSenseX,first); json_int(json,"sensesText.y",g_wolfSenseY,first); json_int(json,"sensesText.scale",g_wolfSenseScale,first);
+    json_int(json,"howl.x",g_howlActionX,first); json_int(json,"howl.y",g_howlActionY,first); json_int(json,"howl.scale",g_howlActionScale,first);
+    json_int(json,"howlExit.x",g_howlBackX,first); json_int(json,"howlExit.y",g_howlBackY,first); json_int(json,"howlExit.scale",g_howlBackScale,first);
     json_int(json,"shopConfirm.x",g_shopActionX,first); json_int(json,"shopConfirm.y",g_shopActionY,first); json_int(json,"shopConfirm.scale",g_shopActionScale,first);
     json_int(json,"shopExit.x",g_shopBackX,first); json_int(json,"shopExit.y",g_shopBackY,first); json_int(json,"shopExit.scale",g_shopBackScale,first);
     json_int(json,"digText.x",g_wolfDigX,first); json_int(json,"digText.y",g_wolfDigY,first); json_int(json,"digText.scale",g_wolfDigScale,first);
@@ -739,6 +753,8 @@ void export_calibration(ModContext*,void*) {
     json_int(json,"itemY.x",g_swapItemTriangleX,first); json_int(json,"itemY.y",g_swapItemTriangleY,first); json_int(json,"itemY.scale",g_swapItemTriangleScale,first);
     json_bool(json,"itemY.flipH",g_swapItemTriangleFlipH,first); json_bool(json,"itemY.flipV",g_swapItemTriangleFlipV,first);
     json_int(json,"sensesText.x",g_swapWolfSenseX,first); json_int(json,"sensesText.y",g_swapWolfSenseY,first); json_int(json,"sensesText.scale",g_swapWolfSenseScale,first);
+    json_int(json,"howl.x",g_swapHowlActionX,first); json_int(json,"howl.y",g_swapHowlActionY,first); json_int(json,"howl.scale",g_swapHowlActionScale,first);
+    json_int(json,"howlExit.x",g_swapHowlBackX,first); json_int(json,"howlExit.y",g_swapHowlBackY,first); json_int(json,"howlExit.scale",g_swapHowlBackScale,first);
     json_int(json,"shopConfirm.x",g_swapShopActionX,first); json_int(json,"shopConfirm.y",g_swapShopActionY,first); json_int(json,"shopConfirm.scale",g_swapShopActionScale,first);
     json_int(json,"shopExit.x",g_swapShopBackX,first); json_int(json,"shopExit.y",g_swapShopBackY,first); json_int(json,"shopExit.scale",g_swapShopBackScale,first);
     json_int(json,"digText.x",g_swapWolfDigX,first); json_int(json,"digText.y",g_swapWolfDigY,first); json_int(json,"digText.scale",g_swapWolfDigScale,first);
@@ -764,6 +780,8 @@ void export_calibration(ModContext*,void*) {
     json_int(json,"backGlow.x",g_ybBackGlowX,first); json_int(json,"backGlow.y",g_ybBackGlowY,first); json_int(json,"backGlow.scale",g_ybBackGlowScale,first);
     json_bool(json,"backGlow.enabled",g_ybBackGlowEnabled,first);
     json_int(json,"sensesText.x",g_ybWolfSenseX,first); json_int(json,"sensesText.y",g_ybWolfSenseY,first); json_int(json,"sensesText.scale",g_ybWolfSenseScale,first);
+    json_int(json,"howl.x",g_ybHowlActionX,first); json_int(json,"howl.y",g_ybHowlActionY,first); json_int(json,"howl.scale",g_ybHowlActionScale,first);
+    json_int(json,"howlExit.x",g_ybHowlBackX,first); json_int(json,"howlExit.y",g_ybHowlBackY,first); json_int(json,"howlExit.scale",g_ybHowlBackScale,first);
     json_int(json,"shopConfirm.x",g_ybShopActionX,first); json_int(json,"shopConfirm.y",g_ybShopActionY,first); json_int(json,"shopConfirm.scale",g_ybShopActionScale,first);
     json_int(json,"shopExit.x",g_ybShopBackX,first); json_int(json,"shopExit.y",g_ybShopBackY,first); json_int(json,"shopExit.scale",g_ybShopBackScale,first);
     json_int(json,"digText.x",g_ybWolfDigX,first); json_int(json,"digText.y",g_ybWolfDigY,first); json_int(json,"digText.scale",g_ybWolfDigScale,first);
@@ -787,6 +805,8 @@ void export_calibration(ModContext*,void*) {
     json_int(json,"backGlow.x",g_xyxbBackGlowX,first); json_int(json,"backGlow.y",g_xyxbBackGlowY,first); json_int(json,"backGlow.scale",g_xyxbBackGlowScale,first);
     json_bool(json,"backGlow.enabled",g_xyxbBackGlowEnabled,first);
     json_int(json,"sensesText.x",g_xyxbWolfSenseX,first); json_int(json,"sensesText.y",g_xyxbWolfSenseY,first); json_int(json,"sensesText.scale",g_xyxbWolfSenseScale,first);
+    json_int(json,"howl.x",g_xyxbHowlActionX,first); json_int(json,"howl.y",g_xyxbHowlActionY,first); json_int(json,"howl.scale",g_xyxbHowlActionScale,first);
+    json_int(json,"howlExit.x",g_xyxbHowlBackX,first); json_int(json,"howlExit.y",g_xyxbHowlBackY,first); json_int(json,"howlExit.scale",g_xyxbHowlBackScale,first);
     json_int(json,"shopConfirm.x",g_xyxbShopActionX,first); json_int(json,"shopConfirm.y",g_xyxbShopActionY,first); json_int(json,"shopConfirm.scale",g_xyxbShopActionScale,first);
     json_int(json,"shopExit.x",g_xyxbShopBackX,first); json_int(json,"shopExit.y",g_xyxbShopBackY,first); json_int(json,"shopExit.scale",g_xyxbShopBackScale,first);
     json_int(json,"digText.x",g_xyxbWolfDigX,first); json_int(json,"digText.y",g_xyxbWolfDigY,first); json_int(json,"digText.scale",g_xyxbWolfDigScale,first);
@@ -864,6 +884,8 @@ ModResult build_derived_b_swap_panel(UiElementHandle pane,bool xyBase) {
     ConfigVarHandle swh=xyxb?g_xyxbSwordFlipH:g_ybSwordFlipH, swv=xyxb?g_xyxbSwordFlipV:g_ybSwordFlipV;
     ConfigVarHandle btx=xyxb?g_xyxbBackTextX:g_ybBackTextX, bty=xyxb?g_xyxbBackTextY:g_ybBackTextY, bts=xyxb?g_xyxbBackTextScale:g_ybBackTextScale;
     ConfigVarHandle bgx=xyxb?g_xyxbBackGlowX:g_ybBackGlowX, bgy=xyxb?g_xyxbBackGlowY:g_ybBackGlowY, bgs=xyxb?g_xyxbBackGlowScale:g_ybBackGlowScale, bge=xyxb?g_xyxbBackGlowEnabled:g_ybBackGlowEnabled;
+    ConfigVarHandle hax=xyxb?g_xyxbHowlActionX:g_ybHowlActionX, hay=xyxb?g_xyxbHowlActionY:g_ybHowlActionY, has=xyxb?g_xyxbHowlActionScale:g_ybHowlActionScale;
+    ConfigVarHandle hbx=xyxb?g_xyxbHowlBackX:g_ybHowlBackX, hby=xyxb?g_xyxbHowlBackY:g_ybHowlBackY, hbs=xyxb?g_xyxbHowlBackScale:g_ybHowlBackScale;
     ConfigVarHandle sax=xyxb?g_xyxbShopActionX:g_ybShopActionX, say=xyxb?g_xyxbShopActionY:g_ybShopActionY, sas=xyxb?g_xyxbShopActionScale:g_ybShopActionScale;
     ConfigVarHandle sbx=xyxb?g_xyxbShopBackX:g_ybShopBackX, sby=xyxb?g_xyxbShopBackY:g_ybShopBackY, sbs=xyxb?g_xyxbShopBackScale:g_ybShopBackScale;
     ConfigVarHandle stx=xyxb?g_xyxbWolfSenseX:g_ybWolfSenseX, sty=xyxb?g_xyxbWolfSenseY:g_ybWolfSenseY, sts=xyxb?g_xyxbWolfSenseScale:g_ybWolfSenseScale;
@@ -904,6 +926,14 @@ ModResult build_derived_b_swap_panel(UiElementHandle pane,bool xyBase) {
     add_num(pane,"Back Glow - Scale",bgs,25,300,1,"%","Preset-local Pikari glow scale for the GC B function.");
     add_toggle(pane,"Back Glow Enabled",bge,"Enable the GC B Pikari glow in this preset.");
     add_toggle(pane,"Glow Adjustment Preview",g_glowPreview,"Force Action/Back glows visible while calibrating.");
+
+    svc_ui->pane_add_section(mod_ctx,pane,"Howling Text");
+    add_num(pane,"Howl - X",hax,-3000,3000,10,"/10 px","Preset-local Howl text offset.");
+    add_num(pane,"Howl - Y",hay,-3000,3000,10,"/10 px","Preset-local Howl text offset.");
+    add_num(pane,"Howl - Scale",has,25,250,1,"%","Preset-local Howl text scale.");
+    add_num(pane,"Exit - X",hbx,-3000,3000,10,"/10 px","Preset-local Exit text offset while howling.");
+    add_num(pane,"Exit - Y",hby,-3000,3000,10,"/10 px","Preset-local Exit text offset while howling.");
+    add_num(pane,"Exit - Scale",hbs,25,250,1,"%","Preset-local Exit text scale while howling.");
 
     svc_ui->pane_add_section(mod_ctx,pane,"Shop Text");
     add_num(pane,"Shop Confirm - X",sax,-3000,3000,10,"/10 px","Preset-local shop Confirm text offset.");
@@ -992,6 +1022,14 @@ ModResult build_base_xy_preset_panel(ModContext*,UiWindowHandle,UiElementHandle 
     add_toggle(pane,"Y Item - Flip H",g_itemTriangleFlipH,"Base-preset horizontal flip.");
     add_toggle(pane,"Y Item - Flip V",g_itemTriangleFlipV,"Base-preset vertical flip.");
 
+    svc_ui->pane_add_section(mod_ctx,pane,"Howling Text");
+    add_num(pane,"Howl - X",g_howlActionX,-3000,3000,10,"/10 px","Base-preset Howl text offset.");
+    add_num(pane,"Howl - Y",g_howlActionY,-3000,3000,10,"/10 px","Base-preset Howl text offset.");
+    add_num(pane,"Howl - Scale",g_howlActionScale,25,250,1,"%","Base-preset Howl text scale.");
+    add_num(pane,"Exit - X",g_howlBackX,-3000,3000,10,"/10 px","Base-preset Exit text offset while howling.");
+    add_num(pane,"Exit - Y",g_howlBackY,-3000,3000,10,"/10 px","Base-preset Exit text offset while howling.");
+    add_num(pane,"Exit - Scale",g_howlBackScale,25,250,1,"%","Base-preset Exit text scale while howling.");
+
     svc_ui->pane_add_section(mod_ctx,pane,"Shop Text");
     add_num(pane,"Shop Confirm - X",g_shopActionX,-3000,3000,10,"/10 px","Base-preset shop Confirm text offset.");
     add_num(pane,"Shop Confirm - Y",g_shopActionY,-3000,3000,10,"/10 px","Base-preset shop Confirm text offset.");
@@ -1062,6 +1100,14 @@ ModResult build_swap_xy_preset_panel(ModContext*,UiWindowHandle,UiElementHandle 
     add_num(pane,"Y Item - Scale",g_swapItemTriangleScale,30,200,1,"%","Swap-preset item scale.");
     add_toggle(pane,"Y Item - Flip H",g_swapItemTriangleFlipH,"Swap-preset horizontal flip.");
     add_toggle(pane,"Y Item - Flip V",g_swapItemTriangleFlipV,"Swap-preset vertical flip.");
+
+    svc_ui->pane_add_section(mod_ctx,pane,"Howling Text");
+    add_num(pane,"Howl - X",g_swapHowlActionX,-3000,3000,10,"/10 px","Swap X/Y Howl text offset.");
+    add_num(pane,"Howl - Y",g_swapHowlActionY,-3000,3000,10,"/10 px","Swap X/Y Howl text offset.");
+    add_num(pane,"Howl - Scale",g_swapHowlActionScale,25,250,1,"%","Swap X/Y Howl text scale.");
+    add_num(pane,"Exit - X",g_swapHowlBackX,-3000,3000,10,"/10 px","Swap X/Y Exit text offset while howling.");
+    add_num(pane,"Exit - Y",g_swapHowlBackY,-3000,3000,10,"/10 px","Swap X/Y Exit text offset while howling.");
+    add_num(pane,"Exit - Scale",g_swapHowlBackScale,25,250,1,"%","Swap X/Y Exit text scale while howling.");
 
     svc_ui->pane_add_section(mod_ctx,pane,"Shop Text");
     add_num(pane,"Shop Confirm - X",g_swapShopActionX,-3000,3000,10,"/10 px","Swap X/Y shop Confirm text offset.");
@@ -1184,15 +1230,9 @@ ModResult build_settings_2_panel(ModContext*,UiWindowHandle,UiElementHandle pane
 }
 
 ModResult build_settings_3_panel(ModContext*,UiWindowHandle,UiElementHandle pane,UiElementHandle,void*,ModError*) {
-    svc_ui->pane_add_text(mod_ctx,pane,"Shared Wolf controls. Senses, Dig and their glows are calibrated in the preset tabs.",nullptr);
-    svc_ui->pane_add_section(mod_ctx,pane,"Howling - Action");
-    add_num(pane,"Howling Action Text - X",g_howlActionX,-3000,3000,10,"/10 px","Independent horizontal position of Howl.");
-    add_num(pane,"Howling Action Text - Y",g_howlActionY,-3000,3000,10,"/10 px","Independent vertical position of Howl.");
-    add_num(pane,"Howling Action Text - Scale",g_howlActionScale,25,250,1,"%","Independent scale of the howling action label.");
-    svc_ui->pane_add_section(mod_ctx,pane,"Howling - Exit");
-    add_num(pane,"Howling Exit Text - X",g_howlBackX,-3000,3000,10,"/10 px","Independent horizontal position of Exit.");
-    add_num(pane,"Howling Exit Text - Y",g_howlBackY,-3000,3000,10,"/10 px","Independent vertical position of Exit.");
-    add_num(pane,"Howling Exit Text - Scale",g_howlBackScale,25,250,1,"%","Independent scale of the howling exit label.");
+    svc_ui->pane_add_text(mod_ctx,pane,
+        "Wolf Senses/Dig, their glows, and Howling text are preset-specific. Use the active preset tab to calibrate them.",
+        nullptr);
     return MOD_OK;
 }
 
@@ -2183,10 +2223,19 @@ HookAction before_pane_trans(ModContext*, void* args, void*, void*) {
         dMsgObject_getMsgObjectClass()->isHowlMessage() &&
         (mgr == s_activeMeter->mpTextA || mgr == s_activeMeter->mpTextB)) {
         const bool action = mgr == s_activeMeter->mpTextA;
-        mods::arg_ref<f32>(args,1) += cfg_pos(action ? g_howlActionX : g_howlBackX,0.0f);
-        mods::arg_ref<f32>(args,2) += cfg_pos(action ? g_howlActionY : g_howlBackY,0.0f);
+        const ConfigVarHandle xh = action
+            ? layout_handle4(g_howlActionX,g_swapHowlActionX,g_ybHowlActionX,g_xyxbHowlActionX)
+            : layout_handle4(g_howlBackX,g_swapHowlBackX,g_ybHowlBackX,g_xyxbHowlBackX);
+        const ConfigVarHandle yh = action
+            ? layout_handle4(g_howlActionY,g_swapHowlActionY,g_ybHowlActionY,g_xyxbHowlActionY)
+            : layout_handle4(g_howlBackY,g_swapHowlBackY,g_ybHowlBackY,g_xyxbHowlBackY);
+        const ConfigVarHandle sh = action
+            ? layout_handle4(g_howlActionScale,g_swapHowlActionScale,g_ybHowlActionScale,g_xyxbHowlActionScale)
+            : layout_handle4(g_howlBackScale,g_swapHowlBackScale,g_ybHowlBackScale,g_xyxbHowlBackScale);
+        mods::arg_ref<f32>(args,1) += cfg_pos(xh,0.0f);
+        mods::arg_ref<f32>(args,2) += cfg_pos(yh,0.0f);
         if (J2DPane* pane = mgr->getPanePtr()) {
-            const float scale = cfg_scale(action ? g_howlActionScale : g_howlBackScale,1.0f);
+            const float scale = cfg_scale(sh,1.0f);
             pane->scale(pane->getScaleX()*scale,pane->getScaleY()*scale);
         }
         return HOOK_CONTINUE;
@@ -5364,6 +5413,8 @@ ModResult mod_initialize(ModError* error) {
             {"swapSquareX",972,&g_swapSquareX},{"swapSquareY",379,&g_swapSquareY},{"swapSquareScale",90,&g_swapSquareScale},
             {"swapItemSquareX",-670,&g_swapItemSquareX},{"swapItemSquareY",-380,&g_swapItemSquareY},{"swapItemSquareScale",50,&g_swapItemSquareScale},
             {"swapItemTriangleX",480,&g_swapItemTriangleX},{"swapItemTriangleY",-30,&g_swapItemTriangleY},{"swapItemTriangleScale",50,&g_swapItemTriangleScale},
+            {"swapHowlActionX",440,&g_swapHowlActionX},{"swapHowlActionY",830,&g_swapHowlActionY},{"swapHowlActionScale",65,&g_swapHowlActionScale},
+            {"swapHowlBackX",910,&g_swapHowlBackX},{"swapHowlBackY",300,&g_swapHowlBackY},{"swapHowlBackScale",65,&g_swapHowlBackScale},
             {"swapShopActionX",450,&g_swapShopActionX},{"swapShopActionY",830,&g_swapShopActionY},{"swapShopActionScale",65,&g_swapShopActionScale},
             {"swapShopBackX",900,&g_swapShopBackX},{"swapShopBackY",300,&g_swapShopBackY},{"swapShopBackScale",65,&g_swapShopBackScale},
             {"swapWolfSenseX",-920,&g_swapWolfSenseX},{"swapWolfSenseY",-500,&g_swapWolfSenseY},{"swapWolfSenseScale",55,&g_swapWolfSenseScale},
@@ -5382,6 +5433,8 @@ ModResult mod_initialize(ModError* error) {
             {"ybSwordX",83,&g_ybSwordX},{"ybSwordY",-52,&g_ybSwordY},{"ybSwordScale",50,&g_ybSwordScale},
             {"ybBackTextX",820,&g_ybBackTextX},{"ybBackTextY",-350,&g_ybBackTextY},{"ybBackTextScale",55,&g_ybBackTextScale},
             {"ybBackGlowX",10,&g_ybBackGlowX},{"ybBackGlowY",30,&g_ybBackGlowY},{"ybBackGlowScale",100,&g_ybBackGlowScale},
+            {"ybHowlActionX",440,&g_ybHowlActionX},{"ybHowlActionY",830,&g_ybHowlActionY},{"ybHowlActionScale",65,&g_ybHowlActionScale},
+            {"ybHowlBackX",910,&g_ybHowlBackX},{"ybHowlBackY",300,&g_ybHowlBackY},{"ybHowlBackScale",65,&g_ybHowlBackScale},
             {"ybShopActionX",450,&g_ybShopActionX},{"ybShopActionY",830,&g_ybShopActionY},{"ybShopActionScale",65,&g_ybShopActionScale},
             {"ybShopBackX",900,&g_ybShopBackX},{"ybShopBackY",300,&g_ybShopBackY},{"ybShopBackScale",65,&g_ybShopBackScale},
             {"ybWolfSenseX",-670,&g_ybWolfSenseX},{"ybWolfSenseY",-760,&g_ybWolfSenseY},{"ybWolfSenseScale",55,&g_ybWolfSenseScale},
@@ -5400,6 +5453,8 @@ ModResult mod_initialize(ModError* error) {
             {"xyxbSwordX",83,&g_xyxbSwordX},{"xyxbSwordY",-52,&g_xyxbSwordY},{"xyxbSwordScale",50,&g_xyxbSwordScale},
             {"xyxbBackTextX",820,&g_xyxbBackTextX},{"xyxbBackTextY",-350,&g_xyxbBackTextY},{"xyxbBackTextScale",55,&g_xyxbBackTextScale},
             {"xyxbBackGlowX",10,&g_xyxbBackGlowX},{"xyxbBackGlowY",30,&g_xyxbBackGlowY},{"xyxbBackGlowScale",100,&g_xyxbBackGlowScale},
+            {"xyxbHowlActionX",440,&g_xyxbHowlActionX},{"xyxbHowlActionY",830,&g_xyxbHowlActionY},{"xyxbHowlActionScale",65,&g_xyxbHowlActionScale},
+            {"xyxbHowlBackX",910,&g_xyxbHowlBackX},{"xyxbHowlBackY",300,&g_xyxbHowlBackY},{"xyxbHowlBackScale",65,&g_xyxbHowlBackScale},
             {"xyxbShopActionX",450,&g_xyxbShopActionX},{"xyxbShopActionY",830,&g_xyxbShopActionY},{"xyxbShopActionScale",65,&g_xyxbShopActionScale},
             {"xyxbShopBackX",900,&g_xyxbShopBackX},{"xyxbShopBackY",300,&g_xyxbShopBackY},{"xyxbShopBackScale",65,&g_xyxbShopBackScale},
             {"xyxbWolfSenseX",-920,&g_xyxbWolfSenseX},{"xyxbWolfSenseY",-500,&g_xyxbWolfSenseY},{"xyxbWolfSenseScale",55,&g_xyxbWolfSenseScale},
