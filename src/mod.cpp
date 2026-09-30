@@ -40,6 +40,7 @@ constexpr bool kDeveloperOptions = false;
 
 ConfigVarHandle g_controllerStyle=0;
 ConfigVarHandle g_layoutSchemaVersion=0;
+ConfigVarHandle g_visualHudEditorEnabled=0;
 bool s_controllerStyleLocked=false;
 bool s_useXbox=false;
 
@@ -140,6 +141,58 @@ UiWindowHandle g_layoutWindow=0;
 bool g_swordDiagLogged=false;
 bool s_buttonXYHookInstalled=false;
 bool s_buttonCrossHookInstalled=false;
+
+// Developer visual editor foundation. This intentionally uses a strict whitelist:
+// only TP Classic elements whose transforms are already backed by known config
+// handles can ever become editable. Unknown J2D panes are never discovered or
+// mutated by this system.
+enum class VisualEditorTargetId : u8 {
+    HudY,
+    HudX,
+    HudB,
+    HudA,
+    HudR1,
+    HudDpad,
+    WheelSquare,
+    WheelTriangle,
+    WheelL2,
+    WheelR2,
+    WorldR1,
+    WorldAnalog,
+    WorldDpad,
+    DungeonConfirm,
+    DungeonBack,
+};
+
+struct VisualEditorTarget {
+    VisualEditorTargetId id;
+    const char* label;
+    ConfigVarHandle* x;
+    ConfigVarHandle* y;
+    ConfigVarHandle* scale;
+};
+
+VisualEditorTarget s_visualEditorTargets[] = {
+    {VisualEditorTargetId::HudY,          "HUD Y / Square / X",       &g_triX,              &g_triY,              &g_triScale},
+    {VisualEditorTargetId::HudX,          "HUD X / Triangle / Y",     &g_squareX,           &g_squareY,           &g_squareScale},
+    {VisualEditorTargetId::HudB,          "HUD B / Circle / B",       &g_circleX,           &g_circleY,           &g_circleScale},
+    {VisualEditorTargetId::HudA,          "HUD A / Cross / A",        &g_crossX,            &g_crossY,            &g_crossScale},
+    {VisualEditorTargetId::HudR1,         "HUD Z / R1 / RB",          &g_r1X,               &g_r1Y,               &g_r1Scale},
+    {VisualEditorTargetId::HudDpad,       "HUD D-Pad",                &g_dpadX,              &g_dpadY,              &g_dpadScale},
+    {VisualEditorTargetId::WheelSquare,   "Item Wheel Square / X",    &g_wheelSquareX,      &g_wheelSquareY,      &g_wheelSquareScale},
+    {VisualEditorTargetId::WheelTriangle, "Item Wheel Triangle / Y",  &g_wheelTriangleX,    &g_wheelTriangleY,    &g_wheelTriangleScale},
+    {VisualEditorTargetId::WheelL2,       "Item Wheel L2 / LT",       &g_wheelL2X,          &g_wheelL2Y,          &g_wheelL2Scale},
+    {VisualEditorTargetId::WheelR2,       "Item Wheel R2 / RT",       &g_wheelR2X,          &g_wheelR2Y,          &g_wheelR2Scale},
+    {VisualEditorTargetId::WorldR1,       "World Map R1 / RB",        &g_worldR1X,          &g_worldR1Y,          &g_worldR1Scale},
+    {VisualEditorTargetId::WorldAnalog,   "World Map L3 / LS",        &g_worldAnalogX,      &g_worldAnalogY,      &g_worldAnalogScale},
+    {VisualEditorTargetId::WorldDpad,     "World Map D-Pad",          &g_worldDpadX,        &g_worldDpadY,        &g_worldDpadScale},
+    {VisualEditorTargetId::DungeonConfirm,"Dungeon Map Confirm",      &g_dungeonMapCrossX,  &g_dungeonMapCrossY,  &g_dungeonMapCrossScale},
+    {VisualEditorTargetId::DungeonBack,   "Dungeon Map Back",         &g_dungeonMapCircleX, &g_dungeonMapCircleY, &g_dungeonMapCircleScale},
+};
+
+bool visual_editor_enabled() {
+    return kDeveloperOptions && cfg_bool(g_visualHudEditorEnabled,false);
+}
 
 int64_t cfg_int(ConfigVarHandle h, int64_t fallback) {
     int64_t v=fallback;
@@ -751,6 +804,12 @@ ModResult build_settings_10_panel(ModContext*,UiWindowHandle,UiElementHandle pan
 
 ModResult build_settings_11_panel(ModContext*,UiWindowHandle,UiElementHandle pane,UiElementHandle,void*,ModError*) {
     svc_ui->pane_add_text(mod_ctx,pane,"Calibration and restoring the saved default preset.",nullptr);
+    svc_ui->pane_add_section(mod_ctx,pane,"Visual HUD Editor");
+    add_toggle(pane,"Enable Visual HUD Editor",g_visualHudEditorEnabled,
+        "Developer-only visual editing mode. The editor is restricted to a whitelist of TP Classic elements with known X/Y/Scale config handles.");
+    svc_ui->pane_add_text(mod_ctx,pane,
+        "Foundation stage: this switch is wired to the dev configuration and whitelist. On-screen selection/dragging will be connected next without touching unknown game or Twilit Essentials panes.",
+        nullptr);
     svc_ui->pane_add_section(mod_ctx,pane,"Calibration Guide");
     add_num(pane,"Guide X",g_guideX,-1000,3000,10,"/10 px","Horizontal position of the calibration guide.");
     add_num(pane,"Guide Y",g_guideY,-1000,3000,10,"/10 px","Vertical position of the calibration guide.");
@@ -4553,6 +4612,10 @@ ModResult mod_initialize(ModError* error) {
         ModResult rr=reg_int("layoutSchemaVersion",0,g_layoutSchemaVersion,error);
         if(rr!=MOD_OK) return rr;
     }
+    if (kDeveloperOptions) {
+        ModResult rr=reg_bool("visualHudEditorEnabled",false,g_visualHudEditorEnabled,error);
+        if(rr!=MOD_OK) return rr;
+    }
     apply_layout_schema_migrations();
 
     UiModsPanelDesc panel=UI_MODS_PANEL_DESC_INIT;
@@ -4790,6 +4853,7 @@ MOD_EXPORT ModResult mod_shutdown(ModError*) {
     s_externalMidnaPromptOwner = false;
     g_publicWindow = 0;
     g_layoutWindow = 0;
+    g_visualHudEditorEnabled = 0;
     g_layoutSchemaVersion = 0;
     free_resources();
     return MOD_OK;
