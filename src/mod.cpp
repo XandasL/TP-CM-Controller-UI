@@ -3789,6 +3789,36 @@ bool collection_draw_active() {
     return s_activeCollect!=nullptr;
 }
 
+bool tp_classic_generic_screen_allowed(J2DScreen* screen) {
+    if(screen==nullptr) return false;
+
+    // Maps have dedicated, exact prompt signatures.
+    if(prompt_map_kind(screen)!=PromptMapKind::None) return true;
+
+    // Howling minigame.
+    if(screen->search(MULTI_CHAR('g_ltxt_n'))!=nullptr &&
+       screen->search(MULTI_CHAR('gr_txt_n'))!=nullptr &&
+       screen->search(MULTI_CHAR('line00'))!=nullptr) return true;
+
+    // Bright/TV setup.
+    if(screen->search(MULTI_CHAR('gcabtn_n'))!=nullptr) return true;
+
+    // Standalone file-select / save layouts outside Collection ownership.
+    if(screen->search(MULTI_CHAR('w_n_abtn'))!=nullptr ||
+       screen->search(MULTI_CHAR('w_n_bbtn'))!=nullptr ||
+       screen->search(MULTI_CHAR('w_nabtn'))!=nullptr ||
+       screen->search(MULTI_CHAR('w_nbbtn'))!=nullptr) return true;
+
+    // Letter layout, only when it is not being drawn as a Collection submenu.
+    if(screen->search(MULTI_CHAR('pi_no_00'))!=nullptr &&
+       screen->search(MULTI_CHAR('let_area'))!=nullptr &&
+       screen->search(MULTI_CHAR('g_lbtn_n'))!=nullptr &&
+       screen->search(MULTI_CHAR('g_rbtn_n'))!=nullptr) return true;
+
+    // Unknown J2DScreens belong to vanilla or another mod. Fail closed.
+    return false;
+}
+
 struct ScreenMutationFrame {
     J2DScreen* screen = nullptr;
     bool mutated = false;
@@ -3813,7 +3843,9 @@ bool pop_screen_mutation_frame(J2DScreen* screen) {
 HookAction before_screen_draw(ModContext* ctx, void* args, void* retval, void* userdata) {
     J2DScreen* screen = mods::arg<J2DScreen*>(args, 0);
 
+    const bool nestedDraw = s_screenMutationDepth > 0;
     bool genericMutated = false;
+
     if (is_item_wheel_screen(screen) || is_twilit_quick_access_screen(screen)) {
         // Absolute isolation for both the vanilla ring and Twilit Essentials'
         // private Quick Access wheel. Do not even arm a restore for this draw.
@@ -3821,10 +3853,12 @@ HookAction before_screen_draw(ModContext* ctx, void* args, void* retval, void* u
         s_itemWheelTempCount = 0;
     } else if (collection_draw_active()) {
         // Strong compatibility mode for the whole Collection family, including
-        // Letters/Skills/Fishing/Options/Save submenus. Do not touch textures,
-        // visibility, pane order, bounds or transforms while Twilit is actively
-        // managing this menu tree.
-    } else {
+        // Letters/Skills/Fishing/Options/Save submenus.
+    } else if (nestedDraw) {
+        // All legacy snapshot buffers below are single-owner buffers. A nested
+        // J2DScreen::draw (often triggered by another mod's hook) must never
+        // overwrite the outer draw's pending restore state.
+    } else if (tp_classic_generic_screen_allowed(screen)) {
         genericMutated = true;
         begin_menu_prompt_draw(screen);
         apply_known_menu_buttons(screen);
@@ -4093,7 +4127,10 @@ ModResult mod_initialize(ModError* error) {
     s_buttonCrossHookInstalled = true;
 
     ModResult pt = mods::hook::add_pre<PaneTransHook>(svc_hook, before_pane_trans);
-    ModResult psd = mods::hook::add_pre<ScreenDrawHook>(before_screen_draw, nullptr);
+
+    HookOptions screenPreOptions = HOOK_OPTIONS_INIT;
+    screenPreOptions.priority = -1000; // run after Twilit/other PRE hooks
+    ModResult psd = mods::hook::add_pre<ScreenDrawHook>(svc_hook, before_screen_draw, &screenPreOptions);
     if (psd != MOD_OK) {
         mods::hook::uninstall<PaneTransHook>();
         free_resources();
@@ -4115,7 +4152,9 @@ ModResult mod_initialize(ModError* error) {
         return mods::set_error(error, collectPost, "failed to install POST hook for dMenu_Collect2D_c::_draw");
     }
 
-    ModResult psdPost = mods::hook::add_post<ScreenDrawHook>(svc_hook, after_screen_draw);
+    HookOptions screenPostOptions = HOOK_OPTIONS_INIT;
+    screenPostOptions.priority = 1000; // restore before Twilit/other POST hooks
+    ModResult psdPost = mods::hook::add_post<ScreenDrawHook>(svc_hook, after_screen_draw, &screenPostOptions);
     if (psdPost != MOD_OK) {
         mods::hook::uninstall<ScreenDrawHook>();
         mods::hook::uninstall<PaneTransHook>();
