@@ -4575,7 +4575,7 @@ ModResult mod_initialize(ModError* error) {
     }
 
     if (svc_log != nullptr) {
-        svc_log->info(mod_ctx, "TP Classic Modern Controller UI v1.1.0 starting - by XandasLegend");
+        svc_log->info(mod_ctx, "TP Classic Modern Controller UI v1.1.1 starting - by XandasLegend");
         if (kDeveloperOptions)
             svc_log->info(mod_ctx, "Developer HUD calibration options enabled");
     }
