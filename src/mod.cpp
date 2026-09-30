@@ -792,6 +792,20 @@ void toggle_public_back_animation(ModContext*,void*) {
     svc_config->set_bool(mod_ctx,g_backTextAnim,next);
 }
 
+bool public_hud_glows_selected(ModContext*,void*) {
+    return cfg_bool(g_actionGlowEnabled,true) &&
+           cfg_bool(g_backGlowEnabled,true) &&
+           cfg_bool(g_wolfXGlowEnabled,true) &&
+           cfg_bool(g_wolfYGlowEnabled,true);
+}
+void toggle_public_hud_glows(ModContext*,void*) {
+    const bool next = !public_hud_glows_selected(nullptr,nullptr);
+    svc_config->set_bool(mod_ctx,g_actionGlowEnabled,next);
+    svc_config->set_bool(mod_ctx,g_backGlowEnabled,next);
+    svc_config->set_bool(mod_ctx,g_wolfXGlowEnabled,next);
+    svc_config->set_bool(mod_ctx,g_wolfYGlowEnabled,next);
+}
+
 ModResult build_layout_panel(ModContext*,UiElementHandle pane,void*,ModError*) {
     svc_ui->pane_add_section(mod_ctx,pane,"TP Classic Modern Controller UI");
     svc_ui->pane_add_section(mod_ctx,pane,"Controller Design");
@@ -831,11 +845,14 @@ ModResult build_public_general_panel(ModContext*,UiWindowHandle,UiElementHandle 
 ModResult build_public_effects_panel(ModContext*,UiWindowHandle,UiElementHandle pane,UiElementHandle,void*,ModError*) {
     svc_ui->pane_add_text(mod_ctx,pane,"Optional prompt effects and animations.",nullptr);
 
-    svc_ui->pane_add_section(mod_ctx,pane,"Prompt Glows");
-    add_toggle(pane,"Action Prompt Glow",g_actionGlowEnabled,"Enable the action prompt glow.");
-    add_toggle(pane,"Back Prompt Glow",g_backGlowEnabled,"Enable the back prompt glow.");
-    add_toggle(pane,"Wolf X Prompt Glow",g_wolfXGlowEnabled,"Enable the Wolf X-button glow.");
-    add_toggle(pane,"Wolf Y Prompt Glow",g_wolfYGlowEnabled,"Enable the Wolf Y-button glow.");
+    svc_ui->pane_add_section(mod_ctx,pane,"HUD Effects");
+    UiControlDesc hudGlows=UI_CONTROL_DESC_INIT;
+    hudGlows.kind=UI_CONTROL_BUTTON;
+    hudGlows.label="HUD Glows";
+    hudGlows.help_rml="Enable or disable TP Classic prompt glows together. Individual glow controls remain available in developer builds.";
+    hudGlows.on_pressed=toggle_public_hud_glows;
+    hudGlows.is_selected=public_hud_glows_selected;
+    svc_ui->pane_add_control(mod_ctx,pane,&hudGlows,nullptr);
 
     svc_ui->pane_add_section(mod_ctx,pane,"Dialogue");
     UiControlDesc backAnimation=UI_CONTROL_DESC_INIT;
