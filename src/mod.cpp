@@ -933,6 +933,13 @@ const ResTIMG* resource_timg(const ResourceBuffer& requested) {
         else if (s_activeControllerStyle == 2) selected = &texture.retroidAyn;
         break;
     }
+    if (s_activeControllerStyle == 2 &&
+        (&requested == &s_cross || &requested == &s_circle ||
+         &requested == &s_square || &requested == &s_triangle) &&
+        selected->data != nullptr && selected->size >= sizeof(ResTIMG)) {
+        // Retroid CI8/RGB5A3 palettes contain transparency, but their BTI alpha flag is unset.
+        static_cast<ResTIMG*>(selected->data)->alphaEnabled = 1;
+    }
     const ResourceBuffer& buffer=*selected;
     if (buffer.data == nullptr || buffer.size < 0x20) return nullptr;
     return reinterpret_cast<const ResTIMG*>(buffer.data);
