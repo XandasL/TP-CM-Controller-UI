@@ -783,6 +783,15 @@ void select_xbox(ModContext*,void*) {
     if (!s_controllerStyleLocked) svc_config->set_int(mod_ctx,g_controllerStyle,1);
 }
 
+bool public_back_animation_selected(ModContext*,void*) {
+    return cfg_bool(g_backButtonAnim,false) && cfg_bool(g_backTextAnim,false);
+}
+void toggle_public_back_animation(ModContext*,void*) {
+    const bool next = !public_back_animation_selected(nullptr,nullptr);
+    svc_config->set_bool(mod_ctx,g_backButtonAnim,next);
+    svc_config->set_bool(mod_ctx,g_backTextAnim,next);
+}
+
 ModResult build_layout_panel(ModContext*,UiElementHandle pane,void*,ModError*) {
     svc_ui->pane_add_section(mod_ctx,pane,"TP Classic Modern Controller UI");
     svc_ui->pane_add_section(mod_ctx,pane,"Controller Design");
@@ -829,8 +838,13 @@ ModResult build_public_effects_panel(ModContext*,UiWindowHandle,UiElementHandle 
     add_toggle(pane,"Wolf Y Prompt Glow",g_wolfYGlowEnabled,"Enable the Wolf Y-button glow.");
 
     svc_ui->pane_add_section(mod_ctx,pane,"Dialogue");
-    add_toggle(pane,"Back Button Animation",g_backButtonAnim,"Keep the original animation on the dialogue back-button prompt.");
-    add_toggle(pane,"Back Text Animation",g_backTextAnim,"Keep the original animation on the dialogue back-button text.");
+    UiControlDesc backAnimation=UI_CONTROL_DESC_INIT;
+    backAnimation.kind=UI_CONTROL_BUTTON;
+    backAnimation.label="Back Prompt Animation";
+    backAnimation.help_rml="Enable or disable the original back-button and back-text dialogue animations together.";
+    backAnimation.on_pressed=toggle_public_back_animation;
+    backAnimation.is_selected=public_back_animation_selected;
+    svc_ui->pane_add_control(mod_ctx,pane,&backAnimation,nullptr);
     return MOD_OK;
 }
 
