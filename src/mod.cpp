@@ -171,8 +171,8 @@ void add_num(UiElementHandle pane,const char* label,ConfigVarHandle h,int64_t mn
 
 void reset_layout(ModContext*, void*) {
     // Matches the registered defaults captured from the accepted user layout.
-    svc_config->set_int(mod_ctx,g_worldR1X,0);
-    svc_config->set_int(mod_ctx,g_worldR1Y,-80);
+    svc_config->set_int(mod_ctx,g_worldR1X,80);
+    svc_config->set_int(mod_ctx,g_worldR1Y,180);
     svc_config->set_int(mod_ctx,g_worldR1Scale,100);
     svc_config->set_int(mod_ctx,g_worldAnalogScale,100);
     svc_config->set_int(mod_ctx,g_worldDpadScale,100);
@@ -180,12 +180,12 @@ void reset_layout(ModContext*, void*) {
     svc_config->set_int(mod_ctx,g_WorldPortalTextScale,75);
     svc_config->set_int(mod_ctx,g_WorldMoveTextScale,75);
     svc_config->set_int(mod_ctx,g_WorldReturnTextScale,75);
-    svc_config->set_int(mod_ctx,g_worldArrowX,210);
-    svc_config->set_int(mod_ctx,g_worldArrowY,0);
-    svc_config->set_int(mod_ctx,g_worldAnalogX,150);
-    svc_config->set_int(mod_ctx,g_worldAnalogY,-10);
-    svc_config->set_int(mod_ctx,g_worldDpadX,-190);
-    svc_config->set_int(mod_ctx,g_worldDpadY,0);
+    svc_config->set_int(mod_ctx,g_worldArrowX,-225);
+    svc_config->set_int(mod_ctx,g_worldArrowY,-230);
+    svc_config->set_int(mod_ctx,g_worldAnalogX,180);
+    svc_config->set_int(mod_ctx,g_worldAnalogY,680);
+    svc_config->set_int(mod_ctx,g_worldDpadX,260);
+    svc_config->set_int(mod_ctx,g_worldDpadY,220);
     svc_config->set_int(mod_ctx,g_WorldPortalTextX,-130);
     svc_config->set_int(mod_ctx,g_WorldPortalTextY,0);
     svc_config->set_int(mod_ctx,g_WorldMoveTextX,270);
