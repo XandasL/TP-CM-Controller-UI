@@ -108,6 +108,8 @@ ConfigVarHandle g_howlBackX=0,g_howlBackY=0,g_howlBackScale=0;
 ConfigVarHandle g_shopBackX=0,g_shopBackY=0,g_shopBackScale=0;
 ConfigVarHandle g_dialogActionTextX=0, g_dialogActionTextY=0;
 ConfigVarHandle g_backTextX=0, g_backTextY=0, g_backTextScale=0;
+ConfigVarHandle g_ybBackTextX=0, g_ybBackTextY=0, g_ybBackTextScale=0;
+ConfigVarHandle g_xyxbBackTextX=0, g_xyxbBackTextY=0, g_xyxbBackTextScale=0;
 ConfigVarHandle g_wolfSenseX=0, g_wolfSenseY=0, g_wolfSenseScale=0;
 ConfigVarHandle g_wolfDigX=0, g_wolfDigY=0, g_wolfDigScale=0;
 ConfigVarHandle g_swapWolfSenseX=0, g_swapWolfSenseY=0, g_swapWolfSenseScale=0;
@@ -119,6 +121,8 @@ ConfigVarHandle g_xyxbWolfDigX=0, g_xyxbWolfDigY=0, g_xyxbWolfDigScale=0;
 ConfigVarHandle g_backButtonAnim=0, g_backTextAnim=0;
 ConfigVarHandle g_actionGlowEnabled=0, g_actionGlowX=0, g_actionGlowY=0, g_actionGlowScale=0;
 ConfigVarHandle g_backGlowEnabled=0, g_backGlowX=0, g_backGlowY=0, g_backGlowScale=0;
+ConfigVarHandle g_ybBackGlowEnabled=0, g_ybBackGlowX=0, g_ybBackGlowY=0, g_ybBackGlowScale=0;
+ConfigVarHandle g_xyxbBackGlowEnabled=0, g_xyxbBackGlowX=0, g_xyxbBackGlowY=0, g_xyxbBackGlowScale=0;
 ConfigVarHandle g_glowPreview=0;
 // Wolf X/Y button light panes (x_light / y_light).
 ConfigVarHandle g_wolfXGlowEnabled=0, g_wolfXGlowX=0, g_wolfXGlowY=0, g_wolfXGlowScale=0;
@@ -634,6 +638,12 @@ void reset_layout(ModContext*, void*) {
         svc_config->set_bool(mod_ctx,g_swapItemSquareFlipH,false); svc_config->set_bool(mod_ctx,g_swapItemSquareFlipV,false);
         svc_config->set_bool(mod_ctx,g_swapItemTriangleFlipH,false); svc_config->set_bool(mod_ctx,g_swapItemTriangleFlipV,false);
         svc_config->set_bool(mod_ctx,g_swapWolfXGlowEnabled,true); svc_config->set_bool(mod_ctx,g_swapWolfYGlowEnabled,true);
+        svc_config->set_int(mod_ctx,g_ybBackTextX,820); svc_config->set_int(mod_ctx,g_ybBackTextY,-350); svc_config->set_int(mod_ctx,g_ybBackTextScale,55);
+        svc_config->set_int(mod_ctx,g_ybBackGlowX,10); svc_config->set_int(mod_ctx,g_ybBackGlowY,30); svc_config->set_int(mod_ctx,g_ybBackGlowScale,100);
+        svc_config->set_bool(mod_ctx,g_ybBackGlowEnabled,true);
+        svc_config->set_int(mod_ctx,g_xyxbBackTextX,820); svc_config->set_int(mod_ctx,g_xyxbBackTextY,-350); svc_config->set_int(mod_ctx,g_xyxbBackTextScale,55);
+        svc_config->set_int(mod_ctx,g_xyxbBackGlowX,10); svc_config->set_int(mod_ctx,g_xyxbBackGlowY,30); svc_config->set_int(mod_ctx,g_xyxbBackGlowScale,100);
+        svc_config->set_bool(mod_ctx,g_xyxbBackGlowEnabled,true);
     }
 }
 void add_toggle(UiElementHandle pane,const char* label,ConfigVarHandle h,const char* help) {
@@ -734,6 +744,9 @@ void export_calibration(ModContext*,void*) {
     json_int(json,"itemY.x",g_ybItemTriangleX,first); json_int(json,"itemY.y",g_ybItemTriangleY,first); json_int(json,"itemY.scale",g_ybItemTriangleScale,first);
     json_bool(json,"itemY.flipH",g_ybItemTriangleFlipH,first); json_bool(json,"itemY.flipV",g_ybItemTriangleFlipV,first);
     json_int(json,"sword.x",g_ybSwordX,first); json_int(json,"sword.y",g_ybSwordY,first); json_int(json,"sword.scale",g_ybSwordScale,first);
+    json_int(json,"backText.x",g_ybBackTextX,first); json_int(json,"backText.y",g_ybBackTextY,first); json_int(json,"backText.scale",g_ybBackTextScale,first);
+    json_int(json,"backGlow.x",g_ybBackGlowX,first); json_int(json,"backGlow.y",g_ybBackGlowY,first); json_int(json,"backGlow.scale",g_ybBackGlowScale,first);
+    json_bool(json,"backGlow.enabled",g_ybBackGlowEnabled,first);
     json_int(json,"sensesText.x",g_ybWolfSenseX,first); json_int(json,"sensesText.y",g_ybWolfSenseY,first); json_int(json,"sensesText.scale",g_ybWolfSenseScale,first);
     json_int(json,"digText.x",g_ybWolfDigX,first); json_int(json,"digText.y",g_ybWolfDigY,first); json_int(json,"digText.scale",g_ybWolfDigScale,first);
     json_int(json,"sensesGlow.x",g_ybWolfXGlowX,first); json_int(json,"sensesGlow.y",g_ybWolfXGlowY,first); json_int(json,"sensesGlow.scale",g_ybWolfXGlowScale,first);
@@ -752,6 +765,9 @@ void export_calibration(ModContext*,void*) {
     json_int(json,"itemY.x",g_xyxbItemTriangleX,first); json_int(json,"itemY.y",g_xyxbItemTriangleY,first); json_int(json,"itemY.scale",g_xyxbItemTriangleScale,first);
     json_bool(json,"itemY.flipH",g_xyxbItemTriangleFlipH,first); json_bool(json,"itemY.flipV",g_xyxbItemTriangleFlipV,first);
     json_int(json,"sword.x",g_xyxbSwordX,first); json_int(json,"sword.y",g_xyxbSwordY,first); json_int(json,"sword.scale",g_xyxbSwordScale,first);
+    json_int(json,"backText.x",g_xyxbBackTextX,first); json_int(json,"backText.y",g_xyxbBackTextY,first); json_int(json,"backText.scale",g_xyxbBackTextScale,first);
+    json_int(json,"backGlow.x",g_xyxbBackGlowX,first); json_int(json,"backGlow.y",g_xyxbBackGlowY,first); json_int(json,"backGlow.scale",g_xyxbBackGlowScale,first);
+    json_bool(json,"backGlow.enabled",g_xyxbBackGlowEnabled,first);
     json_int(json,"sensesText.x",g_xyxbWolfSenseX,first); json_int(json,"sensesText.y",g_xyxbWolfSenseY,first); json_int(json,"sensesText.scale",g_xyxbWolfSenseScale,first);
     json_int(json,"digText.x",g_xyxbWolfDigX,first); json_int(json,"digText.y",g_xyxbWolfDigY,first); json_int(json,"digText.scale",g_xyxbWolfDigScale,first);
     json_int(json,"sensesGlow.x",g_xyxbWolfXGlowX,first); json_int(json,"sensesGlow.y",g_xyxbWolfXGlowY,first); json_int(json,"sensesGlow.scale",g_xyxbWolfXGlowScale,first);
@@ -826,6 +842,8 @@ ModResult build_derived_b_swap_panel(UiElementHandle pane,bool xyBase) {
     ConfigVarHandle iyh=xyxb?g_xyxbItemTriangleFlipH:g_ybItemTriangleFlipH, iyv=xyxb?g_xyxbItemTriangleFlipV:g_ybItemTriangleFlipV;
     ConfigVarHandle swx=xyxb?g_xyxbSwordX:g_ybSwordX, swy=xyxb?g_xyxbSwordY:g_ybSwordY, sws=xyxb?g_xyxbSwordScale:g_ybSwordScale;
     ConfigVarHandle swh=xyxb?g_xyxbSwordFlipH:g_ybSwordFlipH, swv=xyxb?g_xyxbSwordFlipV:g_ybSwordFlipV;
+    ConfigVarHandle btx=xyxb?g_xyxbBackTextX:g_ybBackTextX, bty=xyxb?g_xyxbBackTextY:g_ybBackTextY, bts=xyxb?g_xyxbBackTextScale:g_ybBackTextScale;
+    ConfigVarHandle bgx=xyxb?g_xyxbBackGlowX:g_ybBackGlowX, bgy=xyxb?g_xyxbBackGlowY:g_ybBackGlowY, bgs=xyxb?g_xyxbBackGlowScale:g_ybBackGlowScale, bge=xyxb?g_xyxbBackGlowEnabled:g_ybBackGlowEnabled;
     ConfigVarHandle stx=xyxb?g_xyxbWolfSenseX:g_ybWolfSenseX, sty=xyxb?g_xyxbWolfSenseY:g_ybWolfSenseY, sts=xyxb?g_xyxbWolfSenseScale:g_ybWolfSenseScale;
     ConfigVarHandle dtx=xyxb?g_xyxbWolfDigX:g_ybWolfDigX, dty=xyxb?g_xyxbWolfDigY:g_ybWolfDigY, dts=xyxb?g_xyxbWolfDigScale:g_ybWolfDigScale;
     ConfigVarHandle sgx=xyxb?g_xyxbWolfXGlowX:g_ybWolfXGlowX, sgy=xyxb?g_xyxbWolfXGlowY:g_ybWolfXGlowY, sgs=xyxb?g_xyxbWolfXGlowScale:g_ybWolfXGlowScale, sge=xyxb?g_xyxbWolfXGlowEnabled:g_ybWolfXGlowEnabled;
@@ -852,6 +870,18 @@ ModResult build_derived_b_swap_panel(UiElementHandle pane,bool xyBase) {
     add_num(pane,"Sword - Scale",sws,30,300,1,"%","Sword scale for this preset.");
     add_toggle(pane,"Sword - Flip H",swh,"Preset-local sword horizontal flip.");
     add_toggle(pane,"Sword - Flip V",swv,"Preset-local sword vertical flip.");
+
+    svc_ui->pane_add_section(mod_ctx,pane,"GC B Back Text");
+    add_num(pane,"Back Text - X",btx,-3000,3000,10,"/10 px","Preset-local contextual text offset for the GC B function.");
+    add_num(pane,"Back Text - Y",bty,-3000,3000,10,"/10 px","Preset-local contextual text offset for the GC B function.");
+    add_num(pane,"Back Text - Scale",bts,50,200,1,"%","Preset-local contextual text scale for the GC B function.");
+
+    svc_ui->pane_add_section(mod_ctx,pane,"GC B Glow");
+    add_num(pane,"Back Glow - X",bgx,-3000,3000,10,"/10 px","Preset-local Pikari glow offset for the GC B function.");
+    add_num(pane,"Back Glow - Y",bgy,-3000,3000,10,"/10 px","Preset-local Pikari glow offset for the GC B function.");
+    add_num(pane,"Back Glow - Scale",bgs,25,300,1,"%","Preset-local Pikari glow scale for the GC B function.");
+    add_toggle(pane,"Back Glow Enabled",bge,"Enable the GC B Pikari glow in this preset.");
+    add_toggle(pane,"Glow Adjustment Preview",g_glowPreview,"Force Action/Back glows visible while calibrating.");
 
     svc_ui->pane_add_section(mod_ctx,pane,"GC X Item");
     add_num(pane,"GC X Item - X",ixx,-3000,3000,10,"/10 px","Item offset for the original GC X function.");
@@ -1348,15 +1378,18 @@ void toggle_public_back_animation(ModContext*,void*) {
 }
 
 bool public_hud_glows_selected(ModContext*,void*) {
+    const ConfigVarHandle backEnabled =
+        layout_handle4(g_backGlowEnabled,g_backGlowEnabled,g_ybBackGlowEnabled,g_xyxbBackGlowEnabled);
     return cfg_bool(g_actionGlowEnabled,true) &&
-           cfg_bool(g_backGlowEnabled,true) &&
+           cfg_bool(backEnabled,true) &&
            cfg_bool(g_wolfXGlowEnabled,true) &&
            cfg_bool(g_wolfYGlowEnabled,true);
 }
 void toggle_public_hud_glows(ModContext*,void*) {
     const bool next = !public_hud_glows_selected(nullptr,nullptr);
     svc_config->set_bool(mod_ctx,g_actionGlowEnabled,next);
-    svc_config->set_bool(mod_ctx,g_backGlowEnabled,next);
+    svc_config->set_bool(mod_ctx,
+        layout_handle4(g_backGlowEnabled,g_backGlowEnabled,g_ybBackGlowEnabled,g_xyxbBackGlowEnabled),next);
     svc_config->set_bool(mod_ctx,g_wolfXGlowEnabled,next);
     svc_config->set_bool(mod_ctx,g_wolfYGlowEnabled,next);
 }
@@ -2028,7 +2061,9 @@ HookAction before_meter_draw(ModContext*, void* args, void*, void*) {
             s_activeMeter->field_0x608 = 18.0f;
         }
 
-        if (!cfg_bool(g_backGlowEnabled,true)) {
+        const ConfigVarHandle backGlowEnabled =
+            layout_handle4(g_backGlowEnabled,g_backGlowEnabled,g_ybBackGlowEnabled,g_xyxbBackGlowEnabled);
+        if (!cfg_bool(backGlowEnabled,true)) {
             s_activeMeter->field_0x60c = 0.0f;
         } else if (preview) {
             s_activeMeter->field_0x60c = 18.0f;
@@ -2164,10 +2199,13 @@ HookAction before_pane_trans(ModContext*, void* args, void*, void*) {
             if (!baseValid) { baseX=tx; baseY=ty; baseValid=true; }
             tx=baseX; ty=baseY;
         }
-        tx += cfg_pos(g_backTextX,0.0f);
-        ty += cfg_pos(g_backTextY,0.0f);
+        const ConfigVarHandle backTextX=layout_handle4(g_backTextX,g_backTextX,g_ybBackTextX,g_xyxbBackTextX);
+        const ConfigVarHandle backTextY=layout_handle4(g_backTextY,g_backTextY,g_ybBackTextY,g_xyxbBackTextY);
+        const ConfigVarHandle backTextScale=layout_handle4(g_backTextScale,g_backTextScale,g_ybBackTextScale,g_xyxbBackTextScale);
+        tx += cfg_pos(backTextX,0.0f);
+        ty += cfg_pos(backTextY,0.0f);
         if (J2DPane* pane=mgr->getPanePtr()) {
-            const float factor=cfg_scale(g_backTextScale,1.0f);
+            const float factor=cfg_scale(backTextScale,1.0f);
             pane->scale(pane->getScaleX()*factor,pane->getScaleY()*factor);
         }
         return HOOK_CONTINUE;
@@ -5018,14 +5056,24 @@ HookAction before_screen_draw(ModContext* ctx, void* args, void* retval, void* u
             }
         }
     } else if (target == 2) {
-        mods::arg_ref<f32>(args, 1) += cfg_pos(g_backGlowX, 0.0f);
-        mods::arg_ref<f32>(args, 2) += cfg_pos(g_backGlowY, 0.0f);
+        const ConfigVarHandle backGlowX =
+            layout_handle4(g_backGlowX,g_backGlowX,g_ybBackGlowX,g_xyxbBackGlowX);
+        const ConfigVarHandle backGlowY =
+            layout_handle4(g_backGlowY,g_backGlowY,g_ybBackGlowY,g_xyxbBackGlowY);
+        const ConfigVarHandle backGlowScale =
+            layout_handle4(g_backGlowScale,g_backGlowScale,g_ybBackGlowScale,g_xyxbBackGlowScale);
+        const ConfigVarHandle backGlowEnabled =
+            layout_handle4(g_backGlowEnabled,g_backGlowEnabled,g_ybBackGlowEnabled,g_xyxbBackGlowEnabled);
+
+        mods::arg_ref<f32>(args, 1) += cfg_pos(backGlowX, 0.0f);
+        mods::arg_ref<f32>(args, 2) += cfg_pos(backGlowY, 0.0f);
 
         if (meter->mpPikariParent != nullptr) {
             J2DPane* pane = meter->mpPikariParent->getPanePtr();
             if (pane != nullptr) {
-                const float factor = cfg_scale(g_backGlowScale, 1.0f);
+                const float factor = cfg_scale(backGlowScale, 1.0f);
                 pane->scale(pane->getScaleX() * factor, pane->getScaleY() * factor);
+                if (!cfg_bool(backGlowEnabled,true)) pane->setAlpha(0);
             }
         }
     } else if (target == 3 || target == 4) {
@@ -5224,6 +5272,8 @@ ModResult mod_initialize(ModError* error) {
             {"ybItemSquareX",-430,&g_ybItemSquareX},{"ybItemSquareY",-640,&g_ybItemSquareY},{"ybItemSquareScale",50,&g_ybItemSquareScale},
             {"ybItemTriangleX",220,&g_ybItemTriangleX},{"ybItemTriangleY",230,&g_ybItemTriangleY},{"ybItemTriangleScale",50,&g_ybItemTriangleScale},
             {"ybSwordX",83,&g_ybSwordX},{"ybSwordY",-52,&g_ybSwordY},{"ybSwordScale",50,&g_ybSwordScale},
+            {"ybBackTextX",820,&g_ybBackTextX},{"ybBackTextY",-350,&g_ybBackTextY},{"ybBackTextScale",55,&g_ybBackTextScale},
+            {"ybBackGlowX",10,&g_ybBackGlowX},{"ybBackGlowY",30,&g_ybBackGlowY},{"ybBackGlowScale",100,&g_ybBackGlowScale},
             {"ybWolfSenseX",-670,&g_ybWolfSenseX},{"ybWolfSenseY",-760,&g_ybWolfSenseY},{"ybWolfSenseScale",55,&g_ybWolfSenseScale},
             {"ybWolfDigX",490,&g_ybWolfDigX},{"ybWolfDigY",575,&g_ybWolfDigY},{"ybWolfDigScale",55,&g_ybWolfDigScale},
             {"ybWolfXGlowX",5,&g_ybWolfXGlowX},{"ybWolfXGlowY",-55,&g_ybWolfXGlowY},{"ybWolfXGlowScale",50,&g_ybWolfXGlowScale},
@@ -5238,6 +5288,8 @@ ModResult mod_initialize(ModError* error) {
             {"xyxbItemSquareX",-690,&g_xyxbItemSquareX},{"xyxbItemSquareY",-380,&g_xyxbItemSquareY},{"xyxbItemSquareScale",50,&g_xyxbItemSquareScale},
             {"xyxbItemTriangleX",480,&g_xyxbItemTriangleX},{"xyxbItemTriangleY",-30,&g_xyxbItemTriangleY},{"xyxbItemTriangleScale",50,&g_xyxbItemTriangleScale},
             {"xyxbSwordX",83,&g_xyxbSwordX},{"xyxbSwordY",-52,&g_xyxbSwordY},{"xyxbSwordScale",50,&g_xyxbSwordScale},
+            {"xyxbBackTextX",820,&g_xyxbBackTextX},{"xyxbBackTextY",-350,&g_xyxbBackTextY},{"xyxbBackTextScale",55,&g_xyxbBackTextScale},
+            {"xyxbBackGlowX",10,&g_xyxbBackGlowX},{"xyxbBackGlowY",30,&g_xyxbBackGlowY},{"xyxbBackGlowScale",100,&g_xyxbBackGlowScale},
             {"xyxbWolfSenseX",-920,&g_xyxbWolfSenseX},{"xyxbWolfSenseY",-500,&g_xyxbWolfSenseY},{"xyxbWolfSenseScale",55,&g_xyxbWolfSenseScale},
             {"xyxbWolfDigX",730,&g_xyxbWolfDigX},{"xyxbWolfDigY",310,&g_xyxbWolfDigY},{"xyxbWolfDigScale",55,&g_xyxbWolfDigScale},
             {"xyxbWolfXGlowX",5,&g_xyxbWolfXGlowX},{"xyxbWolfXGlowY",-55,&g_xyxbWolfXGlowY},{"xyxbWolfXGlowScale",50,&g_xyxbWolfXGlowScale},
@@ -5261,6 +5313,7 @@ ModResult mod_initialize(ModError* error) {
         rr=reg_bool("ybItemTriangleFlipV",false,g_ybItemTriangleFlipV,error); if(rr!=MOD_OK) return rr;
         rr=reg_bool("ybSwordFlipH",false,g_ybSwordFlipH,error); if(rr!=MOD_OK) return rr;
         rr=reg_bool("ybSwordFlipV",false,g_ybSwordFlipV,error); if(rr!=MOD_OK) return rr;
+        rr=reg_bool("ybBackGlowEnabled",true,g_ybBackGlowEnabled,error); if(rr!=MOD_OK) return rr;
         rr=reg_bool("ybWolfXGlowEnabled",true,g_ybWolfXGlowEnabled,error); if(rr!=MOD_OK) return rr;
         rr=reg_bool("ybWolfYGlowEnabled",true,g_ybWolfYGlowEnabled,error); if(rr!=MOD_OK) return rr;
         rr=reg_bool("xyxbItemSquareFlipH",false,g_xyxbItemSquareFlipH,error); if(rr!=MOD_OK) return rr;
@@ -5269,6 +5322,7 @@ ModResult mod_initialize(ModError* error) {
         rr=reg_bool("xyxbItemTriangleFlipV",false,g_xyxbItemTriangleFlipV,error); if(rr!=MOD_OK) return rr;
         rr=reg_bool("xyxbSwordFlipH",false,g_xyxbSwordFlipH,error); if(rr!=MOD_OK) return rr;
         rr=reg_bool("xyxbSwordFlipV",false,g_xyxbSwordFlipV,error); if(rr!=MOD_OK) return rr;
+        rr=reg_bool("xyxbBackGlowEnabled",true,g_xyxbBackGlowEnabled,error); if(rr!=MOD_OK) return rr;
         rr=reg_bool("xyxbWolfXGlowEnabled",true,g_xyxbWolfXGlowEnabled,error); if(rr!=MOD_OK) return rr;
         rr=reg_bool("xyxbWolfYGlowEnabled",true,g_xyxbWolfYGlowEnabled,error); if(rr!=MOD_OK) return rr;
     }
