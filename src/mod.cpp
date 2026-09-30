@@ -3487,6 +3487,60 @@ void apply_known_menu_buttons(J2DScreen* screen) {
     // J2DScreen/J2DMaterial tree here: Twilit Essentials hooks the same ring
     // object and reuses those panes as anchors.
 
+    // Options menu: the GameCube Z prompt lives under z_gc_n.
+    // This was part of the stable pre-compat implementation and was
+    // accidentally dropped while isolating the Item Wheel/Collection.
+    const ResTIMG* r1 = resource_timg(s_r1);
+    if (r1 != nullptr) {
+        J2DPane* zRoot = screen->search(MULTI_CHAR('z_gc_n'));
+        if (zRoot != nullptr) {
+            apply_menu_button_texture(zRoot, r1);
+            if (J2DPicture* face = first_picture_recursive(zRoot)) {
+                const auto& b = face->getBounds();
+                const float oldW = b.getWidth();
+                const float oldH = b.getHeight();
+                const float cx = b.i.x + oldW * 0.5f;
+                const float cy = b.i.y + oldH * 0.5f;
+                const float aspect = r1->height != 0
+                    ? ((float)r1->width / (float)r1->height) : 2.0f;
+                const float newH = oldH;
+                const float newW = newH * aspect;
+                set_bounds(face, cx - newW * 0.5f, cy - newH * 0.5f, newW, newH);
+            }
+        }
+    }
+
+    // Dungeon map: restore the dedicated R3 "Mover" prompt.
+    // dMenu_DmapBg_c builds it under c_btn beside c_text/c_text_s.
+    const ResTIMG* r3 = resource_timg(s_r3);
+    if (r3 != nullptr && screen->search(MULTI_CHAR('c_text')) != nullptr) {
+        J2DPane* cRoot = screen->search(MULTI_CHAR('c_btn'));
+        if (cRoot != nullptr) apply_menu_button_texture(cRoot, r3);
+    }
+
+    // Options help legend: restore the four analog-stick glyphs.
+    // Keep neighbouring .yaji_* arrow panes untouched.
+    const ResTIMG* analog = resource_timg(s_analog);
+    if (analog != nullptr && screen->search(MULTI_CHAR('let_area')) != nullptr) {
+        static const u64 analogTags[] = {
+            MULTI_CHAR('wi_juji1'),
+            MULTI_CHAR('wi_juji'),
+            MULTI_CHAR('wi_juji2'),
+            MULTI_CHAR('wi_juji3'),
+        };
+        for (u64 tag : analogTags) {
+            J2DPane* pane = screen->search(tag);
+            J2DPicture* pic = as_picture(pane);
+            if (pic != nullptr) {
+                replace_picture_texture(pic, analog);
+                const JUtility::TColor neutralBlack(0, 0, 0, 0);
+                const JUtility::TColor neutralWhite(255, 255, 255, 255);
+                pic->setBlackWhite(neutralBlack, neutralWhite);
+                pic->setCornerColor(neutralWhite);
+                pic->show();
+            }
+        }
+    }
 }
 
 
