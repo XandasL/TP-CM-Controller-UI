@@ -1,5 +1,7 @@
 #include "global.h"
 #include <cmath>
+#include <cstdio>
+#include <string>
 #include <dolphin/dvd.h>
 #include "d/d_meter2_draw.h"
 #include "d/d_meter_button.h"
@@ -18,6 +20,7 @@
 #include "mods/service.hpp"
 #include "mods/svc/hook.h"
 #include "mods/svc/hook.hpp"
+#include "mods/svc/host.h"
 #include "mods/svc/log.h"
 #include "mods/svc/resource.h"
 #include "mods/svc/config.h"
@@ -25,6 +28,7 @@
 
 DEFINE_MOD();
 IMPORT_SERVICE(HookService, svc_hook);
+IMPORT_SERVICE(HostService, svc_host);
 IMPORT_SERVICE(LogService, svc_log);
 IMPORT_SERVICE(ResourceService, svc_resource);
 IMPORT_SERVICE(ConfigService, svc_config);
@@ -554,6 +558,111 @@ void add_button(UiElementHandle pane,const char* label,UiPressedFn fn,const char
     svc_ui->pane_add_control(mod_ctx,pane,&c,nullptr);
 }
 
+void json_int(std::string& out,const char* key,ConfigVarHandle h,bool& first) {
+    if (!first) out += ",\n";
+    first=false;
+    out += "      \"";
+    out += key;
+    out += "\": ";
+    out += std::to_string(cfg_int(h,0));
+}
+void json_bool(std::string& out,const char* key,ConfigVarHandle h,bool& first) {
+    if (!first) out += ",\n";
+    first=false;
+    out += "      \"";
+    out += key;
+    out += "\": ";
+    out += cfg_bool(h,false) ? "true" : "false";
+}
+
+void export_calibration(ModContext*,void*) {
+    if (!kDeveloperOptions || svc_host == nullptr || svc_log == nullptr) return;
+
+    const char* dataDir=nullptr;
+    if (svc_host->data_dir(mod_ctx,&dataDir) != MOD_OK || dataDir == nullptr || dataDir[0] == '\0') {
+        svc_log->error(mod_ctx,"Calibration export failed: mod data directory is unavailable");
+        return;
+    }
+
+    std::string json;
+    json.reserve(8192);
+    json += "{\n";
+    json += "  \"format\": \"tp-classic-controller-ui-calibration\",\n";
+    json += "  \"version\": 1,\n";
+    json += "  \"activePreset\": \"";
+    json += swap_xy_layout_enabled() ? "swapXY" : "base";
+    json += "\",\n";
+
+    json += "  \"base\": {\n";
+    bool first=true;
+    json_int(json,"hudY.x",g_triX,first); json_int(json,"hudY.y",g_triY,first); json_int(json,"hudY.scale",g_triScale,first);
+    json_int(json,"hudX.x",g_squareX,first); json_int(json,"hudX.y",g_squareY,first); json_int(json,"hudX.scale",g_squareScale,first);
+    json_int(json,"itemX.x",g_itemSquareX,first); json_int(json,"itemX.y",g_itemSquareY,first); json_int(json,"itemX.scale",g_itemSquareScale,first);
+    json_bool(json,"itemX.flipH",g_itemSquareFlipH,first); json_bool(json,"itemX.flipV",g_itemSquareFlipV,first);
+    json_int(json,"itemY.x",g_itemTriangleX,first); json_int(json,"itemY.y",g_itemTriangleY,first); json_int(json,"itemY.scale",g_itemTriangleScale,first);
+    json_bool(json,"itemY.flipH",g_itemTriangleFlipH,first); json_bool(json,"itemY.flipV",g_itemTriangleFlipV,first);
+    json_int(json,"sensesText.x",g_wolfSenseX,first); json_int(json,"sensesText.y",g_wolfSenseY,first); json_int(json,"sensesText.scale",g_wolfSenseScale,first);
+    json_int(json,"digText.x",g_wolfDigX,first); json_int(json,"digText.y",g_wolfDigY,first); json_int(json,"digText.scale",g_wolfDigScale,first);
+    json_int(json,"sensesGlow.x",g_wolfXGlowX,first); json_int(json,"sensesGlow.y",g_wolfXGlowY,first); json_int(json,"sensesGlow.scale",g_wolfXGlowScale,first);
+    json_bool(json,"sensesGlow.enabled",g_wolfXGlowEnabled,first);
+    json_int(json,"digGlow.x",g_wolfYGlowX,first); json_int(json,"digGlow.y",g_wolfYGlowY,first); json_int(json,"digGlow.scale",g_wolfYGlowScale,first);
+    json_bool(json,"digGlow.enabled",g_wolfYGlowEnabled,first);
+    json_int(json,"wheelX.x",g_wheelSquareX,first); json_int(json,"wheelX.y",g_wheelSquareY,first); json_int(json,"wheelX.scale",g_wheelSquareScale,first);
+    json_int(json,"wheelY.x",g_wheelTriangleX,first); json_int(json,"wheelY.y",g_wheelTriangleY,first); json_int(json,"wheelY.scale",g_wheelTriangleScale,first);
+    json += "\n  },\n";
+
+    json += "  \"swapXY\": {\n";
+    first=true;
+    json_int(json,"hudY.x",g_swapTriX,first); json_int(json,"hudY.y",g_swapTriY,first); json_int(json,"hudY.scale",g_swapTriScale,first);
+    json_int(json,"hudX.x",g_swapSquareX,first); json_int(json,"hudX.y",g_swapSquareY,first); json_int(json,"hudX.scale",g_swapSquareScale,first);
+    json_int(json,"itemX.x",g_swapItemSquareX,first); json_int(json,"itemX.y",g_swapItemSquareY,first); json_int(json,"itemX.scale",g_swapItemSquareScale,first);
+    json_bool(json,"itemX.flipH",g_swapItemSquareFlipH,first); json_bool(json,"itemX.flipV",g_swapItemSquareFlipV,first);
+    json_int(json,"itemY.x",g_swapItemTriangleX,first); json_int(json,"itemY.y",g_swapItemTriangleY,first); json_int(json,"itemY.scale",g_swapItemTriangleScale,first);
+    json_bool(json,"itemY.flipH",g_swapItemTriangleFlipH,first); json_bool(json,"itemY.flipV",g_swapItemTriangleFlipV,first);
+    json_int(json,"sensesText.x",g_swapWolfSenseX,first); json_int(json,"sensesText.y",g_swapWolfSenseY,first); json_int(json,"sensesText.scale",g_swapWolfSenseScale,first);
+    json_int(json,"digText.x",g_swapWolfDigX,first); json_int(json,"digText.y",g_swapWolfDigY,first); json_int(json,"digText.scale",g_swapWolfDigScale,first);
+    json_int(json,"sensesGlow.x",g_swapWolfXGlowX,first); json_int(json,"sensesGlow.y",g_swapWolfXGlowY,first); json_int(json,"sensesGlow.scale",g_swapWolfXGlowScale,first);
+    json_bool(json,"sensesGlow.enabled",g_swapWolfXGlowEnabled,first);
+    json_int(json,"digGlow.x",g_swapWolfYGlowX,first); json_int(json,"digGlow.y",g_swapWolfYGlowY,first); json_int(json,"digGlow.scale",g_swapWolfYGlowScale,first);
+    json_bool(json,"digGlow.enabled",g_swapWolfYGlowEnabled,first);
+    json_int(json,"wheelX.x",g_swapWheelSquareX,first); json_int(json,"wheelX.y",g_swapWheelSquareY,first); json_int(json,"wheelX.scale",g_swapWheelSquareScale,first);
+    json_int(json,"wheelY.x",g_swapWheelTriangleX,first); json_int(json,"wheelY.y",g_swapWheelTriangleY,first); json_int(json,"wheelY.scale",g_swapWheelTriangleScale,first);
+    json += "\n  },\n";
+
+    json += "  \"shared\": {\n";
+    first=true;
+    json_int(json,"hudA.x",g_crossX,first); json_int(json,"hudA.y",g_crossY,first); json_int(json,"hudA.scale",g_crossScale,first);
+    json_int(json,"hudB.x",g_circleX,first); json_int(json,"hudB.y",g_circleY,first); json_int(json,"hudB.scale",g_circleScale,first);
+    json_int(json,"hudR1.x",g_r1X,first); json_int(json,"hudR1.y",g_r1Y,first); json_int(json,"hudR1.scale",g_r1Scale,first);
+    json_int(json,"dpad.x",g_dpadX,first); json_int(json,"dpad.y",g_dpadY,first); json_int(json,"dpad.scale",g_dpadScale,first);
+    json_int(json,"itemsAnchor.x",g_itemsAnchorX,first); json_int(json,"itemsAnchor.y",g_itemsAnchorY,first);
+    json_int(json,"wheelL2.x",g_wheelL2X,first); json_int(json,"wheelL2.y",g_wheelL2Y,first); json_int(json,"wheelL2.scale",g_wheelL2Scale,first);
+    json_int(json,"wheelR2.x",g_wheelR2X,first); json_int(json,"wheelR2.y",g_wheelR2Y,first); json_int(json,"wheelR2.scale",g_wheelR2Scale,first);
+    json += "\n  }\n";
+    json += "}\n";
+
+    std::string path=dataDir;
+    if (!path.empty() && path.back()!='/' && path.back()!='\\') path += '/';
+    path += "calibration_export.json";
+
+    std::FILE* fp=std::fopen(path.c_str(),"wb");
+    if (fp == nullptr) {
+        svc_log->error(mod_ctx,"Calibration export failed: could not open calibration_export.json");
+        return;
+    }
+    const size_t written=std::fwrite(json.data(),1,json.size(),fp);
+    std::fclose(fp);
+    if (written != json.size()) {
+        svc_log->error(mod_ctx,"Calibration export failed: incomplete write");
+        return;
+    }
+
+    std::string message="Calibration exported to: ";
+    message += path;
+    svc_log->info(mod_ctx,message.c_str());
+}
+
+
 bool base_xy_preset_selected(ModContext*,void*);
 bool swap_xy_preset_selected(ModContext*,void*);
 void select_base_xy_preset(ModContext*,void*);
@@ -945,7 +1054,13 @@ ModResult build_settings_11_panel(ModContext*,UiWindowHandle,UiElementHandle pan
     svc_ui->pane_add_text(mod_ctx,pane,
         "Use the existing HUD, Item Wheel, Wolf and text controls to calibrate the swapped layout. This option will move to the public menu after the alternate layout is aligned.",
         nullptr);
-    svc_ui->pane_add_section(mod_ctx,pane,"Visual HUD Editor");
+    svc_ui->pane_add_section(mod_ctx,pane,"Calibration Export");
+    svc_ui->pane_add_text(mod_ctx,pane,
+        "Writes Base, Swap X/Y and shared calibration values to calibration_export.json in this mod's persistent Dusklight data folder.",
+        nullptr);
+    add_button(pane,"Export Calibration JSON",export_calibration,
+        "Export the current calibration so it can be shared without screenshots.");
+        svc_ui->pane_add_section(mod_ctx,pane,"Visual HUD Editor");
     add_toggle(pane,"Enable Visual HUD Editor",g_visualHudEditorEnabled,
         "Developer-only visual editing mode. The editor is restricted to a whitelist of TP Classic elements with known X/Y/Scale config handles.");
     svc_ui->pane_add_text(mod_ctx,pane,
