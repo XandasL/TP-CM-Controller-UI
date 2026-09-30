@@ -9,6 +9,7 @@
 #include "d/d_meter_HIO.h"
 #include "d/d_meter2_info.h"
 #include "d/d_menu_collect.h"
+#include "d/d_menu_window.h"
 #include "d/d_item_data.h"
 #include "d/d_pane_class.h"
 #include "JSystem/J2DGraph/J2DPane.h"
@@ -762,6 +763,7 @@ DEFINE_HOOK(&CPaneMgr::paneTrans, PaneTransHook);
 DEFINE_HOOK(&J2DScreen::draw, ScreenDrawHook);
 DEFINE_HOOK(&dMenu_Collect2DTop_c::draw, CollectTopDrawHook);
 DEFINE_HOOK(&dMenu_Collect2D_c::_draw, CollectMainDrawHook);
+DEFINE_HOOK(&dMw_c::dMw_ring_create, RingCreateCompatHook);
 DEFINE_HOOK(&dDlst_FileSel_c::draw, FileSelDrawHook);
 DEFINE_HOOK(&COutFont_c::createPane, OutFontCreatePaneHook);
 DEFINE_HOOK(&COutFont_c::drawFont, OutFontDrawFontHook);
@@ -3763,6 +3765,32 @@ int classify_current_pikari() {
 dMenu_Collect2D_c* s_compatCollectOwner = nullptr;
 dMenu_Collect2D_c* s_compatCollectMainOwner = nullptr;
 
+// Twilit recovery bridge. Twilit Essentials already hooks dMenu_Ring_c::_delete
+// to destroy/reload its cached Quick Access radial. Vanilla Dusklight's
+// dMenu_Ring_c::_delete is empty, so pulsing it once immediately after a new
+// ring is created asks Twilit to rebuild only its cached radial resources
+// without deleting the actual vanilla ring object.
+void after_ring_create_compat(ModContext*, void* args, void*, void*) {
+    dMw_c* mw = args != nullptr ? mods::arg<dMw_c*>(args, 0) : nullptr;
+    if (mw != nullptr && mw->mpMenuRing != nullptr)
+        mw->mpMenuRing->_delete();
+}
+
+dMenu_Collect2D_c* s_collectionRefreshOwner = nullptr;
+bool s_collectionHadSubwindow = false;
+bool s_collectionRefreshPending = false;
+
+bool collection_has_subwindow(dMenu_Collect2D_c* c) {
+    return c != nullptr &&
+           (c->getSaveScreen() != nullptr ||
+            c->getOptionScreen() != nullptr ||
+            c->getLetterScreen() != nullptr ||
+            c->getFishingScreen() != nullptr ||
+            c->getSkillScreen() != nullptr ||
+            c->getInsectScreen() != nullptr);
+}
+
+
 HookAction before_collect_main_draw(ModContext*, void* args, void*, void*) {
     s_compatCollectMainOwner = args != nullptr ? mods::arg<dMenu_Collect2D_c*>(args, 0) : nullptr;
     return HOOK_CONTINUE;
@@ -3859,6 +3887,21 @@ void after_collect_top_draw(ModContext*, void* args, void*, void*) {
         draw_collection_button_overlay(collect->mpScreenIcon, MULTI_CHAR('g_bbtn_n'),
                                        resource_timg(s_circle),
                                        g_menuCircleX, g_menuCircleY, g_menuCircleScale);
+
+        const bool hasSub = collection_has_subwindow(collect);
+        if (s_collectionRefreshOwner != collect) {
+            s_collectionRefreshOwner = collect;
+            s_collectionHadSubwindow = hasSub;
+        } else {
+            // Returning from Letters/Skills/Fishing/Options/Save is the exact
+            // transition that tends to leave Twilit's injected Collection panes
+            // in a bad state. Rebuild the Collection on the next mod_update,
+            // outside the draw call, so Twilit's _delete/_create hooks recreate
+            // Boss Rush and all custom page resources from scratch.
+            if (s_collectionHadSubwindow && !hasSub)
+                s_collectionRefreshPending = true;
+            s_collectionHadSubwindow = hasSub;
+        }
     }
     s_compatCollectOwner = nullptr;
 }
@@ -4172,6 +4215,15 @@ ModResult mod_initialize(ModError* error) {
         return mods::set_error(error, collectTopPost, "failed to install POST hook for dMenu_Collect2DTop_c::draw");
     }
 
+    ModResult ringCreatePost = mods::hook::add_post<RingCreateCompatHook>(svc_hook, after_ring_create_compat);
+    if (ringCreatePost != MOD_OK) {
+        mods::hook::uninstall<CollectTopDrawHook>();
+        mods::hook::uninstall<CollectMainDrawHook>();
+        mods::hook::uninstall<PaneTransHook>();
+        free_resources();
+        return mods::set_error(error, ringCreatePost, "failed to install POST hook for dMw_c::dMw_ring_create");
+    }
+
     ModResult psd = mods::hook::add_pre<ScreenDrawHook>(before_screen_draw, nullptr);
     if (psd != MOD_OK) {
         mods::hook::uninstall<PaneTransHook>();
@@ -4235,11 +4287,31 @@ ModResult mod_initialize(ModError* error) {
     return MOD_OK;
 }
 
-MOD_EXPORT ModResult mod_update(ModError*) { return MOD_OK; }
+MOD_EXPORT ModResult mod_update(ModError*) {
+    if (s_collectionRefreshPending) {
+        dMw_c* mw = dMeter2Info_getMenuWindowClass();
+        if (mw != nullptr && mw->isPauseWindow() && mw->mpMenuCollect != nullptr) {
+            s_collectionRefreshPending = false;
+            s_collectionRefreshOwner = nullptr;
+            s_collectionHadSubwindow = false;
+
+            // Force a complete vanilla Collection lifecycle. Twilit Essentials
+            // hooks these create/delete paths, so its Boss Rush icon/pages are
+            // rebuilt too. Doing it here avoids deleting panes during a draw.
+            mw->dMw_collect_delete(true);
+            mw->dMw_collect_create();
+        }
+    }
+    return MOD_OK;
+}
 
 MOD_EXPORT ModResult mod_shutdown(ModError*) {
+    mods::hook::uninstall<RingCreateCompatHook>();
     mods::hook::uninstall<CollectTopDrawHook>();
     mods::hook::uninstall<CollectMainDrawHook>();
+    s_collectionRefreshPending = false;
+    s_collectionRefreshOwner = nullptr;
+    s_collectionHadSubwindow = false;
     mods::hook::uninstall<MeterButtonScreenInitHook>();
     if (s_buttonCrossHookInstalled) {
         mods::hook::uninstall<ButtonCrossDrawHook>();
