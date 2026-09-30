@@ -2340,6 +2340,8 @@ static void adjust_sword_picture(J2DPicture* pane,float dx,float dy,float sc) {
 struct MidnaPictureState {
     J2DPane* pane = nullptr;
     JGeometry::TBox2<f32> base{};
+    float baseParentScaleX = 1.0f;
+    float baseParentScaleY = 1.0f;
     float lastDx = 0.0f, lastDy = 0.0f, lastScale = 1.0f;
     bool captured = false;
 };
@@ -2356,18 +2358,38 @@ static bool is_midna_picture(J2DPane* pane) {
            pane->mInfoTag == MULTI_CHAR('j_light1');
 }
 
+static void midna_parent_scale(J2DPane* pane,float& sx,float& sy) {
+    sx=1.0f; sy=1.0f;
+    if (pane==nullptr) return;
+    for (J2DPane* p=pane->getParentPane(); p!=nullptr; p=p->getParentPane()) {
+        sx*=p->getScaleX();
+        sy*=p->getScaleY();
+    }
+    if (fabsf(sx)<0.0001f) sx=1.0f;
+    if (fabsf(sy)<0.0001f) sy=1.0f;
+}
+
 static MidnaPictureState* midna_state_for(J2DPane* pane) {
     for(auto& st:s_midnaPictures) if(st.captured && st.pane==pane) return &st;
     for(auto& st:s_midnaPictures) if(!st.captured) {
-        st.pane=pane; st.base=pane->getBounds(); st.captured=true; return &st;
+        st.pane=pane;
+        st.base=pane->getBounds();
+        midna_parent_scale(pane,st.baseParentScaleX,st.baseParentScaleY);
+        st.captured=true;
+        return &st;
     }
     // HUD may reuse addresses after an area transition. Reuse a slot by tag order.
     int slot = 2;
     if (pane->mInfoTag == MULTI_CHAR('midona_s')) slot = 0;
     else if (pane->mInfoTag == MULTI_CHAR('midona')) slot = 1;
     auto& st=s_midnaPictures[slot];
-    st.pane=pane; st.base=pane->getBounds(); st.lastDx=st.lastDy=0.0f;
-    st.lastScale=1.0f; st.captured=true; return &st;
+    st.pane=pane;
+    st.base=pane->getBounds();
+    midna_parent_scale(pane,st.baseParentScaleX,st.baseParentScaleY);
+    st.lastDx=st.lastDy=0.0f;
+    st.lastScale=1.0f;
+    st.captured=true;
+    return &st;
 }
 
 static void adjust_midna_pictures(J2DPane* pane,float dx,float dy,float sc) {
@@ -2390,7 +2412,20 @@ static void adjust_midna_pictures(J2DPane* pane,float dx,float dy,float sc) {
         (void)prevX; (void)prevY; (void)prevW; (void)prevH;
 
         const float nbw=st->base.getWidth(), nbh=st->base.getHeight();
-        const float nw=nbw*sc, nh=nbh*sc;
+
+        // The game animates/scales Midna's parent/root across area transitions.
+        // Keep the configured visual size stable by compensating only the local
+        // picture bounds for the current ancestor scale. We intentionally do
+        // not touch parent transforms, alpha or visibility.
+        float parentScaleX=1.0f,parentScaleY=1.0f;
+        midna_parent_scale(pane,parentScaleX,parentScaleY);
+        float compensateX=st->baseParentScaleX/parentScaleX;
+        float compensateY=st->baseParentScaleY/parentScaleY;
+        if (!std::isfinite(compensateX) || fabsf(compensateX)<0.0001f) compensateX=1.0f;
+        if (!std::isfinite(compensateY) || fabsf(compensateY)<0.0001f) compensateY=1.0f;
+
+        const float nw=nbw*sc*compensateX;
+        const float nh=nbh*sc*compensateY;
         pane->move(st->base.i.x+dx-(nw-nbw)*0.5f,
                    st->base.i.y+dy-(nh-nbh)*0.5f);
         pane->resize(nw,nh);
@@ -5638,6 +5673,7 @@ MOD_EXPORT ModResult mod_shutdown(ModError*) {
     s_midnaPromptScreen = nullptr;
     s_midnaPromptOriginalTexture = nullptr;
     s_externalMidnaPromptOwner = false;
+    for (auto& st : s_midnaPictures) st = {};
     g_publicWindow = 0;
     g_layoutWindow = 0;
     g_visualHudEditorEnabled = 0;
