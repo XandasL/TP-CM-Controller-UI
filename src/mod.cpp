@@ -190,10 +190,6 @@ VisualEditorTarget s_visualEditorTargets[] = {
     {VisualEditorTargetId::DungeonBack,   "Dungeon Map Back",         &g_dungeonMapCircleX, &g_dungeonMapCircleY, &g_dungeonMapCircleScale},
 };
 
-bool visual_editor_enabled() {
-    return kDeveloperOptions && cfg_bool(g_visualHudEditorEnabled,false);
-}
-
 int64_t cfg_int(ConfigVarHandle h, int64_t fallback) {
     int64_t v=fallback;
     if (h==0 || svc_config->get_int(mod_ctx,h,&v)!=MOD_OK) return fallback;
@@ -210,6 +206,11 @@ bool cfg_bool(ConfigVarHandle h, bool fallback) {
     if (h==0 || svc_config->get_bool(mod_ctx,h,&v)!=MOD_OK) return fallback;
     return v;
 }
+
+bool visual_editor_enabled() {
+    return kDeveloperOptions && cfg_bool(g_visualHudEditorEnabled,false);
+}
+
 ModResult reg_bool(const char* name, bool def, ConfigVarHandle& out, ModError* err) {
     ConfigVarDesc d=CONFIG_VAR_DESC_INIT;
     d.name=name; d.type=CONFIG_VAR_BOOL; d.default_bool=def;
