@@ -33,6 +33,7 @@ IMPORT_SERVICE(UiService, svc_ui);
 namespace {
 
 ConfigVarHandle g_controllerStyle=0;
+ConfigVarHandle g_layoutSchemaVersion=0;
 bool s_controllerStyleLocked=false;
 bool s_useXbox=false;
 
@@ -161,6 +162,60 @@ ModResult reg_int(const char* name, int64_t def, ConfigVarHandle& out, ModError*
     ModResult r=svc_config->register_var(mod_ctx,&d,&out);
     if(r!=MOD_OK) return mods::set_error(err,r,"failed to register layout option");
     return MOD_OK;
+}
+
+// One-time compatibility migration for users updating from the original 1.0.0
+// layout. Dusklight persists config vars, so changing a registered default alone
+// does not move an existing user's HUD to the new calibrated positions.
+//
+// Preserve real customizations: a value is migrated only when it still exactly
+// matches the old published default. New installs already start on the new
+// defaults and therefore pass through unchanged.
+void migrate_int_default(ConfigVarHandle handle, int64_t oldDefault, int64_t newDefault,
+                         int& migratedCount) {
+    if (handle == 0 || oldDefault == newDefault) return;
+    int64_t value = 0;
+    if (svc_config->get_int(mod_ctx, handle, &value) != MOD_OK) return;
+    if (value != oldDefault) return;
+    if (svc_config->set_int(mod_ctx, handle, newDefault) == MOD_OK)
+        ++migratedCount;
+}
+
+void apply_layout_schema_migrations() {
+    if (g_layoutSchemaVersion == 0) return;
+
+    int64_t schemaVersion = 0;
+    if (svc_config->get_int(mod_ctx, g_layoutSchemaVersion, &schemaVersion) != MOD_OK)
+        return;
+    if (schemaVersion >= 1) return;
+
+    int migratedCount = 0;
+
+    // 1.0.0 -> 1.1.0 calibrated defaults.
+    migrate_int_default(g_worldR1X,              0,    80, migratedCount);
+    migrate_int_default(g_worldR1Y,            -80,   180, migratedCount);
+    migrate_int_default(g_worldArrowX,          210,  -225, migratedCount);
+    migrate_int_default(g_worldArrowY,            0,  -230, migratedCount);
+    migrate_int_default(g_worldAnalogX,         150,   180, migratedCount);
+    migrate_int_default(g_worldAnalogY,         -10,   680, migratedCount);
+    migrate_int_default(g_worldDpadX,          -190,   260, migratedCount);
+    migrate_int_default(g_worldDpadY,             0,   220, migratedCount);
+
+    migrate_int_default(g_wheelSquareX,           0,  -170, migratedCount);
+    migrate_int_default(g_wheelSquareScale,     100,    87, migratedCount);
+    migrate_int_default(g_wheelTriangleX,         0,  -100, migratedCount);
+    migrate_int_default(g_wheelTriangleScale,   100,    90, migratedCount);
+    migrate_int_default(g_wheelSelectAnalogX,     0,    50, migratedCount);
+    migrate_int_default(g_wheelSelectAnalogScale,100,    90, migratedCount);
+    migrate_int_default(g_wheelDirectAnalogX,     0,   100, migratedCount);
+    migrate_int_default(g_wheelDirectAnalogScale,100,    90, migratedCount);
+    migrate_int_default(g_wheelL2X,              80,   250, migratedCount);
+    migrate_int_default(g_wheelL2Scale,         100,    90, migratedCount);
+    migrate_int_default(g_wheelR2X,               0,  -130, migratedCount);
+
+    svc_config->set_int(mod_ctx, g_layoutSchemaVersion, 1);
+    if (svc_log != nullptr)
+        svc_log->info(mod_ctx, "Layout config migrated to schema 1 ({} values updated)", migratedCount);
 }
 void add_num(UiElementHandle pane,const char* label,ConfigVarHandle h,int64_t mn,int64_t mx,int64_t step,const char* suffix,const char* help) {
     UiControlDesc c=UI_CONTROL_DESC_INIT;
@@ -4390,6 +4445,14 @@ ModResult mod_initialize(ModError* error) {
         ModResult rr=reg_int(v.n,v.d,*v.h,error);
         if(rr!=MOD_OK) return rr;
     }
+
+    // Hidden migration marker: not exposed in the UI, only persisted in config.json.
+    {
+        ModResult rr=reg_int("layoutSchemaVersion",0,g_layoutSchemaVersion,error);
+        if(rr!=MOD_OK) return rr;
+    }
+    apply_layout_schema_migrations();
+
     UiModsPanelDesc panel=UI_MODS_PANEL_DESC_INIT;
     panel.build=build_layout_panel;
     if(svc_ui->register_mods_panel(mod_ctx,&panel)!=MOD_OK)
@@ -4611,6 +4674,7 @@ MOD_EXPORT ModResult mod_shutdown(ModError*) {
     s_midnaPromptScreen = nullptr;
     s_midnaPromptOriginalTexture = nullptr;
     s_externalMidnaPromptOwner = false;
+    g_layoutSchemaVersion = 0;
     free_resources();
     return MOD_OK;
 }
