@@ -47,6 +47,9 @@ bool s_useXbox=false;
 
 ConfigVarHandle g_triX=0, g_triY=0, g_triScale=0;
 ConfigVarHandle g_squareX=0, g_squareY=0, g_squareScale=0;
+// Alternate X/Y layout calibration. These handles are developer-only for now.
+ConfigVarHandle g_swapTriX=0, g_swapTriY=0, g_swapTriScale=0;
+ConfigVarHandle g_swapSquareX=0, g_swapSquareY=0, g_swapSquareScale=0;
 ConfigVarHandle g_circleX=0, g_circleY=0, g_circleScale=0;
 ConfigVarHandle g_crossX=0, g_crossY=0, g_crossScale=0;
 ConfigVarHandle g_showGuide=0;
@@ -61,11 +64,15 @@ ConfigVarHandle g_guideX=0, g_guideY=0, g_guideScale=0;
 ConfigVarHandle g_itemsAnchorX=0, g_itemsAnchorY=0;
 ConfigVarHandle g_itemSquareX=0, g_itemSquareY=0, g_itemSquareScale=0;
 ConfigVarHandle g_itemTriangleX=0, g_itemTriangleY=0, g_itemTriangleScale=0;
+ConfigVarHandle g_swapItemSquareX=0, g_swapItemSquareY=0, g_swapItemSquareScale=0;
+ConfigVarHandle g_swapItemTriangleX=0, g_swapItemTriangleY=0, g_swapItemTriangleScale=0;
 ConfigVarHandle g_itemCircleX=0, g_itemCircleY=0, g_itemCircleScale=0;
 ConfigVarHandle g_itemR1X=0, g_itemR1Y=0, g_itemR1Scale=0;
 ConfigVarHandle g_swordX=0, g_swordY=0, g_swordScale=0;
 ConfigVarHandle g_itemSquareFlipH=0, g_itemSquareFlipV=0;
 ConfigVarHandle g_itemTriangleFlipH=0, g_itemTriangleFlipV=0;
+ConfigVarHandle g_swapItemSquareFlipH=0, g_swapItemSquareFlipV=0;
+ConfigVarHandle g_swapItemTriangleFlipH=0, g_swapItemTriangleFlipV=0;
 ConfigVarHandle g_swordFlipH=0, g_swordFlipV=0;
 ConfigVarHandle g_midnaX=0, g_midnaY=0, g_midnaScale=0;
 ConfigVarHandle g_actionTextX=0, g_actionTextY=0, g_actionTextScale=0;
@@ -77,6 +84,8 @@ ConfigVarHandle g_dialogActionTextX=0, g_dialogActionTextY=0;
 ConfigVarHandle g_backTextX=0, g_backTextY=0, g_backTextScale=0;
 ConfigVarHandle g_wolfSenseX=0, g_wolfSenseY=0, g_wolfSenseScale=0;
 ConfigVarHandle g_wolfDigX=0, g_wolfDigY=0, g_wolfDigScale=0;
+ConfigVarHandle g_swapWolfSenseX=0, g_swapWolfSenseY=0, g_swapWolfSenseScale=0;
+ConfigVarHandle g_swapWolfDigX=0, g_swapWolfDigY=0, g_swapWolfDigScale=0;
 ConfigVarHandle g_backButtonAnim=0, g_backTextAnim=0;
 ConfigVarHandle g_actionGlowEnabled=0, g_actionGlowX=0, g_actionGlowY=0, g_actionGlowScale=0;
 ConfigVarHandle g_backGlowEnabled=0, g_backGlowX=0, g_backGlowY=0, g_backGlowScale=0;
@@ -84,6 +93,8 @@ ConfigVarHandle g_glowPreview=0;
 // Wolf X/Y button light panes (x_light / y_light).
 ConfigVarHandle g_wolfXGlowEnabled=0, g_wolfXGlowX=0, g_wolfXGlowY=0, g_wolfXGlowScale=0;
 ConfigVarHandle g_wolfYGlowEnabled=0, g_wolfYGlowX=0, g_wolfYGlowY=0, g_wolfYGlowScale=0;
+ConfigVarHandle g_swapWolfXGlowEnabled=0, g_swapWolfXGlowX=0, g_swapWolfXGlowY=0, g_swapWolfXGlowScale=0;
+ConfigVarHandle g_swapWolfYGlowEnabled=0, g_swapWolfYGlowX=0, g_swapWolfYGlowY=0, g_swapWolfYGlowScale=0;
 ConfigVarHandle g_wolfGlowPreview=0;
 // Save/file-select button offsets. Stored as tenths of a pixel.
 ConfigVarHandle g_fileCrossX=0, g_fileCrossY=0, g_fileCircleX=0, g_fileCircleY=0;
@@ -117,6 +128,8 @@ ConfigVarHandle g_hudOrnamentEnabled=0, g_hudOrnamentX=0, g_hudOrnamentY=0, g_hu
 // Item Wheel assignment prompt transforms. Completely separate from gameplay HUD.
 ConfigVarHandle g_wheelSquareX=0, g_wheelSquareY=0, g_wheelSquareScale=0;
 ConfigVarHandle g_wheelTriangleX=0, g_wheelTriangleY=0, g_wheelTriangleScale=0;
+ConfigVarHandle g_swapWheelSquareX=0, g_swapWheelSquareY=0, g_swapWheelSquareScale=0;
+ConfigVarHandle g_swapWheelTriangleX=0, g_swapWheelTriangleY=0, g_swapWheelTriangleScale=0;
 ConfigVarHandle g_wheelSelectAnalogX=0, g_wheelSelectAnalogY=0, g_wheelSelectAnalogScale=0;
 ConfigVarHandle g_wheelDirectAnalogX=0, g_wheelDirectAnalogY=0, g_wheelDirectAnalogScale=0;
 ConfigVarHandle g_wheelL2X=0, g_wheelL2Y=0, g_wheelL2Scale=0;
@@ -212,6 +225,14 @@ bool visual_editor_enabled() {
     return kDeveloperOptions && cfg_bool(g_visualHudEditorEnabled,false);
 }
 
+bool swap_xy_layout_enabled() {
+    return kDeveloperOptions && cfg_bool(g_swapXYButtonLayout,false);
+}
+
+ConfigVarHandle layout_handle(ConfigVarHandle normal, ConfigVarHandle swapped) {
+    return swap_xy_layout_enabled() && swapped != 0 ? swapped : normal;
+}
+
 ModResult reg_bool(const char* name, bool def, ConfigVarHandle& out, ModError* err) {
     ConfigVarDesc d=CONFIG_VAR_DESC_INIT;
     d.name=name; d.type=CONFIG_VAR_BOOL; d.default_bool=def;
@@ -250,10 +271,9 @@ void apply_layout_schema_migrations() {
     int64_t schemaVersion = 0;
     if (svc_config->get_int(mod_ctx, g_layoutSchemaVersion, &schemaVersion) != MOD_OK)
         return;
-    if (schemaVersion >= 1) return;
-
     int migratedCount = 0;
 
+    if (schemaVersion < 1) {
     // 1.0.0 -> 1.1.0 calibrated defaults.
     migrate_int_default(g_worldR1X,              0,    80, migratedCount);
     migrate_int_default(g_worldR1Y,            -80,   180, migratedCount);
@@ -277,8 +297,22 @@ void apply_layout_schema_migrations() {
     migrate_int_default(g_wheelR2X,               0,  -130, migratedCount);
 
     svc_config->set_int(mod_ctx, g_layoutSchemaVersion, 1);
+    schemaVersion = 1;
+    }
+
+    // Schema 2 corrects the normal Wolf glow calibration. The previous published
+    // defaults are preserved as the alternate Swap X/Y profile instead.
+    if (schemaVersion < 2) {
+        migrate_int_default(g_wolfXGlowX, 5, 235, migratedCount);
+        migrate_int_default(g_wolfXGlowY, -55, -295, migratedCount);
+        migrate_int_default(g_wolfYGlowX, -75, -300, migratedCount);
+        migrate_int_default(g_wolfYGlowY, 20, 260, migratedCount);
+        svc_config->set_int(mod_ctx, g_layoutSchemaVersion, 2);
+        schemaVersion = 2;
+    }
+
     if (svc_log != nullptr && migratedCount > 0)
-        svc_log->info(mod_ctx, "Layout config migrated to schema 1");
+        svc_log->info(mod_ctx, "Layout config migrated to latest schema");
 }
 void add_num(UiElementHandle pane,const char* label,ConfigVarHandle h,int64_t mn,int64_t mx,int64_t step,const char* suffix,const char* help) {
     UiControlDesc c=UI_CONTROL_DESC_INIT;
@@ -393,11 +427,11 @@ void reset_layout(ModContext*, void*) {
     svc_config->set_int(mod_ctx,g_backGlowX,10);
     svc_config->set_int(mod_ctx,g_backGlowY,30);
     svc_config->set_int(mod_ctx,g_backGlowScale,100);
-    svc_config->set_int(mod_ctx,g_wolfXGlowX,5);
-    svc_config->set_int(mod_ctx,g_wolfXGlowY,-55);
+    svc_config->set_int(mod_ctx,g_wolfXGlowX,235);
+    svc_config->set_int(mod_ctx,g_wolfXGlowY,-295);
     svc_config->set_int(mod_ctx,g_wolfXGlowScale,50);
-    svc_config->set_int(mod_ctx,g_wolfYGlowX,-75);
-    svc_config->set_int(mod_ctx,g_wolfYGlowY,20);
+    svc_config->set_int(mod_ctx,g_wolfYGlowX,-300);
+    svc_config->set_int(mod_ctx,g_wolfYGlowY,260);
     svc_config->set_int(mod_ctx,g_wolfYGlowScale,50);
     svc_config->set_int(mod_ctx,g_fileCrossX,15);
     svc_config->set_int(mod_ctx,g_fileCrossY,0);
@@ -492,6 +526,21 @@ void reset_layout(ModContext*, void*) {
     svc_config->set_bool(mod_ctx,g_itemTriangleFlipV,false);
     svc_config->set_bool(mod_ctx,g_swordFlipH,false);
     svc_config->set_bool(mod_ctx,g_swordFlipV,false);
+    if (kDeveloperOptions) {
+        svc_config->set_int(mod_ctx,g_swapTriX,1210); svc_config->set_int(mod_ctx,g_swapTriY,126); svc_config->set_int(mod_ctx,g_swapTriScale,90);
+        svc_config->set_int(mod_ctx,g_swapSquareX,972); svc_config->set_int(mod_ctx,g_swapSquareY,379); svc_config->set_int(mod_ctx,g_swapSquareScale,90);
+        svc_config->set_int(mod_ctx,g_swapItemSquareX,-670); svc_config->set_int(mod_ctx,g_swapItemSquareY,-380); svc_config->set_int(mod_ctx,g_swapItemSquareScale,50);
+        svc_config->set_int(mod_ctx,g_swapItemTriangleX,480); svc_config->set_int(mod_ctx,g_swapItemTriangleY,-30); svc_config->set_int(mod_ctx,g_swapItemTriangleScale,50);
+        svc_config->set_int(mod_ctx,g_swapWolfSenseX,-920); svc_config->set_int(mod_ctx,g_swapWolfSenseY,-500); svc_config->set_int(mod_ctx,g_swapWolfSenseScale,55);
+        svc_config->set_int(mod_ctx,g_swapWolfDigX,730); svc_config->set_int(mod_ctx,g_swapWolfDigY,310); svc_config->set_int(mod_ctx,g_swapWolfDigScale,55);
+        svc_config->set_int(mod_ctx,g_swapWolfXGlowX,5); svc_config->set_int(mod_ctx,g_swapWolfXGlowY,-55); svc_config->set_int(mod_ctx,g_swapWolfXGlowScale,50);
+        svc_config->set_int(mod_ctx,g_swapWolfYGlowX,-75); svc_config->set_int(mod_ctx,g_swapWolfYGlowY,20); svc_config->set_int(mod_ctx,g_swapWolfYGlowScale,50);
+        svc_config->set_int(mod_ctx,g_swapWheelSquareX,-430); svc_config->set_int(mod_ctx,g_swapWheelSquareY,-10); svc_config->set_int(mod_ctx,g_swapWheelSquareScale,87);
+        svc_config->set_int(mod_ctx,g_swapWheelTriangleX,160); svc_config->set_int(mod_ctx,g_swapWheelTriangleY,-40); svc_config->set_int(mod_ctx,g_swapWheelTriangleScale,90);
+        svc_config->set_bool(mod_ctx,g_swapItemSquareFlipH,false); svc_config->set_bool(mod_ctx,g_swapItemSquareFlipV,false);
+        svc_config->set_bool(mod_ctx,g_swapItemTriangleFlipH,false); svc_config->set_bool(mod_ctx,g_swapItemTriangleFlipV,false);
+        svc_config->set_bool(mod_ctx,g_swapWolfXGlowEnabled,true); svc_config->set_bool(mod_ctx,g_swapWolfYGlowEnabled,true);
+    }
 }
 void add_toggle(UiElementHandle pane,const char* label,ConfigVarHandle h,const char* help) {
     UiControlDesc c=UI_CONTROL_DESC_INIT;
@@ -514,6 +563,14 @@ ModResult build_settings_0_panel(ModContext*,UiWindowHandle,UiElementHandle pane
     add_num(pane,"X (GC) -> Triangle (PS) / Y (XB) - X",g_squareX,0,2500,10," /10 px","X position of the original X root.");
     add_num(pane,"X (GC) -> Triangle (PS) / Y (XB) - Y",g_squareY,-1000,2000,10," /10 px","Y position of the original X root.");
     add_num(pane,"X (GC) -> Triangle (PS) / Y (XB) - Scale",g_squareScale,50,200,1,"%","Visual scale.");
+    svc_ui->pane_add_section(mod_ctx,pane,"SWAP - Y (GC) / Triangle (PS) / Y (XB)");
+    add_num(pane,"SWAP Y Slot - X",g_swapTriX,0,2500,10," /10 px","Swap-profile position for the original GC Y slot.");
+    add_num(pane,"SWAP Y Slot - Y",g_swapTriY,-1000,2000,10," /10 px","Swap-profile position for the original GC Y slot.");
+    add_num(pane,"SWAP Y Slot - Scale",g_swapTriScale,50,200,1,"%","Swap-profile scale.");
+    svc_ui->pane_add_section(mod_ctx,pane,"SWAP - X (GC) / Square (PS) / X (XB)");
+    add_num(pane,"SWAP X Slot - X",g_swapSquareX,0,2500,10," /10 px","Swap-profile position for the original GC X slot.");
+    add_num(pane,"SWAP X Slot - Y",g_swapSquareY,-1000,2000,10," /10 px","Swap-profile position for the original GC X slot.");
+    add_num(pane,"SWAP X Slot - Scale",g_swapSquareScale,50,200,1,"%","Swap-profile scale.");
     svc_ui->pane_add_section(mod_ctx,pane,"B (GC) / Circle (PS) / B (XB)");
     add_num(pane,"B (GC) -> Circle (PS) / B (XB) - X",g_circleX,0,2500,10," /10 px","X position of the original B root.");
     add_num(pane,"B (GC) -> Circle (PS) / B (XB) - Y",g_circleY,-1000,2000,10," /10 px","Y position of the original B root.");
@@ -566,6 +623,18 @@ ModResult build_settings_1_panel(ModContext*,UiWindowHandle,UiElementHandle pane
     add_num(pane,"Y (GC) -> Square (PS) / X (XB) Item - Scale",g_itemTriangleScale,30,200,1,"%","Item scale.");
     add_toggle(pane,"Y (GC) -> Square (PS) / X (XB) Item - Flip H",g_itemTriangleFlipH,"Flips the item texture horizontally.");
     add_toggle(pane,"Y (GC) -> Square (PS) / X (XB) Item - Flip V",g_itemTriangleFlipV,"Flips the item texture vertically.");
+    svc_ui->pane_add_section(mod_ctx,pane,"SWAP - X Slot Item");
+    add_num(pane,"SWAP X Item - X",g_swapItemSquareX,-3000,3000,10,"/10 px","Swap-profile item offset for original GC X.");
+    add_num(pane,"SWAP X Item - Y",g_swapItemSquareY,-3000,3000,10,"/10 px","Swap-profile item offset for original GC X.");
+    add_num(pane,"SWAP X Item - Scale",g_swapItemSquareScale,30,200,1,"%","Swap-profile item scale.");
+    add_toggle(pane,"SWAP X Item - Flip H",g_swapItemSquareFlipH,"Swap-profile horizontal flip.");
+    add_toggle(pane,"SWAP X Item - Flip V",g_swapItemSquareFlipV,"Swap-profile vertical flip.");
+    svc_ui->pane_add_section(mod_ctx,pane,"SWAP - Y Slot Item");
+    add_num(pane,"SWAP Y Item - X",g_swapItemTriangleX,-3000,3000,10,"/10 px","Swap-profile item offset for original GC Y.");
+    add_num(pane,"SWAP Y Item - Y",g_swapItemTriangleY,-3000,3000,10,"/10 px","Swap-profile item offset for original GC Y.");
+    add_num(pane,"SWAP Y Item - Scale",g_swapItemTriangleScale,30,200,1,"%","Swap-profile item scale.");
+    add_toggle(pane,"SWAP Y Item - Flip H",g_swapItemTriangleFlipH,"Swap-profile horizontal flip.");
+    add_toggle(pane,"SWAP Y Item - Flip V",g_swapItemTriangleFlipV,"Swap-profile vertical flip.");
     svc_ui->pane_add_section(mod_ctx,pane,"Sword");
     add_num(pane,"Sword X Offset",g_swordX,-300,300,1," px","Horizontal offset of the sword from its original position.");
     add_num(pane,"Sword Y Offset",g_swordY,-300,300,1," px","Vertical offset of the sword from its original position.");
@@ -632,6 +701,24 @@ ModResult build_settings_3_panel(ModContext*,UiWindowHandle,UiElementHandle pane
     add_num(pane,"Y (GC) -> Square (PS) / X (XB) Glow - Y",g_wolfYGlowY,-3000,3000,10,"/10 px","Vertical adjustment relative to the original Wolf glow position.");
     add_num(pane,"Y (GC) -> Square (PS) / X (XB) Glow - Scale",g_wolfYGlowScale,25,300,1,"%","Multiplies the original contextual Y Pikari scale.");
     add_toggle(pane,"Y (GC) -> Square (PS) / X (XB) Glow Enabled",g_wolfYGlowEnabled,"Enables or disables the contextual Pikari glow anchored to Y / Square / Dig.");
+    svc_ui->pane_add_section(mod_ctx,pane,"SWAP - Senses Text");
+    add_num(pane,"SWAP Senses Text - X",g_swapWolfSenseX,-3000,3000,10,"/10 px","Swap-profile Senses text offset.");
+    add_num(pane,"SWAP Senses Text - Y",g_swapWolfSenseY,-3000,3000,10,"/10 px","Swap-profile Senses text offset.");
+    add_num(pane,"SWAP Senses Text - Scale",g_swapWolfSenseScale,50,200,1,"%","Swap-profile Senses text scale.");
+    svc_ui->pane_add_section(mod_ctx,pane,"SWAP - Dig Text");
+    add_num(pane,"SWAP Dig Text - X",g_swapWolfDigX,-3000,3000,10,"/10 px","Swap-profile Dig text offset.");
+    add_num(pane,"SWAP Dig Text - Y",g_swapWolfDigY,-3000,3000,10,"/10 px","Swap-profile Dig text offset.");
+    add_num(pane,"SWAP Dig Text - Scale",g_swapWolfDigScale,50,200,1,"%","Swap-profile Dig text scale.");
+    svc_ui->pane_add_section(mod_ctx,pane,"SWAP - Senses Glow");
+    add_num(pane,"SWAP Senses Glow - X",g_swapWolfXGlowX,-3000,3000,10,"/10 px","Swap-profile Senses glow offset.");
+    add_num(pane,"SWAP Senses Glow - Y",g_swapWolfXGlowY,-3000,3000,10,"/10 px","Swap-profile Senses glow offset.");
+    add_num(pane,"SWAP Senses Glow - Scale",g_swapWolfXGlowScale,25,300,1,"%","Swap-profile Senses glow scale.");
+    add_toggle(pane,"SWAP Senses Glow Enabled",g_swapWolfXGlowEnabled,"Enables the Senses glow in the swap profile.");
+    svc_ui->pane_add_section(mod_ctx,pane,"SWAP - Dig Glow");
+    add_num(pane,"SWAP Dig Glow - X",g_swapWolfYGlowX,-3000,3000,10,"/10 px","Swap-profile Dig glow offset.");
+    add_num(pane,"SWAP Dig Glow - Y",g_swapWolfYGlowY,-3000,3000,10,"/10 px","Swap-profile Dig glow offset.");
+    add_num(pane,"SWAP Dig Glow - Scale",g_swapWolfYGlowScale,25,300,1,"%","Swap-profile Dig glow scale.");
+    add_toggle(pane,"SWAP Dig Glow Enabled",g_swapWolfYGlowEnabled,"Enables the Dig glow in the swap profile.");
     svc_ui->pane_add_section(mod_ctx,pane,"Glow Preview");
     add_toggle(pane,"Wolf Glow Preview",g_wolfGlowPreview,"Forces the contextual X/Y Pikari timers active while adjusting them. Disable Preview to restore normal in-game triggering.");
     return MOD_OK;
@@ -669,6 +756,14 @@ ModResult build_settings_6_panel(ModContext*,UiWindowHandle,UiElementHandle pane
     add_num(pane,"Y (GC) / Square (PS) / X (XB) - X Offset",g_wheelTriangleX,-3000,3000,10,"/10 px","Horizontal offset of Square beside Assign in the Item Wheel only.");
     add_num(pane,"Y (GC) / Square (PS) / X (XB) - Y Offset",g_wheelTriangleY,-3000,3000,10,"/10 px","Vertical offset of Square beside Assign in the Item Wheel only.");
     add_num(pane,"Y (GC) / Square (PS) / X (XB) - Scale",g_wheelTriangleScale,30,250,1,"%","Scale of Square in the Item Wheel only.");
+    svc_ui->pane_add_section(mod_ctx,pane,"SWAP - X Slot Assignment");
+    add_num(pane,"SWAP X Assignment - X",g_swapWheelSquareX,-3000,3000,10,"/10 px","Swap-profile Item Wheel X-slot offset.");
+    add_num(pane,"SWAP X Assignment - Y",g_swapWheelSquareY,-3000,3000,10,"/10 px","Swap-profile Item Wheel X-slot offset.");
+    add_num(pane,"SWAP X Assignment - Scale",g_swapWheelSquareScale,30,250,1,"%","Swap-profile Item Wheel X-slot scale.");
+    svc_ui->pane_add_section(mod_ctx,pane,"SWAP - Y Slot Assignment");
+    add_num(pane,"SWAP Y Assignment - X",g_swapWheelTriangleX,-3000,3000,10,"/10 px","Swap-profile Item Wheel Y-slot offset.");
+    add_num(pane,"SWAP Y Assignment - Y",g_swapWheelTriangleY,-3000,3000,10,"/10 px","Swap-profile Item Wheel Y-slot offset.");
+    add_num(pane,"SWAP Y Assignment - Scale",g_swapWheelTriangleScale,30,250,1,"%","Swap-profile Item Wheel Y-slot scale.");
     svc_ui->pane_add_section(mod_ctx,pane,"Select Analog");
     add_num(pane,"Select Analog - X Offset",g_wheelSelectAnalogX,-3000,3000,10,"/10 px","Horizontal offset of the modern analog icon beside Select.");
     add_num(pane,"Select Analog - Y Offset",g_wheelSelectAnalogY,-3000,3000,10,"/10 px","Vertical offset of the modern analog icon beside Select.");
@@ -1133,10 +1228,10 @@ const ResTIMG* resource_timg(const ResourceBuffer& requested) {
 // the modern face assigned to each slot; game functions, items and per-slot
 // X/Y/Scale config handles remain unchanged.
 const ResTIMG* gc_x_face_texture() {
-    return resource_timg(cfg_bool(g_swapXYButtonLayout,false) ? s_square : s_triangle);
+    return resource_timg(swap_xy_layout_enabled() ? s_square : s_triangle);
 }
 const ResTIMG* gc_y_face_texture() {
-    return resource_timg(cfg_bool(g_swapXYButtonLayout,false) ? s_triangle : s_square);
+    return resource_timg(swap_xy_layout_enabled() ? s_triangle : s_square);
 }
 
 // Twilit Essentials does not currently expose a public "is mod enabled" API/service.
@@ -1867,9 +1962,15 @@ void apply_wolf_text_config(dMeter2Draw_c* meter) {
         CPaneMgr* text = meter->mpTextXY[i_no];
         if (text == nullptr || text->getPanePtr() == nullptr) continue;
 
-        ConfigVarHandle xh = (i_no == 0) ? g_wolfSenseX : g_wolfDigX;
-        ConfigVarHandle yh = (i_no == 0) ? g_wolfSenseY : g_wolfDigY;
-        ConfigVarHandle sh = (i_no == 0) ? g_wolfSenseScale : g_wolfDigScale;
+        ConfigVarHandle xh = (i_no == 0)
+            ? layout_handle(g_wolfSenseX,g_swapWolfSenseX)
+            : layout_handle(g_wolfDigX,g_swapWolfDigX);
+        ConfigVarHandle yh = (i_no == 0)
+            ? layout_handle(g_wolfSenseY,g_swapWolfSenseY)
+            : layout_handle(g_wolfDigY,g_swapWolfDigY);
+        ConfigVarHandle sh = (i_no == 0)
+            ? layout_handle(g_wolfSenseScale,g_swapWolfSenseScale)
+            : layout_handle(g_wolfDigScale,g_swapWolfDigScale);
         const WolfTextBase& base = s_wolfTextBase[i_no];
         const float factor = cfg_scale(sh, 1.0f);
 
@@ -2137,10 +2238,18 @@ void after_meter_draw(ModContext*, void* args, void*, void*) {
         haveOut[slot]=true;
     };
 
-    apply_item_adjust(0,meter->mpItemXY[0],g_itemSquareX,g_itemSquareY,g_itemSquareScale,
-                      g_itemSquareFlipH,g_itemSquareFlipV);
-    apply_item_adjust(1,meter->mpItemXY[1],g_itemTriangleX,g_itemTriangleY,g_itemTriangleScale,
-                      g_itemTriangleFlipH,g_itemTriangleFlipV);
+    apply_item_adjust(0,meter->mpItemXY[0],
+                      layout_handle(g_itemSquareX,g_swapItemSquareX),
+                      layout_handle(g_itemSquareY,g_swapItemSquareY),
+                      layout_handle(g_itemSquareScale,g_swapItemSquareScale),
+                      layout_handle(g_itemSquareFlipH,g_swapItemSquareFlipH),
+                      layout_handle(g_itemSquareFlipV,g_swapItemSquareFlipV));
+    apply_item_adjust(1,meter->mpItemXY[1],
+                      layout_handle(g_itemTriangleX,g_swapItemTriangleX),
+                      layout_handle(g_itemTriangleY,g_swapItemTriangleY),
+                      layout_handle(g_itemTriangleScale,g_swapItemTriangleScale),
+                      layout_handle(g_itemTriangleFlipH,g_swapItemTriangleFlipH),
+                      layout_handle(g_itemTriangleFlipV,g_swapItemTriangleFlipV));
     // v0.9.13 sword test: target the dynamically appended visible J2DPicture
     // instead of its mpItemB container.
 // Midna v0.9.8: leave the vanilla root alone and transform only its pictures.
@@ -2163,12 +2272,18 @@ void after_meter_draw(ModContext*, void* args, void*, void*) {
     // Isso deixa o diametro aparente dos quatro botoes consistente.
     { float sc=cfg_scale(g_crossScale,1.45f); meter->mpButtonA->scale(sc,sc); }
     { float sc=cfg_scale(g_circleScale,1.45f); meter->mpButtonB->scale(sc,sc); }
-    { float sc=cfg_scale(g_squareScale,1.45f); meter->mpButtonXY[0]->scale(sc,sc); }
-    { float sc=cfg_scale(g_triScale,1.45f); meter->mpButtonXY[1]->scale(sc,sc); }
+    { float sc=cfg_scale(layout_handle(g_squareScale,g_swapSquareScale),1.45f); meter->mpButtonXY[0]->scale(sc,sc); }
+    { float sc=cfg_scale(layout_handle(g_triScale,g_swapTriScale),1.45f); meter->mpButtonXY[1]->scale(sc,sc); }
 
-    // Losango base da v0.6.17. Todos usam o mesmo canvas e escala.
-    set_bounds(y, cfg_pos(g_triX,124.0f), cfg_pos(g_triY,7.2f), 24.0f, 24.0f); // Square
-    set_bounds(x, cfg_pos(g_squareX,89.6f), cfg_pos(g_squareY,40.6f), 24.0f, 24.0f); // Triangle
+    // Losango base da v0.6.17. Each GC slot selects its normal or swapped profile.
+    set_bounds(y,
+               cfg_pos(layout_handle(g_triX,g_swapTriX),124.0f),
+               cfg_pos(layout_handle(g_triY,g_swapTriY),7.2f),
+               24.0f,24.0f);
+    set_bounds(x,
+               cfg_pos(layout_handle(g_squareX,g_swapSquareX),89.6f),
+               cfg_pos(layout_handle(g_squareY,g_swapSquareY),40.6f),
+               24.0f,24.0f);
     set_bounds(b, cfg_pos(g_circleX,151.5f), cfg_pos(g_circleY,39.4f), 24.0f, 24.0f); // Circle
     set_bounds(a, cfg_pos(g_crossX,118.0f), cfg_pos(g_crossY,65.7f), 24.0f, 24.0f); // Cross
 
@@ -4331,10 +4446,14 @@ HookAction before_ring_controller_overlay(ModContext*, void* args, void*, void*)
     if(!ring->mPlayerIsWolf) {
         // X (GC) -> Triangle (PS) / Y (XB)
         ring_collect_root(ring->mpScreen,MULTI_CHAR('x_btn_n'),gc_x_face_texture(),
-                          g_wheelSquareX,g_wheelSquareY,g_wheelSquareScale);
-        // Y (GC) slot; face may be swapped by the developer layout test.
+                          layout_handle(g_wheelSquareX,g_swapWheelSquareX),
+                          layout_handle(g_wheelSquareY,g_swapWheelSquareY),
+                          layout_handle(g_wheelSquareScale,g_swapWheelSquareScale));
+        // Y (GC) slot; face and calibration may be swapped by the alternate profile.
         ring_collect_root(ring->mpScreen,MULTI_CHAR('y_btn_n'),gc_y_face_texture(),
-                          g_wheelTriangleX,g_wheelTriangleY,g_wheelTriangleScale);
+                          layout_handle(g_wheelTriangleX,g_swapWheelTriangleX),
+                          layout_handle(g_wheelTriangleY,g_swapWheelTriangleY),
+                          layout_handle(g_wheelTriangleScale,g_swapWheelTriangleScale));
 
         ring_collect_root(ring->mpScreen,MULTI_CHAR('gr_btn_n'),resource_timg(s_r2),
                           g_wheelR2X,g_wheelR2Y,g_wheelR2Scale,true);
@@ -4473,10 +4592,18 @@ HookAction before_screen_draw(ModContext* ctx, void* args, void* retval, void* u
         }
     } else if (target == 3 || target == 4) {
         const bool isX = target == 3;
-        ConfigVarHandle xh = isX ? g_wolfXGlowX : g_wolfYGlowX;
-        ConfigVarHandle yh = isX ? g_wolfXGlowY : g_wolfYGlowY;
-        ConfigVarHandle sh = isX ? g_wolfXGlowScale : g_wolfYGlowScale;
-        ConfigVarHandle eh = isX ? g_wolfXGlowEnabled : g_wolfYGlowEnabled;
+        ConfigVarHandle xh = isX
+            ? layout_handle(g_wolfXGlowX,g_swapWolfXGlowX)
+            : layout_handle(g_wolfYGlowX,g_swapWolfYGlowX);
+        ConfigVarHandle yh = isX
+            ? layout_handle(g_wolfXGlowY,g_swapWolfXGlowY)
+            : layout_handle(g_wolfYGlowY,g_swapWolfYGlowY);
+        ConfigVarHandle sh = isX
+            ? layout_handle(g_wolfXGlowScale,g_swapWolfXGlowScale)
+            : layout_handle(g_wolfYGlowScale,g_swapWolfYGlowScale);
+        ConfigVarHandle eh = isX
+            ? layout_handle(g_wolfXGlowEnabled,g_swapWolfXGlowEnabled)
+            : layout_handle(g_wolfYGlowEnabled,g_swapWolfYGlowEnabled);
         mods::arg_ref<f32>(args, 1) += cfg_pos(xh, 0.0f);
         mods::arg_ref<f32>(args, 2) += cfg_pos(yh, 0.0f);
         if (meter->mpPikariParent != nullptr) {
@@ -4552,8 +4679,8 @@ ModResult mod_initialize(ModError* error) {
         {"wolfDigX",500,&g_wolfDigX},{"wolfDigY",570,&g_wolfDigY},{"wolfDigScale",55,&g_wolfDigScale},
         {"actionGlowX",-30,&g_actionGlowX},{"actionGlowY",-25,&g_actionGlowY},{"actionGlowScale",50,&g_actionGlowScale},
         {"backGlowX",10,&g_backGlowX},{"backGlowY",30,&g_backGlowY},{"backGlowScale",100,&g_backGlowScale},
-        {"wolfXGlowX",5,&g_wolfXGlowX},{"wolfXGlowY",-55,&g_wolfXGlowY},{"wolfXGlowScale",50,&g_wolfXGlowScale},
-        {"wolfYGlowX",-75,&g_wolfYGlowX},{"wolfYGlowY",20,&g_wolfYGlowY},{"wolfYGlowScale",50,&g_wolfYGlowScale},
+        {"wolfXGlowX",235,&g_wolfXGlowX},{"wolfXGlowY",-295,&g_wolfXGlowY},{"wolfXGlowScale",50,&g_wolfXGlowScale},
+        {"wolfYGlowX",-300,&g_wolfYGlowX},{"wolfYGlowY",260,&g_wolfYGlowY},{"wolfYGlowScale",50,&g_wolfYGlowScale},
         {"fileCrossX",15,&g_fileCrossX},{"fileCrossY",0,&g_fileCrossY},
         {"fileCircleX",10,&g_fileCircleX},{"fileCircleY",30,&g_fileCircleY},
         {"saveCrossX",15,&g_saveCrossX},{"saveCrossY",0,&g_saveCrossY},
@@ -4636,6 +4763,30 @@ ModResult mod_initialize(ModError* error) {
         if(rr!=MOD_OK) return rr;
         rr=reg_bool("swapXYButtonLayout",false,g_swapXYButtonLayout,error);
         if(rr!=MOD_OK) return rr;
+
+        struct DevInt { const char* n; int64_t d; ConfigVarHandle* h; };
+        DevInt swapVars[] = {
+            {"swapTriX",1210,&g_swapTriX},{"swapTriY",126,&g_swapTriY},{"swapTriScale",90,&g_swapTriScale},
+            {"swapSquareX",972,&g_swapSquareX},{"swapSquareY",379,&g_swapSquareY},{"swapSquareScale",90,&g_swapSquareScale},
+            {"swapItemSquareX",-670,&g_swapItemSquareX},{"swapItemSquareY",-380,&g_swapItemSquareY},{"swapItemSquareScale",50,&g_swapItemSquareScale},
+            {"swapItemTriangleX",480,&g_swapItemTriangleX},{"swapItemTriangleY",-30,&g_swapItemTriangleY},{"swapItemTriangleScale",50,&g_swapItemTriangleScale},
+            {"swapWolfSenseX",-920,&g_swapWolfSenseX},{"swapWolfSenseY",-500,&g_swapWolfSenseY},{"swapWolfSenseScale",55,&g_swapWolfSenseScale},
+            {"swapWolfDigX",730,&g_swapWolfDigX},{"swapWolfDigY",310,&g_swapWolfDigY},{"swapWolfDigScale",55,&g_swapWolfDigScale},
+            {"swapWolfXGlowX",5,&g_swapWolfXGlowX},{"swapWolfXGlowY",-55,&g_swapWolfXGlowY},{"swapWolfXGlowScale",50,&g_swapWolfXGlowScale},
+            {"swapWolfYGlowX",-75,&g_swapWolfYGlowX},{"swapWolfYGlowY",20,&g_swapWolfYGlowY},{"swapWolfYGlowScale",50,&g_swapWolfYGlowScale},
+            {"swapWheelSquareX",-430,&g_swapWheelSquareX},{"swapWheelSquareY",-10,&g_swapWheelSquareY},{"swapWheelSquareScale",87,&g_swapWheelSquareScale},
+            {"swapWheelTriangleX",160,&g_swapWheelTriangleX},{"swapWheelTriangleY",-40,&g_swapWheelTriangleY},{"swapWheelTriangleScale",90,&g_swapWheelTriangleScale},
+        };
+        for (auto& v : swapVars) {
+            rr=reg_int(v.n,v.d,*v.h,error);
+            if(rr!=MOD_OK) return rr;
+        }
+        rr=reg_bool("swapItemSquareFlipH",false,g_swapItemSquareFlipH,error); if(rr!=MOD_OK) return rr;
+        rr=reg_bool("swapItemSquareFlipV",false,g_swapItemSquareFlipV,error); if(rr!=MOD_OK) return rr;
+        rr=reg_bool("swapItemTriangleFlipH",false,g_swapItemTriangleFlipH,error); if(rr!=MOD_OK) return rr;
+        rr=reg_bool("swapItemTriangleFlipV",false,g_swapItemTriangleFlipV,error); if(rr!=MOD_OK) return rr;
+        rr=reg_bool("swapWolfXGlowEnabled",true,g_swapWolfXGlowEnabled,error); if(rr!=MOD_OK) return rr;
+        rr=reg_bool("swapWolfYGlowEnabled",true,g_swapWolfYGlowEnabled,error); if(rr!=MOD_OK) return rr;
     }
     apply_layout_schema_migrations();
 
