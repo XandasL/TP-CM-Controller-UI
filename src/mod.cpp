@@ -41,6 +41,7 @@ constexpr bool kDeveloperOptions = false;
 ConfigVarHandle g_controllerStyle=0;
 ConfigVarHandle g_layoutSchemaVersion=0;
 ConfigVarHandle g_visualHudEditorEnabled=0;
+ConfigVarHandle g_swapXYButtonLayout=0;
 bool s_controllerStyleLocked=false;
 bool s_useXbox=false;
 
@@ -805,6 +806,12 @@ ModResult build_settings_10_panel(ModContext*,UiWindowHandle,UiElementHandle pan
 
 ModResult build_settings_11_panel(ModContext*,UiWindowHandle,UiElementHandle pane,UiElementHandle,void*,ModError*) {
     svc_ui->pane_add_text(mod_ctx,pane,"Calibration and restoring the saved default preset.",nullptr);
+    svc_ui->pane_add_section(mod_ctx,pane,"Button Layout Test");
+    add_toggle(pane,"Swap X/Y Button Layout",g_swapXYButtonLayout,
+        "Developer test option. Swaps the modern faces assigned to the original GameCube X/Y slots while preserving each slot's function, item assignment and calibration values.");
+    svc_ui->pane_add_text(mod_ctx,pane,
+        "Use the existing HUD, Item Wheel, Wolf and text controls to calibrate the swapped layout. This option will move to the public menu after the alternate layout is aligned.",
+        nullptr);
     svc_ui->pane_add_section(mod_ctx,pane,"Visual HUD Editor");
     add_toggle(pane,"Enable Visual HUD Editor",g_visualHudEditorEnabled,
         "Developer-only visual editing mode. The editor is restricted to a whitelist of TP Classic elements with known X/Y/Scale config handles.");
@@ -1014,6 +1021,17 @@ ResourceBuffer s_cross = RESOURCE_BUFFER_INIT;
 ResourceBuffer s_circle = RESOURCE_BUFFER_INIT;
 ResourceBuffer s_square = RESOURCE_BUFFER_INIT;
 ResourceBuffer s_triangle = RESOURCE_BUFFER_INIT;
+
+// X/Y are treated as GameCube slots. The experimental layout option swaps only
+// the modern face assigned to each slot; game functions, items and per-slot
+// X/Y/Scale config handles remain unchanged.
+const ResTIMG* gc_x_face_texture() {
+    return resource_timg(cfg_bool(g_swapXYButtonLayout,false) ? s_square : s_triangle);
+}
+const ResTIMG* gc_y_face_texture() {
+    return resource_timg(cfg_bool(g_swapXYButtonLayout,false) ? s_triangle : s_square);
+}
+
 ResourceBuffer s_guide = RESOURCE_BUFFER_INIT;
 ResourceBuffer s_r1 = RESOURCE_BUFFER_INIT;
 ResourceBuffer s_r1_hud = RESOURCE_BUFFER_INIT;
@@ -1964,8 +1982,8 @@ void after_meter_draw(ModContext*, void* args, void*, void*) {
     // A -> Cross, B -> Circle, X -> Triangle, Y -> Square.
     apply_full_button(a, resource_timg(s_cross));
     apply_full_button(b, resource_timg(s_circle));
-    apply_full_button(x, resource_timg(s_triangle));
-    apply_full_button(y, resource_timg(s_square));
+    apply_full_button(x, gc_x_face_texture());
+    apply_full_button(y, gc_y_face_texture());
 
     // Z do GameCube -> R1 do PlayStation. Mantemos mpItemR e textos separados:
     // esta etapa troca apenas a superficie visual do botao Z/XY2.
@@ -2933,8 +2951,8 @@ HookAction before_outfont_draw_font(ModContext*, void* args, void*, void*) {
     else if (type == 3) replacement = resource_timg(s_l2);
     else if (type == 4) replacement = resource_timg(s_r2);
     // Inline item descriptions: native X/Y glyphs use font_02/font_03.
-    else if (type == 5) replacement = resource_timg(s_triangle); // X -> Triangle
-    else if (type == 6) replacement = resource_timg(s_square);   // Y -> Square
+    else if (type == 5) replacement = gc_x_face_texture(); // native GC X slot
+    else if (type == 6) replacement = gc_y_face_texture(); // native GC Y slot
     else if (type == 7) replacement = resource_timg(s_r1); // Z -> R1
     else if (type == 8) replacement = resource_timg(s_dpad); // D-pad
     if (replacement == nullptr || outFont->mpPane[type] == nullptr) return HOOK_CONTINUE;
@@ -3943,8 +3961,8 @@ void after_meter_button_screen_init(ModContext*, void* args, void*, void*) {
     // Bottom contextual Y prompt (Wolf Dig), separate from the main HUD.
     // Replace the face only; retain its parent alpha and prompt animation.
     J2DPicture* digFace = as_picture(self->mpButtonScreen->search(MULTI_CHAR('y_btn')));
-    const ResTIMG* square = resource_timg(s_square);
-    if (digFace != nullptr && square != nullptr) {
+    const ResTIMG* yFace = gc_y_face_texture();
+    if (digFace != nullptr && yFace != nullptr) {
         // Only the contextual Y button's artwork subtree. The label and
         // other prompts live outside ybtn_n and retain their native behavior.
         J2DPane* root = self->mpButtonScreen->search(MULTI_CHAR('ybtn_n'));
@@ -3965,7 +3983,7 @@ void after_meter_button_screen_init(ModContext*, void* args, void*, void*) {
                 if (!containsFace) child->hide();
             }
         }
-        replace_picture_texture(digFace, square);
+        replace_picture_texture(digFace, yFace);
         digFace->setBlackWhite(JUtility::TColor(0, 0, 0, 0),
                               JUtility::TColor(255, 255, 255, 255));
         digFace->setCornerColor(JUtility::TColor(255, 255, 255, 255));
@@ -4312,10 +4330,10 @@ HookAction before_ring_controller_overlay(ModContext*, void* args, void*, void*)
     // Wolf Link intentionally receives only L2 + the two L3 overlays above.
     if(!ring->mPlayerIsWolf) {
         // X (GC) -> Triangle (PS) / Y (XB)
-        ring_collect_root(ring->mpScreen,MULTI_CHAR('x_btn_n'),resource_timg(s_triangle),
+        ring_collect_root(ring->mpScreen,MULTI_CHAR('x_btn_n'),gc_x_face_texture(),
                           g_wheelSquareX,g_wheelSquareY,g_wheelSquareScale);
-        // Y (GC) -> Square (PS) / X (XB)
-        ring_collect_root(ring->mpScreen,MULTI_CHAR('y_btn_n'),resource_timg(s_square),
+        // Y (GC) slot; face may be swapped by the developer layout test.
+        ring_collect_root(ring->mpScreen,MULTI_CHAR('y_btn_n'),gc_y_face_texture(),
                           g_wheelTriangleX,g_wheelTriangleY,g_wheelTriangleScale);
 
         ring_collect_root(ring->mpScreen,MULTI_CHAR('gr_btn_n'),resource_timg(s_r2),
@@ -4616,6 +4634,8 @@ ModResult mod_initialize(ModError* error) {
     if (kDeveloperOptions) {
         ModResult rr=reg_bool("visualHudEditorEnabled",false,g_visualHudEditorEnabled,error);
         if(rr!=MOD_OK) return rr;
+        rr=reg_bool("swapXYButtonLayout",false,g_swapXYButtonLayout,error);
+        if(rr!=MOD_OK) return rr;
     }
     apply_layout_schema_migrations();
 
@@ -4855,6 +4875,7 @@ MOD_EXPORT ModResult mod_shutdown(ModError*) {
     g_publicWindow = 0;
     g_layoutWindow = 0;
     g_visualHudEditorEnabled = 0;
+    g_swapXYButtonLayout = 0;
     g_layoutSchemaVersion = 0;
     free_resources();
     return MOD_OK;
