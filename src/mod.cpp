@@ -3957,19 +3957,13 @@ HookAction before_ring_controller_overlay(ModContext*, void* args, void*, void*)
     s_ringDrawOwner=nullptr;
     s_ringDrawTargetCount=0;
     s_ringHiddenCount=0;
-    if(ring==nullptr || ring->mpScreen==nullptr || ring->mPlayerIsWolf) return HOOK_CONTINUE;
+    if(ring==nullptr || ring->mpScreen==nullptr) return HOOK_CONTINUE;
 
     s_ringDrawOwner=ring;
 
-    // X (GC) -> Triangle (PS) / Y (XB)
-    ring_collect_root(ring->mpScreen,MULTI_CHAR('x_btn_n'),resource_timg(s_triangle),
-                      g_wheelSquareX,g_wheelSquareY,g_wheelSquareScale);
-    // Y (GC) -> Square (PS) / X (XB)
-    ring_collect_root(ring->mpScreen,MULTI_CHAR('y_btn_n'),resource_timg(s_square),
-                      g_wheelTriangleX,g_wheelTriangleY,g_wheelTriangleScale);
-
-    // The analog prompts are four-layer vanilla pictures. Hide all layers only
-    // during this ring draw, then draw one clean modern stick on top.
+    // The analog prompts exist in both the human and wolf Item Wheel. Use the
+    // same independent overlay path for both so the wolf wheel no longer falls
+    // back to the original GameCube C-stick artwork.
     const u64 selectHide[] = {
         MULTI_CHAR('cbtn3'), MULTI_CHAR('cbtn'), MULTI_CHAR('cbtn2')
     };
@@ -3984,12 +3978,25 @@ HookAction before_ring_controller_overlay(ModContext*, void* args, void*, void*)
                              resource_timg(s_analog),
                              g_wheelDirectAnalogX,g_wheelDirectAnalogY,g_wheelDirectAnalogScale);
 
+    // Direct Select L exists in both forms.
     ring_collect_root(ring->mpScreen,MULTI_CHAR('l_btn_n'),resource_timg(s_l2),
                       g_wheelL2X,g_wheelL2Y,g_wheelL2Scale,true);
-    ring_collect_root(ring->mpScreen,MULTI_CHAR('gr_btn_n'),resource_timg(s_r2),
-                      g_wheelR2X,g_wheelR2Y,g_wheelR2Scale,true);
-    ring_collect_root(ring->mpScreen,MULTI_CHAR('r_btn_n'),resource_timg(s_r2),
-                      g_wheelR2X,g_wheelR2Y,g_wheelR2Scale,true);
+
+    // Human Link additionally has X/Y assignment and R bow-combination prompts.
+    // Wolf Link intentionally receives only L2 + the two L3 overlays above.
+    if(!ring->mPlayerIsWolf) {
+        // X (GC) -> Triangle (PS) / Y (XB)
+        ring_collect_root(ring->mpScreen,MULTI_CHAR('x_btn_n'),resource_timg(s_triangle),
+                          g_wheelSquareX,g_wheelSquareY,g_wheelSquareScale);
+        // Y (GC) -> Square (PS) / X (XB)
+        ring_collect_root(ring->mpScreen,MULTI_CHAR('y_btn_n'),resource_timg(s_square),
+                          g_wheelTriangleX,g_wheelTriangleY,g_wheelTriangleScale);
+
+        ring_collect_root(ring->mpScreen,MULTI_CHAR('gr_btn_n'),resource_timg(s_r2),
+                          g_wheelR2X,g_wheelR2Y,g_wheelR2Scale,true);
+        ring_collect_root(ring->mpScreen,MULTI_CHAR('r_btn_n'),resource_timg(s_r2),
+                          g_wheelR2X,g_wheelR2Y,g_wheelR2Scale,true);
+    }
     return HOOK_CONTINUE;
 }
 
