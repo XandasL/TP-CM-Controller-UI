@@ -1928,11 +1928,11 @@ const ResTIMG* s_midnaPromptOriginalTexture = nullptr;
 bool s_externalMidnaPromptOwner = false;
 
 bool twilit_midna_layout_active(dMeter2Draw_c* meter) {
-    if (s_externalMidnaPromptOwner) return true;
     if (meter == nullptr || meter->getMainScreenPtr() == nullptr) return false;
 
-    // Essentials reparents the Midna root under juji_n while its custom Z/Midna
-    // system owns the HUD. TP Classic never performs this reparent.
+    // Contextual Z/Midna prompt ownership is independent from the main HUD
+    // portrait. Only suppress TP Classic's portrait transform when Essentials
+    // actually reparents the main midona_n root under juji_n.
     J2DScreen* screen = meter->getMainScreenPtr();
     J2DPane* midna = screen->search(MULTI_CHAR('midona_n'));
     J2DPane* juji = screen->search(MULTI_CHAR('juji_n'));
@@ -2643,9 +2643,16 @@ static MidnaPictureState* midna_state_for(J2DPane* pane) {
         return &st;
     }
 
-    // Fallback only. Normally screenInitButton has already captured this.
-    // Never learn a baseline from a live cutscene frame.
-    if (dComIfGp_event_runCheck())
+    // Fallback only for the MAIN HUD portrait tree. A contextual Z prompt
+    // contains a different 60x60 picture with the same "midona" tag.
+    bool underMainMidnaRoot=false;
+    for (J2DPane* p=pane->getParentPane();p!=nullptr;p=p->getParentPane()) {
+        if (p->mInfoTag==MULTI_CHAR('midona_n')) {
+            underMainMidnaRoot=true;
+            break;
+        }
+    }
+    if (!underMainMidnaRoot || dComIfGp_event_runCheck())
         return nullptr;
 
     capture_midna_baseline(pane);
@@ -2753,7 +2760,7 @@ static void capture_midna_diagnostic_snapshot(const char* reason,dMeter2Draw_c* 
     char header[512];
     std::snprintf(header,sizeof(header),
         "\n=== SNAPSHOT: %s ===\n"
-        "eventRunning=%d externalMidnaOwner=%d configuredMidna=(x=%lld y=%lld scale=%lld)\n",
+        "eventRunning=%d externalPromptOwner=%d configuredMidna=(x=%lld y=%lld scale=%lld)\n",
         reason,
         dComIfGp_event_runCheck()?1:0,
         s_externalMidnaPromptOwner?1:0,
@@ -2954,6 +2961,24 @@ void after_meter_draw(ModContext*, void* args, void*, void*) {
         return;
     }
 
+    // Capture only the actual main HUD Midna subtree. The contextual prompt
+    // screen has another pane named "midona" and is intentionally excluded.
+    if (J2DScreen* mainScreen=meter->getMainScreenPtr()) {
+        J2DPane* mainRoot=mainScreen->search(MULTI_CHAR('midona_n'));
+        if (mainRoot!=nullptr) {
+            const u64 tags[3] = {
+                MULTI_CHAR('midona_s'),
+                MULTI_CHAR('midona'),
+                MULTI_CHAR('j_light1'),
+            };
+            for (u64 tag : tags) {
+                J2DPane* pane=mainScreen->search(tag);
+                const int slot=midna_slot_for(pane);
+                if (slot>=0 && !s_midnaPictures[slot].captured)
+                    capture_midna_baseline(pane);
+            }
+        }
+    }
 
     // Calibration guide + optional decorative HUD ornament. Both reuse the original
     // GameCube ornament container, but remain independently visible/configurable.
@@ -4987,8 +5012,10 @@ void after_meter_button_screen_init(ModContext*, void* args, void*, void*) {
     dMeterButton_c* self = args != nullptr ? mods::arg<dMeterButton_c*>(args, 0) : nullptr;
     if (self == nullptr || self->mpButtonScreen == nullptr) return;
 
-    capture_midna_baselines_from_screen(self->mpButtonScreen);
-    capture_midna_diagnostic_snapshot("screenInitButton",nullptr,self->mpButtonScreen);
+    // mpButtonScreen is zelda_game_image_button_info.blo (contextual prompts).
+    // It has its own 60x60 pane also named "midona" under zbtn_n; that is NOT
+    // the 36x36 main HUD portrait and must never seed s_midnaPictures.
+    capture_midna_diagnostic_snapshot("screenInitButton-contextual",nullptr,self->mpButtonScreen);
 
     // Fishing uses these exact faces in zelda_game_image_button_info.blo.
     // Change only artwork; directional arrows and the combined-prompt plus
