@@ -3833,16 +3833,17 @@ void ring_collect_root(J2DScreen* screen, u64 tag, const ResTIMG* texture,
     J2DPane* root=screen!=nullptr ? screen->search(tag) : nullptr;
     if(root==nullptr || !pane_effectively_visible(root)) return;
 
-    // X/Y need the complete button slot as their visual canvas. Shoulder art
-    // was already calibrated against the first picture inside its root.
+    // Use the actual visible face as the geometry anchor. The previous build
+    // used the whole x_btn_n/y_btn_n container, which is wider/larger than the
+    // authored button face and made Triangle/Square oversized and displaced.
+    // This matches the stable pre-compat Item Wheel sizing/positioning.
     J2DPane* anchor=root;
-    if(shoulder) {
-        if(J2DPicture* face=first_picture_recursive(root)) anchor=face;
-    }
+    if(J2DPicture* face=first_picture_recursive(root))
+        anchor=face;
 
     ring_add_draw_target(anchor,texture,x,y,scale,shoulder,maxSquare);
-    // Hide only for the vanilla draw. The root is restored before any other
-    // post-hook runs, so Essentials never inherits this visibility state.
+    // Hide the complete vanilla group only for the original draw, so its GC
+    // layers do not show underneath our independent overlay.
     ring_hide_temporarily(root);
 }
 
