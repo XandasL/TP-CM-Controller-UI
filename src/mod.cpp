@@ -553,24 +553,135 @@ void add_button(UiElementHandle pane,const char* label,UiPressedFn fn,const char
     c.kind=UI_CONTROL_BUTTON; c.label=label; c.help_rml=help; c.on_pressed=fn;
     svc_ui->pane_add_control(mod_ctx,pane,&c,nullptr);
 }
+
+ModResult build_base_xy_preset_panel(ModContext*,UiWindowHandle,UiElementHandle pane,UiElementHandle,void*,ModError*) {
+    svc_ui->pane_add_text(mod_ctx,pane,"Base X/Y layout. Activate this preset before calibrating these controls.",nullptr);
+    UiControlDesc activate=UI_CONTROL_DESC_INIT;
+    activate.kind=UI_CONTROL_BUTTON;
+    activate.label="Use Base Preset";
+    activate.on_pressed=select_base_xy_preset;
+    activate.is_selected=base_xy_preset_selected;
+    svc_ui->pane_add_control(mod_ctx,pane,&activate,nullptr);
+
+    svc_ui->pane_add_section(mod_ctx,pane,"HUD - Y (GC) / Square (PS) / X (XB)");
+    add_num(pane,"Y Slot - X",g_triX,0,2500,10," /10 px","Base-preset position of the original GC Y slot.");
+    add_num(pane,"Y Slot - Y",g_triY,-1000,2000,10," /10 px","Base-preset position of the original GC Y slot.");
+    add_num(pane,"Y Slot - Scale",g_triScale,50,200,1,"%","Base-preset Y-slot scale.");
+    svc_ui->pane_add_section(mod_ctx,pane,"HUD - X (GC) / Triangle (PS) / Y (XB)");
+    add_num(pane,"X Slot - X",g_squareX,0,2500,10," /10 px","Base-preset position of the original GC X slot.");
+    add_num(pane,"X Slot - Y",g_squareY,-1000,2000,10," /10 px","Base-preset position of the original GC X slot.");
+    add_num(pane,"X Slot - Scale",g_squareScale,50,200,1,"%","Base-preset X-slot scale.");
+
+    svc_ui->pane_add_section(mod_ctx,pane,"HUD Item - X Slot");
+    add_num(pane,"X Item - X",g_itemSquareX,-3000,3000,10,"/10 px","Base-preset item offset for original GC X.");
+    add_num(pane,"X Item - Y",g_itemSquareY,-3000,3000,10,"/10 px","Base-preset item offset for original GC X.");
+    add_num(pane,"X Item - Scale",g_itemSquareScale,30,200,1,"%","Base-preset item scale.");
+    add_toggle(pane,"X Item - Flip H",g_itemSquareFlipH,"Base-preset horizontal flip.");
+    add_toggle(pane,"X Item - Flip V",g_itemSquareFlipV,"Base-preset vertical flip.");
+    svc_ui->pane_add_section(mod_ctx,pane,"HUD Item - Y Slot");
+    add_num(pane,"Y Item - X",g_itemTriangleX,-3000,3000,10,"/10 px","Base-preset item offset for original GC Y.");
+    add_num(pane,"Y Item - Y",g_itemTriangleY,-3000,3000,10,"/10 px","Base-preset item offset for original GC Y.");
+    add_num(pane,"Y Item - Scale",g_itemTriangleScale,30,200,1,"%","Base-preset item scale.");
+    add_toggle(pane,"Y Item - Flip H",g_itemTriangleFlipH,"Base-preset horizontal flip.");
+    add_toggle(pane,"Y Item - Flip V",g_itemTriangleFlipV,"Base-preset vertical flip.");
+
+    svc_ui->pane_add_section(mod_ctx,pane,"Wolf - Senses Text");
+    add_num(pane,"Senses Text - X",g_wolfSenseX,-3000,3000,10,"/10 px","Base-preset Senses text offset.");
+    add_num(pane,"Senses Text - Y",g_wolfSenseY,-3000,3000,10,"/10 px","Base-preset Senses text offset.");
+    add_num(pane,"Senses Text - Scale",g_wolfSenseScale,50,200,1,"%","Base-preset Senses text scale.");
+    svc_ui->pane_add_section(mod_ctx,pane,"Wolf - Dig Text");
+    add_num(pane,"Dig Text - X",g_wolfDigX,-3000,3000,10,"/10 px","Base-preset Dig text offset.");
+    add_num(pane,"Dig Text - Y",g_wolfDigY,-3000,3000,10,"/10 px","Base-preset Dig text offset.");
+    add_num(pane,"Dig Text - Scale",g_wolfDigScale,50,200,1,"%","Base-preset Dig text scale.");
+
+    svc_ui->pane_add_section(mod_ctx,pane,"Wolf - Senses Glow");
+    add_num(pane,"Senses Glow - X",g_wolfXGlowX,-3000,3000,10,"/10 px","Base-preset Senses glow offset.");
+    add_num(pane,"Senses Glow - Y",g_wolfXGlowY,-3000,3000,10,"/10 px","Base-preset Senses glow offset.");
+    add_num(pane,"Senses Glow - Scale",g_wolfXGlowScale,25,300,1,"%","Base-preset Senses glow scale.");
+    add_toggle(pane,"Senses Glow Enabled",g_wolfXGlowEnabled,"Enable the base-preset Senses glow.");
+    svc_ui->pane_add_section(mod_ctx,pane,"Wolf - Dig Glow");
+    add_num(pane,"Dig Glow - X",g_wolfYGlowX,-3000,3000,10,"/10 px","Base-preset Dig glow offset.");
+    add_num(pane,"Dig Glow - Y",g_wolfYGlowY,-3000,3000,10,"/10 px","Base-preset Dig glow offset.");
+    add_num(pane,"Dig Glow - Scale",g_wolfYGlowScale,25,300,1,"%","Base-preset Dig glow scale.");
+    add_toggle(pane,"Dig Glow Enabled",g_wolfYGlowEnabled,"Enable the base-preset Dig glow.");
+    add_toggle(pane,"Wolf Glow Preview",g_wolfGlowPreview,"Force the contextual X/Y glows visible while calibrating.");
+
+    svc_ui->pane_add_section(mod_ctx,pane,"Item Wheel - X Assignment");
+    add_num(pane,"X Assignment - X",g_wheelSquareX,-3000,3000,10,"/10 px","Base-preset Item Wheel X-slot offset.");
+    add_num(pane,"X Assignment - Y",g_wheelSquareY,-3000,3000,10,"/10 px","Base-preset Item Wheel X-slot offset.");
+    add_num(pane,"X Assignment - Scale",g_wheelSquareScale,30,250,1,"%","Base-preset Item Wheel X-slot scale.");
+    svc_ui->pane_add_section(mod_ctx,pane,"Item Wheel - Y Assignment");
+    add_num(pane,"Y Assignment - X",g_wheelTriangleX,-3000,3000,10,"/10 px","Base-preset Item Wheel Y-slot offset.");
+    add_num(pane,"Y Assignment - Y",g_wheelTriangleY,-3000,3000,10,"/10 px","Base-preset Item Wheel Y-slot offset.");
+    add_num(pane,"Y Assignment - Scale",g_wheelTriangleScale,30,250,1,"%","Base-preset Item Wheel Y-slot scale.");
+    return MOD_OK;
+}
+
+ModResult build_swap_xy_preset_panel(ModContext*,UiWindowHandle,UiElementHandle pane,UiElementHandle,void*,ModError*) {
+    svc_ui->pane_add_text(mod_ctx,pane,"Alternate X/Y layout. Activate this preset before calibrating these controls.",nullptr);
+    UiControlDesc activate=UI_CONTROL_DESC_INIT;
+    activate.kind=UI_CONTROL_BUTTON;
+    activate.label="Use Swap X/Y Preset";
+    activate.on_pressed=select_swap_xy_preset;
+    activate.is_selected=swap_xy_preset_selected;
+    svc_ui->pane_add_control(mod_ctx,pane,&activate,nullptr);
+
+    svc_ui->pane_add_section(mod_ctx,pane,"HUD - Y (GC) / Triangle (PS) / Y (XB)");
+    add_num(pane,"Y Slot - X",g_swapTriX,0,2500,10," /10 px","Swap-preset position of the original GC Y slot.");
+    add_num(pane,"Y Slot - Y",g_swapTriY,-1000,2000,10," /10 px","Swap-preset position of the original GC Y slot.");
+    add_num(pane,"Y Slot - Scale",g_swapTriScale,50,200,1,"%","Swap-preset Y-slot scale.");
+    svc_ui->pane_add_section(mod_ctx,pane,"HUD - X (GC) / Square (PS) / X (XB)");
+    add_num(pane,"X Slot - X",g_swapSquareX,0,2500,10," /10 px","Swap-preset position of the original GC X slot.");
+    add_num(pane,"X Slot - Y",g_swapSquareY,-1000,2000,10," /10 px","Swap-preset position of the original GC X slot.");
+    add_num(pane,"X Slot - Scale",g_swapSquareScale,50,200,1,"%","Swap-preset X-slot scale.");
+
+    svc_ui->pane_add_section(mod_ctx,pane,"HUD Item - X Slot");
+    add_num(pane,"X Item - X",g_swapItemSquareX,-3000,3000,10,"/10 px","Swap-preset item offset for original GC X.");
+    add_num(pane,"X Item - Y",g_swapItemSquareY,-3000,3000,10,"/10 px","Swap-preset item offset for original GC X.");
+    add_num(pane,"X Item - Scale",g_swapItemSquareScale,30,200,1,"%","Swap-preset item scale.");
+    add_toggle(pane,"X Item - Flip H",g_swapItemSquareFlipH,"Swap-preset horizontal flip.");
+    add_toggle(pane,"X Item - Flip V",g_swapItemSquareFlipV,"Swap-preset vertical flip.");
+    svc_ui->pane_add_section(mod_ctx,pane,"HUD Item - Y Slot");
+    add_num(pane,"Y Item - X",g_swapItemTriangleX,-3000,3000,10,"/10 px","Swap-preset item offset for original GC Y.");
+    add_num(pane,"Y Item - Y",g_swapItemTriangleY,-3000,3000,10,"/10 px","Swap-preset item offset for original GC Y.");
+    add_num(pane,"Y Item - Scale",g_swapItemTriangleScale,30,200,1,"%","Swap-preset item scale.");
+    add_toggle(pane,"Y Item - Flip H",g_swapItemTriangleFlipH,"Swap-preset horizontal flip.");
+    add_toggle(pane,"Y Item - Flip V",g_swapItemTriangleFlipV,"Swap-preset vertical flip.");
+
+    svc_ui->pane_add_section(mod_ctx,pane,"Wolf - Senses Text");
+    add_num(pane,"Senses Text - X",g_swapWolfSenseX,-3000,3000,10,"/10 px","Swap-preset Senses text offset.");
+    add_num(pane,"Senses Text - Y",g_swapWolfSenseY,-3000,3000,10,"/10 px","Swap-preset Senses text offset.");
+    add_num(pane,"Senses Text - Scale",g_swapWolfSenseScale,50,200,1,"%","Swap-preset Senses text scale.");
+    svc_ui->pane_add_section(mod_ctx,pane,"Wolf - Dig Text");
+    add_num(pane,"Dig Text - X",g_swapWolfDigX,-3000,3000,10,"/10 px","Swap-preset Dig text offset.");
+    add_num(pane,"Dig Text - Y",g_swapWolfDigY,-3000,3000,10,"/10 px","Swap-preset Dig text offset.");
+    add_num(pane,"Dig Text - Scale",g_swapWolfDigScale,50,200,1,"%","Swap-preset Dig text scale.");
+
+    svc_ui->pane_add_section(mod_ctx,pane,"Wolf - Senses Glow");
+    add_num(pane,"Senses Glow - X",g_swapWolfXGlowX,-3000,3000,10,"/10 px","Swap-preset Senses glow offset.");
+    add_num(pane,"Senses Glow - Y",g_swapWolfXGlowY,-3000,3000,10,"/10 px","Swap-preset Senses glow offset.");
+    add_num(pane,"Senses Glow - Scale",g_swapWolfXGlowScale,25,300,1,"%","Swap-preset Senses glow scale.");
+    add_toggle(pane,"Senses Glow Enabled",g_swapWolfXGlowEnabled,"Enable the swap-preset Senses glow.");
+    svc_ui->pane_add_section(mod_ctx,pane,"Wolf - Dig Glow");
+    add_num(pane,"Dig Glow - X",g_swapWolfYGlowX,-3000,3000,10,"/10 px","Swap-preset Dig glow offset.");
+    add_num(pane,"Dig Glow - Y",g_swapWolfYGlowY,-3000,3000,10,"/10 px","Swap-preset Dig glow offset.");
+    add_num(pane,"Dig Glow - Scale",g_swapWolfYGlowScale,25,300,1,"%","Swap-preset Dig glow scale.");
+    add_toggle(pane,"Dig Glow Enabled",g_swapWolfYGlowEnabled,"Enable the swap-preset Dig glow.");
+    add_toggle(pane,"Wolf Glow Preview",g_wolfGlowPreview,"Force the contextual X/Y glows visible while calibrating.");
+
+    svc_ui->pane_add_section(mod_ctx,pane,"Item Wheel - X Assignment");
+    add_num(pane,"X Assignment - X",g_swapWheelSquareX,-3000,3000,10,"/10 px","Swap-preset Item Wheel X-slot offset.");
+    add_num(pane,"X Assignment - Y",g_swapWheelSquareY,-3000,3000,10,"/10 px","Swap-preset Item Wheel X-slot offset.");
+    add_num(pane,"X Assignment - Scale",g_swapWheelSquareScale,30,250,1,"%","Swap-preset Item Wheel X-slot scale.");
+    svc_ui->pane_add_section(mod_ctx,pane,"Item Wheel - Y Assignment");
+    add_num(pane,"Y Assignment - X",g_swapWheelTriangleX,-3000,3000,10,"/10 px","Swap-preset Item Wheel Y-slot offset.");
+    add_num(pane,"Y Assignment - Y",g_swapWheelTriangleY,-3000,3000,10,"/10 px","Swap-preset Item Wheel Y-slot offset.");
+    add_num(pane,"Y Assignment - Scale",g_swapWheelTriangleScale,30,250,1,"%","Swap-preset Item Wheel Y-slot scale.");
+    return MOD_OK;
+}
+
 ModResult build_settings_0_panel(ModContext*,UiWindowHandle,UiElementHandle pane,UiElementHandle,void*,ModError*) {
-    svc_ui->pane_add_text(mod_ctx,pane,"Gameplay buttons, D-pad, labels and ornament.",nullptr);
-    svc_ui->pane_add_section(mod_ctx,pane,"Y (GC) / Square (PS) / X (XB)");
-    add_num(pane,"Y (GC) -> Square (PS) / X (XB) - X",g_triX,0,2500,10," /10 px","X position of the original Y root.");
-    add_num(pane,"Y (GC) -> Square (PS) / X (XB) - Y",g_triY,-1000,2000,10," /10 px","Y position of the original Y root.");
-    add_num(pane,"Y (GC) -> Square (PS) / X (XB) - Scale",g_triScale,50,200,1,"%","Visual scale.");
-    svc_ui->pane_add_section(mod_ctx,pane,"X (GC) / Triangle (PS) / Y (XB)");
-    add_num(pane,"X (GC) -> Triangle (PS) / Y (XB) - X",g_squareX,0,2500,10," /10 px","X position of the original X root.");
-    add_num(pane,"X (GC) -> Triangle (PS) / Y (XB) - Y",g_squareY,-1000,2000,10," /10 px","Y position of the original X root.");
-    add_num(pane,"X (GC) -> Triangle (PS) / Y (XB) - Scale",g_squareScale,50,200,1,"%","Visual scale.");
-    svc_ui->pane_add_section(mod_ctx,pane,"SWAP - Y (GC) / Triangle (PS) / Y (XB)");
-    add_num(pane,"SWAP Y Slot - X",g_swapTriX,0,2500,10," /10 px","Swap-profile position for the original GC Y slot.");
-    add_num(pane,"SWAP Y Slot - Y",g_swapTriY,-1000,2000,10," /10 px","Swap-profile position for the original GC Y slot.");
-    add_num(pane,"SWAP Y Slot - Scale",g_swapTriScale,50,200,1,"%","Swap-profile scale.");
-    svc_ui->pane_add_section(mod_ctx,pane,"SWAP - X (GC) / Square (PS) / X (XB)");
-    add_num(pane,"SWAP X Slot - X",g_swapSquareX,0,2500,10," /10 px","Swap-profile position for the original GC X slot.");
-    add_num(pane,"SWAP X Slot - Y",g_swapSquareY,-1000,2000,10," /10 px","Swap-profile position for the original GC X slot.");
-    add_num(pane,"SWAP X Slot - Scale",g_swapSquareScale,50,200,1,"%","Swap-profile scale.");
+    svc_ui->pane_add_text(mod_ctx,pane,"Shared gameplay HUD controls used by both X/Y presets.",nullptr);
     svc_ui->pane_add_section(mod_ctx,pane,"B (GC) / Circle (PS) / B (XB)");
     add_num(pane,"B (GC) -> Circle (PS) / B (XB) - X",g_circleX,0,2500,10," /10 px","X position of the original B root.");
     add_num(pane,"B (GC) -> Circle (PS) / B (XB) - Y",g_circleY,-1000,2000,10," /10 px","Y position of the original B root.");
@@ -587,9 +698,9 @@ ModResult build_settings_0_panel(ModContext*,UiWindowHandle,UiElementHandle pane
     add_num(pane,"D-Pad X Offset",g_dpadX,-1000,1000,10,"/10 px","Moves the D-Pad texture, shadows and orange arrows together.");
     add_num(pane,"D-Pad Y Offset",g_dpadY,-1000,1000,10,"/10 px","Moves the D-Pad texture, shadows and orange arrows together.");
     add_num(pane,"D-Pad Scale",g_dpadScale,30,250,1,"%","Scales the D-Pad texture, shadows and orange arrows as one group.");
-    add_toggle(pane,"Orange Arrows",g_dpadArrowsEnabled,"Shows or hides the orange directional indicators without changing Items/Map behavior.");
-    add_toggle(pane,"Map Rise Animation",g_dpadMapAnimation,"Keeps the original Items/Map group rise animation. Disable to keep the group at its normal HUD position.");
-    add_toggle(pane,"D-Pad Shadows",g_dpadShadowsEnabled,"Shows or hides all four original D-Pad shadow/ring layers together.");
+    add_toggle(pane,"Orange Arrows",g_dpadArrowsEnabled,"Shows or hides the orange directional indicators.");
+    add_toggle(pane,"Map Rise Animation",g_dpadMapAnimation,"Keeps the original Items/Map group rise animation.");
+    add_toggle(pane,"D-Pad Shadows",g_dpadShadowsEnabled,"Shows or hides the original D-Pad shadow/ring layers.");
     svc_ui->pane_add_section(mod_ctx,pane,"Items Label");
     add_num(pane,"ITEM Text X",g_itemTextX,-1000,1000,10,"/10 px","Horizontal offset of the ITEM label.");
     add_num(pane,"ITEM Text Y",g_itemTextY,-1000,1000,10,"/10 px","Vertical offset of the ITEM label.");
@@ -599,45 +710,21 @@ ModResult build_settings_0_panel(ModContext*,UiWindowHandle,UiElementHandle pane
     add_num(pane,"MAP Text Y",g_mapTextY,-1000,1000,10,"/10 px","Vertical offset of the MAP label.");
     add_num(pane,"MAP Text Scale",g_mapTextScale,30,250,1,"%","Independent scale of the MAP label.");
     svc_ui->pane_add_section(mod_ctx,pane,"Ornament");
-    add_num(pane,"HUD Ornament - X",g_hudOrnamentX,-3000,3000,10,"/10 px","Horizontal offset of the HUD ornament, independent from the Calibration Guide.");
-    add_num(pane,"HUD Ornament - Y",g_hudOrnamentY,-3000,3000,10,"/10 px","Vertical offset of the HUD ornament, independent from the Calibration Guide.");
+    add_num(pane,"HUD Ornament - X",g_hudOrnamentX,-3000,3000,10,"/10 px","Horizontal offset of the HUD ornament.");
+    add_num(pane,"HUD Ornament - Y",g_hudOrnamentY,-3000,3000,10,"/10 px","Vertical offset of the HUD ornament.");
     add_num(pane,"HUD Ornament - Scale",g_hudOrnamentScale,25,250,1,"%","Scale of the decorative HUD ornament.");
-    add_toggle(pane,"HUD Ornament - Enabled",g_hudOrnamentEnabled,"Shows or hides the decorative HUD ornament without changing the calibration guide.");
+    add_toggle(pane,"HUD Ornament - Enabled",g_hudOrnamentEnabled,"Shows or hides the decorative HUD ornament.");
     return MOD_OK;
 }
 
 ModResult build_settings_1_panel(ModContext*,UiWindowHandle,UiElementHandle pane,UiElementHandle,void*,ModError*) {
-    svc_ui->pane_add_text(mod_ctx,pane,"Item icons, sword and Midna in the gameplay HUD.",nullptr);
+    svc_ui->pane_add_text(mod_ctx,pane,"Shared item, sword and Midna controls used by both X/Y presets.",nullptr);
     svc_ui->pane_add_section(mod_ctx,pane,"Shared Item Position");
-    add_num(pane,"Items Group X",g_itemsAnchorX,-3000,3000,10,"/10 px","Moves both normalized item anchors horizontally without changing their per-slot alignment.");
-    add_num(pane,"Items Group Y",g_itemsAnchorY,-3000,3000,10,"/10 px","Moves both normalized item anchors vertically without changing their per-slot alignment.");
-    svc_ui->pane_add_section(mod_ctx,pane,"X (GC) / Triangle (PS) / Y (XB) Item");
-    add_num(pane,"X (GC) -> Triangle (PS) / Y (XB) Item - X",g_itemSquareX,-3000,3000,10,"/10 px","Horizontal offset of the item assigned to the original X / Triangle slot.");
-    add_num(pane,"X (GC) -> Triangle (PS) / Y (XB) Item - Y",g_itemSquareY,-3000,3000,10,"/10 px","Vertical offset of the item assigned to the original X / Triangle slot.");
-    add_num(pane,"X (GC) -> Triangle (PS) / Y (XB) Item - Scale",g_itemSquareScale,30,200,1,"%","Item scale.");
-    add_toggle(pane,"X (GC) -> Triangle (PS) / Y (XB) Item - Flip H",g_itemSquareFlipH,"Flips the item texture horizontally.");
-    add_toggle(pane,"X (GC) -> Triangle (PS) / Y (XB) Item - Flip V",g_itemSquareFlipV,"Flips the item texture vertically.");
-    svc_ui->pane_add_section(mod_ctx,pane,"Y (GC) / Square (PS) / X (XB) Item");
-    add_num(pane,"Y (GC) -> Square (PS) / X (XB) Item - X",g_itemTriangleX,-3000,3000,10,"/10 px","Horizontal offset of the item assigned to the original Y / Square slot.");
-    add_num(pane,"Y (GC) -> Square (PS) / X (XB) Item - Y",g_itemTriangleY,-3000,3000,10,"/10 px","Vertical offset of the item assigned to the original Y / Square slot.");
-    add_num(pane,"Y (GC) -> Square (PS) / X (XB) Item - Scale",g_itemTriangleScale,30,200,1,"%","Item scale.");
-    add_toggle(pane,"Y (GC) -> Square (PS) / X (XB) Item - Flip H",g_itemTriangleFlipH,"Flips the item texture horizontally.");
-    add_toggle(pane,"Y (GC) -> Square (PS) / X (XB) Item - Flip V",g_itemTriangleFlipV,"Flips the item texture vertically.");
-    svc_ui->pane_add_section(mod_ctx,pane,"SWAP - X Slot Item");
-    add_num(pane,"SWAP X Item - X",g_swapItemSquareX,-3000,3000,10,"/10 px","Swap-profile item offset for original GC X.");
-    add_num(pane,"SWAP X Item - Y",g_swapItemSquareY,-3000,3000,10,"/10 px","Swap-profile item offset for original GC X.");
-    add_num(pane,"SWAP X Item - Scale",g_swapItemSquareScale,30,200,1,"%","Swap-profile item scale.");
-    add_toggle(pane,"SWAP X Item - Flip H",g_swapItemSquareFlipH,"Swap-profile horizontal flip.");
-    add_toggle(pane,"SWAP X Item - Flip V",g_swapItemSquareFlipV,"Swap-profile vertical flip.");
-    svc_ui->pane_add_section(mod_ctx,pane,"SWAP - Y Slot Item");
-    add_num(pane,"SWAP Y Item - X",g_swapItemTriangleX,-3000,3000,10,"/10 px","Swap-profile item offset for original GC Y.");
-    add_num(pane,"SWAP Y Item - Y",g_swapItemTriangleY,-3000,3000,10,"/10 px","Swap-profile item offset for original GC Y.");
-    add_num(pane,"SWAP Y Item - Scale",g_swapItemTriangleScale,30,200,1,"%","Swap-profile item scale.");
-    add_toggle(pane,"SWAP Y Item - Flip H",g_swapItemTriangleFlipH,"Swap-profile horizontal flip.");
-    add_toggle(pane,"SWAP Y Item - Flip V",g_swapItemTriangleFlipV,"Swap-profile vertical flip.");
+    add_num(pane,"Items Group X",g_itemsAnchorX,-3000,3000,10,"/10 px","Moves both normalized item anchors horizontally.");
+    add_num(pane,"Items Group Y",g_itemsAnchorY,-3000,3000,10,"/10 px","Moves both normalized item anchors vertically.");
     svc_ui->pane_add_section(mod_ctx,pane,"Sword");
-    add_num(pane,"Sword X Offset",g_swordX,-300,300,1," px","Horizontal offset of the sword from its original position.");
-    add_num(pane,"Sword Y Offset",g_swordY,-300,300,1," px","Vertical offset of the sword from its original position.");
+    add_num(pane,"Sword X Offset",g_swordX,-300,300,1," px","Horizontal offset of the sword.");
+    add_num(pane,"Sword Y Offset",g_swordY,-300,300,1," px","Vertical offset of the sword.");
     add_num(pane,"Sword Scale",g_swordScale,50,300,1,"%","Scale relative to the sword original size.");
     add_toggle(pane,"Sword Flip Horizontal",g_swordFlipH,"Flips the sword texture horizontally.");
     add_toggle(pane,"Sword Flip Vertical",g_swordFlipV,"Flips the sword texture vertically.");
@@ -674,53 +761,15 @@ ModResult build_settings_2_panel(ModContext*,UiWindowHandle,UiElementHandle pane
 }
 
 ModResult build_settings_3_panel(ModContext*,UiWindowHandle,UiElementHandle pane,UiElementHandle,void*,ModError*) {
-    svc_ui->pane_add_text(mod_ctx,pane,"Senses, Dig, howling labels and Wolf glows.",nullptr);
+    svc_ui->pane_add_text(mod_ctx,pane,"Shared Wolf controls. Senses, Dig and their glows are calibrated in the preset tabs.",nullptr);
     svc_ui->pane_add_section(mod_ctx,pane,"Howling - Action");
-    add_num(pane,"Howling Action Text - X",g_howlActionX,-3000,3000,10,"/10 px","Independent horizontal position of Howl on the howling screen.");
-    add_num(pane,"Howling Action Text - Y",g_howlActionY,-3000,3000,10,"/10 px","Independent vertical position of Howl on the howling screen.");
+    add_num(pane,"Howling Action Text - X",g_howlActionX,-3000,3000,10,"/10 px","Independent horizontal position of Howl.");
+    add_num(pane,"Howling Action Text - Y",g_howlActionY,-3000,3000,10,"/10 px","Independent vertical position of Howl.");
     add_num(pane,"Howling Action Text - Scale",g_howlActionScale,25,250,1,"%","Independent scale of the howling action label.");
     svc_ui->pane_add_section(mod_ctx,pane,"Howling - Exit");
-    add_num(pane,"Howling Exit Text - X",g_howlBackX,-3000,3000,10,"/10 px","Independent horizontal position of Exit on the howling screen.");
-    add_num(pane,"Howling Exit Text - Y",g_howlBackY,-3000,3000,10,"/10 px","Independent vertical position of Exit on the howling screen.");
+    add_num(pane,"Howling Exit Text - X",g_howlBackX,-3000,3000,10,"/10 px","Independent horizontal position of Exit.");
+    add_num(pane,"Howling Exit Text - Y",g_howlBackY,-3000,3000,10,"/10 px","Independent vertical position of Exit.");
     add_num(pane,"Howling Exit Text - Scale",g_howlBackScale,25,250,1,"%","Independent scale of the howling exit label.");
-    svc_ui->pane_add_section(mod_ctx,pane,"Senses Text");
-    add_num(pane,"Senses / X (GC) / Triangle (PS) / Y (XB) - X Offset",g_wolfSenseX,-3000,3000,10,"/10 px","Horizontal offset of the Senses text.");
-    add_num(pane,"Senses / X (GC) / Triangle (PS) / Y (XB) - Y Offset",g_wolfSenseY,-3000,3000,10,"/10 px","Vertical offset of the Senses text.");
-    add_num(pane,"Senses / X (GC) / Triangle (PS) / Y (XB) - Scale",g_wolfSenseScale,50,200,1,"%","Scale of the vanilla x_text_n container used by Senses.");
-    svc_ui->pane_add_section(mod_ctx,pane,"Dig Text");
-    add_num(pane,"Dig / Y (GC) / Square (PS) / X (XB) - X Offset",g_wolfDigX,-3000,3000,10,"/10 px","Horizontal offset of the Dig text.");
-    add_num(pane,"Dig / Y (GC) / Square (PS) / X (XB) - Y Offset",g_wolfDigY,-3000,3000,10,"/10 px","Vertical offset of the Dig text.");
-    add_num(pane,"Dig / Y (GC) / Square (PS) / X (XB) - Scale",g_wolfDigScale,50,200,1,"%","Scale of the vanilla y_text_n container used by Dig.");
-    svc_ui->pane_add_section(mod_ctx,pane,"X (GC) / Triangle (PS) / Y (XB) - Senses Glow");
-    add_num(pane,"X (GC) -> Triangle (PS) / Y (XB) Glow - X",g_wolfXGlowX,-3000,3000,10,"/10 px","Horizontal adjustment relative to the original Wolf glow position.");
-    add_num(pane,"X (GC) -> Triangle (PS) / Y (XB) Glow - Y",g_wolfXGlowY,-3000,3000,10,"/10 px","Vertical adjustment relative to the original Wolf glow position.");
-    add_num(pane,"X (GC) -> Triangle (PS) / Y (XB) Glow - Scale",g_wolfXGlowScale,25,300,1,"%","Multiplies the original contextual X Pikari scale.");
-    add_toggle(pane,"X (GC) -> Triangle (PS) / Y (XB) Glow Enabled",g_wolfXGlowEnabled,"Enables or disables the contextual Pikari glow anchored to X / Triangle / Senses.");
-    svc_ui->pane_add_section(mod_ctx,pane,"Y (GC) / Square (PS) / X (XB) - Dig Glow");
-    add_num(pane,"Y (GC) -> Square (PS) / X (XB) Glow - X",g_wolfYGlowX,-3000,3000,10,"/10 px","Horizontal adjustment relative to the original Wolf glow position.");
-    add_num(pane,"Y (GC) -> Square (PS) / X (XB) Glow - Y",g_wolfYGlowY,-3000,3000,10,"/10 px","Vertical adjustment relative to the original Wolf glow position.");
-    add_num(pane,"Y (GC) -> Square (PS) / X (XB) Glow - Scale",g_wolfYGlowScale,25,300,1,"%","Multiplies the original contextual Y Pikari scale.");
-    add_toggle(pane,"Y (GC) -> Square (PS) / X (XB) Glow Enabled",g_wolfYGlowEnabled,"Enables or disables the contextual Pikari glow anchored to Y / Square / Dig.");
-    svc_ui->pane_add_section(mod_ctx,pane,"SWAP - Senses Text");
-    add_num(pane,"SWAP Senses Text - X",g_swapWolfSenseX,-3000,3000,10,"/10 px","Swap-profile Senses text offset.");
-    add_num(pane,"SWAP Senses Text - Y",g_swapWolfSenseY,-3000,3000,10,"/10 px","Swap-profile Senses text offset.");
-    add_num(pane,"SWAP Senses Text - Scale",g_swapWolfSenseScale,50,200,1,"%","Swap-profile Senses text scale.");
-    svc_ui->pane_add_section(mod_ctx,pane,"SWAP - Dig Text");
-    add_num(pane,"SWAP Dig Text - X",g_swapWolfDigX,-3000,3000,10,"/10 px","Swap-profile Dig text offset.");
-    add_num(pane,"SWAP Dig Text - Y",g_swapWolfDigY,-3000,3000,10,"/10 px","Swap-profile Dig text offset.");
-    add_num(pane,"SWAP Dig Text - Scale",g_swapWolfDigScale,50,200,1,"%","Swap-profile Dig text scale.");
-    svc_ui->pane_add_section(mod_ctx,pane,"SWAP - Senses Glow");
-    add_num(pane,"SWAP Senses Glow - X",g_swapWolfXGlowX,-3000,3000,10,"/10 px","Swap-profile Senses glow offset.");
-    add_num(pane,"SWAP Senses Glow - Y",g_swapWolfXGlowY,-3000,3000,10,"/10 px","Swap-profile Senses glow offset.");
-    add_num(pane,"SWAP Senses Glow - Scale",g_swapWolfXGlowScale,25,300,1,"%","Swap-profile Senses glow scale.");
-    add_toggle(pane,"SWAP Senses Glow Enabled",g_swapWolfXGlowEnabled,"Enables the Senses glow in the swap profile.");
-    svc_ui->pane_add_section(mod_ctx,pane,"SWAP - Dig Glow");
-    add_num(pane,"SWAP Dig Glow - X",g_swapWolfYGlowX,-3000,3000,10,"/10 px","Swap-profile Dig glow offset.");
-    add_num(pane,"SWAP Dig Glow - Y",g_swapWolfYGlowY,-3000,3000,10,"/10 px","Swap-profile Dig glow offset.");
-    add_num(pane,"SWAP Dig Glow - Scale",g_swapWolfYGlowScale,25,300,1,"%","Swap-profile Dig glow scale.");
-    add_toggle(pane,"SWAP Dig Glow Enabled",g_swapWolfYGlowEnabled,"Enables the Dig glow in the swap profile.");
-    svc_ui->pane_add_section(mod_ctx,pane,"Glow Preview");
-    add_toggle(pane,"Wolf Glow Preview",g_wolfGlowPreview,"Forces the contextual X/Y Pikari timers active while adjusting them. Disable Preview to restore normal in-game triggering.");
     return MOD_OK;
 }
 
@@ -747,23 +796,7 @@ ModResult build_settings_5_panel(ModContext*,UiWindowHandle,UiElementHandle pane
 }
 
 ModResult build_settings_6_panel(ModContext*,UiWindowHandle,UiElementHandle pane,UiElementHandle,void*,ModError*) {
-    svc_ui->pane_add_text(mod_ctx,pane,"Assignment and navigation icons inside the Item Wheel.",nullptr);
-    svc_ui->pane_add_section(mod_ctx,pane,"X (GC) / Triangle (PS) / Y (XB) Assignment");
-    add_num(pane,"X (GC) / Triangle (PS) / Y (XB) - X Offset",g_wheelSquareX,-3000,3000,10,"/10 px","Horizontal offset of Triangle beside Assign in the Item Wheel only.");
-    add_num(pane,"X (GC) / Triangle (PS) / Y (XB) - Y Offset",g_wheelSquareY,-3000,3000,10,"/10 px","Vertical offset of Triangle beside Assign in the Item Wheel only.");
-    add_num(pane,"X (GC) / Triangle (PS) / Y (XB) - Scale",g_wheelSquareScale,30,250,1,"%","Scale of Triangle in the Item Wheel only.");
-    svc_ui->pane_add_section(mod_ctx,pane,"Y (GC) / Square (PS) / X (XB) Assignment");
-    add_num(pane,"Y (GC) / Square (PS) / X (XB) - X Offset",g_wheelTriangleX,-3000,3000,10,"/10 px","Horizontal offset of Square beside Assign in the Item Wheel only.");
-    add_num(pane,"Y (GC) / Square (PS) / X (XB) - Y Offset",g_wheelTriangleY,-3000,3000,10,"/10 px","Vertical offset of Square beside Assign in the Item Wheel only.");
-    add_num(pane,"Y (GC) / Square (PS) / X (XB) - Scale",g_wheelTriangleScale,30,250,1,"%","Scale of Square in the Item Wheel only.");
-    svc_ui->pane_add_section(mod_ctx,pane,"SWAP - X Slot Assignment");
-    add_num(pane,"SWAP X Assignment - X",g_swapWheelSquareX,-3000,3000,10,"/10 px","Swap-profile Item Wheel X-slot offset.");
-    add_num(pane,"SWAP X Assignment - Y",g_swapWheelSquareY,-3000,3000,10,"/10 px","Swap-profile Item Wheel X-slot offset.");
-    add_num(pane,"SWAP X Assignment - Scale",g_swapWheelSquareScale,30,250,1,"%","Swap-profile Item Wheel X-slot scale.");
-    svc_ui->pane_add_section(mod_ctx,pane,"SWAP - Y Slot Assignment");
-    add_num(pane,"SWAP Y Assignment - X",g_swapWheelTriangleX,-3000,3000,10,"/10 px","Swap-profile Item Wheel Y-slot offset.");
-    add_num(pane,"SWAP Y Assignment - Y",g_swapWheelTriangleY,-3000,3000,10,"/10 px","Swap-profile Item Wheel Y-slot offset.");
-    add_num(pane,"SWAP Y Assignment - Scale",g_swapWheelTriangleScale,30,250,1,"%","Swap-profile Item Wheel Y-slot scale.");
+    svc_ui->pane_add_text(mod_ctx,pane,"Shared Item Wheel navigation controls. X/Y assignments are calibrated in the preset tabs.",nullptr);
     svc_ui->pane_add_section(mod_ctx,pane,"Select Analog");
     add_num(pane,"Select Analog - X Offset",g_wheelSelectAnalogX,-3000,3000,10,"/10 px","Horizontal offset of the modern analog icon beside Select.");
     add_num(pane,"Select Analog - Y Offset",g_wheelSelectAnalogY,-3000,3000,10,"/10 px","Vertical offset of the modern analog icon beside Select.");
@@ -777,9 +810,9 @@ ModResult build_settings_6_panel(ModContext*,UiWindowHandle,UiElementHandle pane
     add_num(pane,"Direct Select Analog - Y Offset",g_wheelDirectAnalogY,-3000,3000,10,"/10 px","Vertical offset of the analog icon beside Direct Select.");
     add_num(pane,"Direct Select Analog - Scale",g_wheelDirectAnalogScale,30,250,1,"%","Scale of the analog icon beside Direct Select.");
     svc_ui->pane_add_section(mod_ctx,pane,"Bow Combination - R (GC) / R2 (PS) / RT (XB)");
-    add_num(pane,"R (GC) / R2 (PS) / RT (XB) - X Offset",g_wheelR2X,-3000,3000,10,"/10 px","Horizontal offset of R2 in the bow-combination prompt.");
-    add_num(pane,"R (GC) / R2 (PS) / RT (XB) - Y Offset",g_wheelR2Y,-3000,3000,10,"/10 px","Vertical offset of R2 in the bow-combination prompt.");
-    add_num(pane,"R (GC) / R2 (PS) / RT (XB) - Scale",g_wheelR2Scale,30,250,1,"%","Scale of R2 in the bow-combination prompt.");
+    add_num(pane,"R (GC) / R2 (PS) / RT (XB) - X Offset",g_wheelR2X,-3000,3000,10,"/10 px","Horizontal offset of R2.");
+    add_num(pane,"R (GC) / R2 (PS) / RT (XB) - Y Offset",g_wheelR2Y,-3000,3000,10,"/10 px","Vertical offset of R2.");
+    add_num(pane,"R (GC) / R2 (PS) / RT (XB) - Scale",g_wheelR2Scale,30,250,1,"%","Scale of R2.");
     return MOD_OK;
 }
 
@@ -945,6 +978,19 @@ void select_xbox(ModContext*,void*) {
     if (!s_controllerStyleLocked) svc_config->set_int(mod_ctx,g_controllerStyle,1);
 }
 
+bool base_xy_preset_selected(ModContext*,void*) {
+    return !swap_xy_layout_enabled();
+}
+bool swap_xy_preset_selected(ModContext*,void*) {
+    return swap_xy_layout_enabled();
+}
+void select_base_xy_preset(ModContext*,void*) {
+    if (g_swapXYButtonLayout != 0) svc_config->set_bool(mod_ctx,g_swapXYButtonLayout,false);
+}
+void select_swap_xy_preset(ModContext*,void*) {
+    if (g_swapXYButtonLayout != 0) svc_config->set_bool(mod_ctx,g_swapXYButtonLayout,true);
+}
+
 bool public_back_animation_selected(ModContext*,void*) {
     return cfg_bool(g_backButtonAnim,false) && cfg_bool(g_backTextAnim,false);
 }
@@ -1060,16 +1106,28 @@ void on_layout_window_closed(ModContext*,UiWindowHandle,void*) {
 }
 void open_layout_window(ModContext*,void*) {
     if(g_layoutWindow!=0) return;
-    static UiTabDesc tabs[13];
-    const char* titles[13] = {"HUD", "Items", "HUD Text", "Dialogue", "Wolf", "Shops", "Fishing", "Item Wheel", "Menus", "World Map", "Dungeon Map", "Save", "Tools"};
-    decltype(tabs[0].build) builders[13] = {build_settings_0_panel, build_settings_1_panel, build_settings_2_panel, build_dialogue_panel, build_settings_3_panel, build_settings_4_panel, build_settings_5_panel, build_settings_6_panel, build_settings_7_panel, build_settings_8_panel, build_settings_9_panel, build_settings_10_panel, build_settings_11_panel};
-    for (int i=0;i<13;i++) {
+    static UiTabDesc tabs[15];
+    const char* titles[15] = {
+        "BASE PRESET", "SWAP X/Y PRESET",
+        "Shared HUD", "Shared Items", "HUD Text", "Dialogue", "Shared Wolf",
+        "Shops", "Fishing", "Shared Item Wheel", "Menus", "World Map",
+        "Dungeon Map", "Save", "Tools"
+    };
+    decltype(tabs[0].build) builders[15] = {
+        build_base_xy_preset_panel, build_swap_xy_preset_panel,
+        build_settings_0_panel, build_settings_1_panel, build_settings_2_panel,
+        build_dialogue_panel, build_settings_3_panel, build_settings_4_panel,
+        build_settings_5_panel, build_settings_6_panel, build_settings_7_panel,
+        build_settings_8_panel, build_settings_9_panel, build_settings_10_panel,
+        build_settings_11_panel
+    };
+    for (int i=0;i<15;i++) {
         tabs[i]=UI_TAB_DESC_INIT;
         tabs[i].title=titles[i];
         tabs[i].build=builders[i];
     }
     UiWindowDesc d=UI_WINDOW_DESC_INIT;
-    d.tabs=tabs; d.tab_count=13; d.on_closed=on_layout_window_closed;
+    d.tabs=tabs; d.tab_count=15; d.on_closed=on_layout_window_closed;
     svc_ui->window_push(mod_ctx,&d,&g_layoutWindow);
 }
 
@@ -1607,12 +1665,14 @@ HookAction before_meter_draw(ModContext*, void* args, void*, void*) {
         // rendered by drawPikari(mpBTextXY[i], ...). This is separate from
         // x_light/y_light and from dMeterButton_c's emphasis Pikari.
         const bool wolfPreview = cfg_bool(g_wolfGlowPreview,false);
-        if (!cfg_bool(g_wolfXGlowEnabled,true)) {
+        const ConfigVarHandle wolfXEnabled = layout_handle(g_wolfXGlowEnabled,g_swapWolfXGlowEnabled);
+        const ConfigVarHandle wolfYEnabled = layout_handle(g_wolfYGlowEnabled,g_swapWolfYGlowEnabled);
+        if (!cfg_bool(wolfXEnabled,true)) {
             s_activeMeter->field_0x620[0] = 0.0f;
         } else if (wolfPreview) {
             s_activeMeter->field_0x620[0] = 18.0f;
         }
-        if (!cfg_bool(g_wolfYGlowEnabled,true)) {
+        if (!cfg_bool(wolfYEnabled,true)) {
             s_activeMeter->field_0x620[1] = 0.0f;
         } else if (wolfPreview) {
             s_activeMeter->field_0x620[1] = 18.0f;
@@ -4187,11 +4247,13 @@ HookAction before_meter_button_draw(ModContext*, void* args, void*, void*) {
         s_meterButtonGlowState.frame[i] = s_activeMeterButton->field_0x2e8[i];
         s_meterButtonGlowState.button[i] = s_activeMeterButton->field_0x4be[i];
 
+        const ConfigVarHandle wolfXEnabled = layout_handle(g_wolfXGlowEnabled,g_swapWolfXGlowEnabled);
+        const ConfigVarHandle wolfYEnabled = layout_handle(g_wolfYGlowEnabled,g_swapWolfYGlowEnabled);
         if (s_activeMeterButton->field_0x4be[i] == dMeterButton_c::BUTTON_X_e &&
-            !cfg_bool(g_wolfXGlowEnabled,true))
+            !cfg_bool(wolfXEnabled,true))
             s_activeMeterButton->field_0x2e8[i] = 0.0f;
         if (s_activeMeterButton->field_0x4be[i] == dMeterButton_c::BUTTON_Y_e &&
-            !cfg_bool(g_wolfYGlowEnabled,true))
+            !cfg_bool(wolfYEnabled,true))
             s_activeMeterButton->field_0x2e8[i] = 0.0f;
     }
 
@@ -4201,8 +4263,10 @@ HookAction before_meter_button_draw(ModContext*, void* args, void*, void*) {
         // original values.
         s_activeMeterButton->field_0x4be[0] = dMeterButton_c::BUTTON_X_e;
         s_activeMeterButton->field_0x4be[1] = dMeterButton_c::BUTTON_Y_e;
-        s_activeMeterButton->field_0x2e8[0] = cfg_bool(g_wolfXGlowEnabled,true) ? 18.0f : 0.0f;
-        s_activeMeterButton->field_0x2e8[1] = cfg_bool(g_wolfYGlowEnabled,true) ? 18.0f : 0.0f;
+        s_activeMeterButton->field_0x2e8[0] =
+            cfg_bool(layout_handle(g_wolfXGlowEnabled,g_swapWolfXGlowEnabled),true) ? 18.0f : 0.0f;
+        s_activeMeterButton->field_0x2e8[1] =
+            cfg_bool(layout_handle(g_wolfYGlowEnabled,g_swapWolfYGlowEnabled),true) ? 18.0f : 0.0f;
     }
     return HOOK_CONTINUE;
 }
