@@ -4081,6 +4081,15 @@ ModResult mod_initialize(ModError* error) {
         }
     }
 
+    // Hard diagnostic: install NO runtime hooks at all. This leaves the mod ID,
+    // config/UI registration and resources present, but TP Classic executes no
+    // draw/menu/HUD callbacks. If Twilit Quick Access still corrupts in this
+    // build, the cause is outside TP Classic's runtime hook behavior (or inside
+    // Twilit's own compatibility path keyed only by the enabled mod ID).
+    if (svc_log != nullptr)
+        svc_log->info(mod_ctx, "Compatibility diagnostic: runtime hooks completely disabled");
+    return MOD_OK;
+
     ModResult pre = mods::hook::add_pre<MeterDrawHook>(svc_hook, before_meter_draw);
     if (pre != MOD_OK) {
         free_resources();
