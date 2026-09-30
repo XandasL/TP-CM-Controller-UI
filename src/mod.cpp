@@ -22,8 +22,6 @@
 #include "mods/svc/resource.h"
 #include "mods/svc/config.h"
 #include "mods/svc/ui.h"
-#include "dusk/config_var.hpp"
-#include <string_view>
 
 DEFINE_MOD();
 IMPORT_SERVICE(HookService, svc_hook);
@@ -33,33 +31,6 @@ IMPORT_SERVICE(ConfigService, svc_config);
 IMPORT_SERVICE(UiService, svc_ui);
 
 namespace {
-
-using HostGetConfigVarFn = dusk::config::ConfigVarBase* (*)(std::string_view);
-
-HostGetConfigVarFn host_get_config_var_for_compat() {
-    static HostGetConfigVarFn fn = nullptr;
-    static bool resolved = false;
-    if (!resolved) {
-        resolved = true;
-        void* addr = nullptr;
-        if (svc_hook != nullptr && mod_ctx != nullptr &&
-            svc_hook->resolve(mod_ctx, "dusk::config::GetConfigVar", &addr, nullptr) == MOD_OK) {
-            fn = reinterpret_cast<HostGetConfigVarFn>(addr);
-        }
-    }
-    return fn;
-}
-
-bool twilit_essentials_enabled() {
-    const auto getVar = host_get_config_var_for_compat();
-    if (getVar == nullptr) return false;
-
-    // Config IDs escape '.' as '_' and '_' as '__'.
-    const auto* var = getVar("mod.com_dusklight_twilit__essentials.enabled");
-    return var != nullptr
-        ? static_cast<const dusk::config::ConfigVar<bool>*>(var)->getValue()
-        : false;
-}
 
 ConfigVarHandle g_controllerStyle=0;
 bool s_controllerStyleLocked=false;
@@ -787,6 +758,7 @@ void open_layout_window(ModContext*,void*) {
 DEFINE_HOOK(&dMeter2Draw_c::draw, MeterDrawHook);
 DEFINE_HOOK(&dMeterButton_c::draw, MeterButtonDrawHook);
 DEFINE_HOOK(&dMeterButton_c::screenInitButton, MeterButtonScreenInitHook);
+DEFINE_HOOK(&dMeterButton_c::_execute, MeterButtonExecuteHook);
 DEFINE_HOOK(&dMeter2Draw_c::drawButtonXY, ButtonXYDrawHook);
 DEFINE_HOOK(&dMeter2Draw_c::drawButtonCross, ButtonCrossDrawHook);
 DEFINE_HOOK(&CPaneMgr::paneTrans, PaneTransHook);
@@ -930,6 +902,26 @@ const ResTIMG* resource_timg(const ResourceBuffer& requested) {
     const ResourceBuffer& buffer=*selected;
     if (buffer.data == nullptr || buffer.size < 0x20) return nullptr;
     return reinterpret_cast<const ResTIMG*>(buffer.data);
+}
+
+// Twilit Essentials does not currently expose a public "is mod enabled" API/service.
+// Detect ownership from the live HUD instead. screenInitButton gives us the clean
+// vanilla Z texture before either mod changes the contextual prompt; Essentials then
+// updates zbtn/z_btnl from dMeterButton_c::_execute.
+J2DScreen* s_midnaPromptScreen = nullptr;
+const ResTIMG* s_midnaPromptOriginalTexture = nullptr;
+bool s_externalMidnaPromptOwner = false;
+
+bool twilit_midna_layout_active(dMeter2Draw_c* meter) {
+    if (s_externalMidnaPromptOwner) return true;
+    if (meter == nullptr || meter->getMainScreenPtr() == nullptr) return false;
+
+    // Essentials reparents the Midna root under juji_n while its custom Z/Midna
+    // system owns the HUD. TP Classic never performs this reparent.
+    J2DScreen* screen = meter->getMainScreenPtr();
+    J2DPane* midna = screen->search(MULTI_CHAR('midona_n'));
+    J2DPane* juji = screen->search(MULTI_CHAR('juji_n'));
+    return midna != nullptr && juji != nullptr && midna->getParentPane() == juji;
 }
 
 bool load_button_texture(const char* path, ResourceBuffer* out) {
@@ -1919,7 +1911,7 @@ void after_meter_draw(ModContext*, void* args, void*, void*) {
 // Midna v0.9.8: leave the vanilla root alone and transform only its pictures.
     // When Twilit Essentials is active, it owns Midna's contextual layout and
     // positioning. Do not apply TP Classic offsets/scaling on top of it.
-    if (!twilit_essentials_enabled() && meter->mpButtonMidona != nullptr) {
+    if (!twilit_midna_layout_active(meter) && meter->mpButtonMidona != nullptr) {
         adjust_midna_pictures(meter->mpButtonMidona->getPanePtr(),
             cfg_pos(g_midnaX,7.0f), cfg_pos(g_midnaY,-18.0f),
             cfg_scale(g_midnaScale,1.0f));
@@ -3576,6 +3568,110 @@ void apply_known_menu_buttons(J2DScreen* screen) {
 }
 
 
+// Apply TP Classic's contextual Midna artwork only after dMeterButton_c::_execute.
+// Twilit Essentials updates this same prompt from _execute; our low-priority post
+// hook runs afterwards, observes its state, and yields without modifying the tree.
+void apply_tp_classic_midna_prompt(dMeterButton_c* self) {
+    if (self == nullptr || self->mpButtonScreen == nullptr) return;
+
+    J2DPicture* jumpFace = as_picture(self->mpButtonScreen->search(MULTI_CHAR('zbtn')));
+    const ResTIMG* r1 = resource_timg(s_r1);
+    if (jumpFace == nullptr || r1 == nullptr || r1->height == 0) return;
+
+    replace_picture_texture(jumpFace, r1);
+    jumpFace->setBlackWhite(JUtility::TColor(0, 0, 0, 0),
+                            JUtility::TColor(255, 255, 255, 255));
+    jumpFace->setCornerColor(JUtility::TColor(255, 255, 255, 255));
+    const auto bounds = jumpFace->getBounds();
+    const float sx = jumpFace->getScaleX();
+    const float sy = jumpFace->getScaleY();
+    if (sx > 0.0001f && sy > 0.0001f) {
+        const float aspect = float(r1->width) / float(r1->height);
+        const float height = bounds.getWidth() * sx / (aspect * sy);
+        jumpFace->move(bounds.i.x, bounds.i.y + (bounds.getHeight() - height) * 0.5f);
+        jumpFace->resize(bounds.getWidth(), height);
+        jumpFace->rotate(0.0f);
+    }
+
+    J2DPane* root = self->mpButtonScreen->search(MULTI_CHAR('zbtn_n'));
+    J2DPane* portrait = self->mpButtonScreen->search(MULTI_CHAR('midona'));
+    J2DPane* stack[64];
+    int count = 0;
+    if (root != nullptr) stack[count++] = root;
+    while (count > 0) {
+        J2DPane* node = stack[--count];
+        for (J2DPane* child = node->getFirstChildPane(); child != nullptr;
+             child = child->getNextChildPane()) {
+            if (child == portrait) continue;
+            if (count < 64) stack[count++] = child;
+            if (child == jumpFace || as_picture(child) == nullptr) continue;
+            bool preserve = false;
+            for (J2DPane* p = jumpFace->getParentPane(); p != nullptr; p = p->getParentPane())
+                if (p == child) preserve = true;
+            for (J2DPane* p = portrait; p != nullptr; p = p->getParentPane())
+                if (p == child) preserve = true;
+            if (!preserve) child->hide();
+        }
+    }
+
+    // Keep the old Z highlight hidden for TP Classic's R1 artwork. Unlike
+    // Essentials, TP Classic intentionally does not force this pane's alpha to 0;
+    // that distinction is also a useful live ownership signature.
+    if (J2DPane* oldLight = self->mpButtonScreen->search(MULTI_CHAR('z_btnl')))
+        oldLight->hide();
+}
+
+bool external_midna_prompt_owner(dMeterButton_c* self) {
+    if (self == nullptr || self->mpButtonScreen == nullptr) return false;
+    J2DScreen* screen = self->mpButtonScreen;
+    J2DPicture* face = as_picture(screen->search(MULTI_CHAR('zbtn')));
+
+    if (screen != s_midnaPromptScreen) {
+        // Defensive path for a rebuilt screen that did not pass our screen-init
+        // hook in the expected order. Treat the first observed texture as baseline.
+        s_midnaPromptScreen = screen;
+        s_midnaPromptOriginalTexture =
+            (face != nullptr && face->getTextureCount() != 0 && face->getTexture(0) != nullptr)
+                ? face->getTexture(0)->getTexInfo()
+                : nullptr;
+        s_externalMidnaPromptOwner = false;
+    }
+
+    const ResTIMG* current =
+        (face != nullptr && face->getTextureCount() != 0 && face->getTexture(0) != nullptr)
+            ? face->getTexture(0)->getTexInfo()
+            : nullptr;
+    const ResTIMG* ours = resource_timg(s_r1);
+
+    // Essentials' default Midna binding replaces zbtn with its D-pad texture.
+    // Ignore our own R1 texture so repeated TP Classic frames remain idempotent.
+    const bool foreignTexture =
+        s_midnaPromptOriginalTexture != nullptr && current != nullptr &&
+        current != s_midnaPromptOriginalTexture && current != ours;
+
+    // When Midna is bound to L, Essentials can deliberately use the original Z
+    // texture. In both modes it hides z_btnl and explicitly forces alpha to zero;
+    // TP Classic only hides this pane and never zeros its alpha.
+    J2DPane* oldLight = screen->search(MULTI_CHAR('z_btnl'));
+    const bool essentialsLightSignature =
+        oldLight != nullptr && !oldLight->isVisible() && oldLight->getAlpha() == 0;
+
+    return foreignTexture || essentialsLightSignature;
+}
+
+void after_meter_button_execute(ModContext*, void* args, void*, void*) {
+    dMeterButton_c* self = args != nullptr ? mods::arg<dMeterButton_c*>(args, 0) : nullptr;
+    if (self == nullptr || self->mpButtonScreen == nullptr) return;
+
+    if (external_midna_prompt_owner(self)) {
+        s_externalMidnaPromptOwner = true;
+        return;
+    }
+    if (s_externalMidnaPromptOwner) return;
+
+    apply_tp_classic_midna_prompt(self);
+}
+
 // v0.11.20 brightness test, based directly on the stable v0.11.19 implementation.
 // Replace only the contextual GameCube R artwork after its layout is created.
 // No code from the experimental v0.11.07-v0.11.18 chain is carried over.
@@ -3615,53 +3711,18 @@ void after_meter_button_screen_init(ModContext*, void* args, void*, void*) {
     };
     for (u64 tag : fishingOldLayers)
         if (J2DPane* old = self->mpButtonScreen->search(tag)) old->hide();
-    // Contextual Midna jump prompt.
-    // Twilit Essentials has its own Z/Midna prompt system (including its
-    // positioning, texture choice and visibility rules). If Essentials is
-    // enabled, leave this subtree completely untouched so its native style is
-    // preserved exactly instead of forcing TP Classic's R1 replacement.
+    // Contextual Midna/Z prompt: capture the untouched baseline only.
+    // Do not mutate this subtree during screenInitButton. Twilit Essentials
+    // snapshots the same vanilla zbtn later, so changing it here would poison
+    // its own compatibility/original-texture state.
     J2DPicture* jumpFace = as_picture(self->mpButtonScreen->search(MULTI_CHAR('zbtn')));
-    const ResTIMG* r1 = resource_timg(s_r1);
-    if (!twilit_essentials_enabled() &&
-        jumpFace != nullptr && r1 != nullptr && r1->height != 0) {
-        replace_picture_texture(jumpFace, r1);
-        jumpFace->setBlackWhite(JUtility::TColor(0, 0, 0, 0),
-                               JUtility::TColor(255, 255, 255, 255));
-        jumpFace->setCornerColor(JUtility::TColor(255, 255, 255, 255));
-        const auto bounds = jumpFace->getBounds();
-        const float sx = jumpFace->getScaleX();
-        const float sy = jumpFace->getScaleY();
-        if (sx > 0.0001f && sy > 0.0001f) {
-            const float aspect = float(r1->width) / float(r1->height);
-            const float height = bounds.getWidth() * sx / (aspect * sy);
-            jumpFace->move(bounds.i.x, bounds.i.y + (bounds.getHeight() - height) * 0.5f);
-            jumpFace->resize(bounds.getWidth(), height);
-            jumpFace->rotate(0.0f);
-        }
-        J2DPane* root = self->mpButtonScreen->search(MULTI_CHAR('zbtn_n'));
-        J2DPane* portrait = self->mpButtonScreen->search(MULTI_CHAR('midona'));
-        J2DPane* stack[64];
-        int count = 0;
-        if (root != nullptr) stack[count++] = root;
-        while (count > 0) {
-            J2DPane* node = stack[--count];
-            for (J2DPane* child = node->getFirstChildPane(); child != nullptr;
-                 child = child->getNextChildPane()) {
-                if (child == portrait) continue;
-                if (count < 64) stack[count++] = child;
-                if (child == jumpFace || as_picture(child) == nullptr) continue;
-                bool preserve = false;
-                for (J2DPane* p = jumpFace->getParentPane(); p != nullptr; p = p->getParentPane())
-                    if (p == child) preserve = true;
-                for (J2DPane* p = portrait; p != nullptr; p = p->getParentPane())
-                    if (p == child) preserve = true;
-                if (!preserve) child->hide();
-            }
-        }
-        // Native screenInitButton explicitly enables this old Z highlight.
-        if (J2DPane* oldLight = self->mpButtonScreen->search(MULTI_CHAR('z_btnl')))
-            oldLight->hide();
-    }
+    s_midnaPromptScreen = self->mpButtonScreen;
+    s_midnaPromptOriginalTexture =
+        (jumpFace != nullptr && jumpFace->getTextureCount() != 0 && jumpFace->getTexture(0) != nullptr)
+            ? jumpFace->getTexture(0)->getTexInfo()
+            : nullptr;
+    s_externalMidnaPromptOwner = false;
+
     // Bottom contextual Y prompt (Wolf Dig), separate from the main HUD.
     // Replace the face only; retain its parent alpha and prompt animation.
     J2DPicture* digFace = as_picture(self->mpButtonScreen->search(MULTI_CHAR('y_btn')));
@@ -4502,12 +4563,24 @@ ModResult mod_initialize(ModError* error) {
         return mods::set_error(error, post, "failed to install POST hook for dMeter2Draw_c::draw");
     }
     s_drawHookInstalled = true;
+
+    HookOptions midnaCompatPostOptions = HOOK_OPTIONS_INIT;
+    midnaCompatPostOptions.priority = -1000;
+    ModResult midnaCompatPost = mods::hook::add_post<MeterButtonExecuteHook>(
+        svc_hook, after_meter_button_execute, &midnaCompatPostOptions);
+    if (midnaCompatPost != MOD_OK) {
+        free_resources();
+        return mods::set_error(error, midnaCompatPost,
+                               "failed to install POST hook for dMeterButton_c::_execute");
+    }
+
     return MOD_OK;
 }
 
 MOD_EXPORT ModResult mod_update(ModError*) { return MOD_OK; }
 
 MOD_EXPORT ModResult mod_shutdown(ModError*) {
+    mods::hook::uninstall<MeterButtonExecuteHook>();
     mods::hook::uninstall<CollectCompatDrawHook>();
     mods::hook::uninstall<RingControllerOverlayHook>();
     mods::hook::uninstall<MeterButtonScreenInitHook>();
@@ -4535,6 +4608,9 @@ MOD_EXPORT ModResult mod_shutdown(ModError*) {
     s_activeMeter = nullptr;
     s_meterInstance = nullptr;
     s_activeMeterButton = nullptr;
+    s_midnaPromptScreen = nullptr;
+    s_midnaPromptOriginalTexture = nullptr;
+    s_externalMidnaPromptOwner = false;
     free_resources();
     return MOD_OK;
 }
