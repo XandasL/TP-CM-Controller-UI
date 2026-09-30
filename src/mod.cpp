@@ -3,6 +3,7 @@
 #include <cstdio>
 #include <string>
 #include <dolphin/dvd.h>
+#include <pad.h>
 #include "d/d_meter2_draw.h"
 #include "d/actor/d_a_player.h"
 #include "d/d_meter_button.h"
@@ -49,6 +50,8 @@ ConfigVarHandle g_visualHudEditorEnabled=0;
 // Legacy boolean kept only for migration from the first experimental X/Y build.
 ConfigVarHandle g_swapXYButtonLayout=0;
 ConfigVarHandle g_buttonLayoutPreset=0;
+ConfigVarHandle g_inputSyncLastPreset=0;
+ConfigVarHandle g_inputSyncControllerIndex=0;
 bool s_controllerStyleLocked=false;
 bool s_useXbox=false;
 
@@ -955,8 +958,8 @@ void export_midna_diagnostic(ModContext*,void*) {
 ModResult build_derived_b_swap_panel(UiElementHandle pane,bool xyBase) {
     const bool xyxb=xyBase;
     svc_ui->pane_add_text(mod_ctx,pane,
-        xyxb ? "Swap X/Y base with the original GC X and GC B faces exchanged. GC B keeps the sword function."
-             : "Base layout with the original GC Y and GC B faces exchanged. GC B keeps the sword function.",
+        xyxb ? "Swap X/Y base with the original GC X and GC B faces exchanged. GC B keeps the sword function. Activating it also updates Port 1 face bindings in Dusklight."
+             : "Base layout with the original GC Y and GC B faces exchanged. GC B keeps the sword function. Activating it also updates Port 1 face bindings in Dusklight.",
         nullptr);
     UiControlDesc activate=UI_CONTROL_DESC_INIT;
     activate.kind=UI_CONTROL_BUTTON;
@@ -1102,7 +1105,9 @@ ModResult build_swap_xyxb_preset_panel(ModContext*,UiWindowHandle,UiElementHandl
 }
 
 ModResult build_base_xy_preset_panel(ModContext*,UiWindowHandle,UiElementHandle pane,UiElementHandle,void*,ModError*) {
-    svc_ui->pane_add_text(mod_ctx,pane,"Base X/Y layout. Activate this preset before calibrating these controls.",nullptr);
+    svc_ui->pane_add_text(mod_ctx,pane,
+        "Base X/Y layout. Activating a preset also updates Port 1 face-button bindings in Dusklight's own Controller settings. Keyboard bindings are never changed.",
+        nullptr);
     UiControlDesc activate=UI_CONTROL_DESC_INIT;
     activate.kind=UI_CONTROL_BUTTON;
     activate.label="Use Base Preset";
@@ -1195,7 +1200,9 @@ ModResult build_base_xy_preset_panel(ModContext*,UiWindowHandle,UiElementHandle 
 }
 
 ModResult build_swap_xy_preset_panel(ModContext*,UiWindowHandle,UiElementHandle pane,UiElementHandle,void*,ModError*) {
-    svc_ui->pane_add_text(mod_ctx,pane,"Alternate X/Y layout. Activate this preset before calibrating these controls.",nullptr);
+    svc_ui->pane_add_text(mod_ctx,pane,
+        "Alternate X/Y layout. Activating a preset also updates Port 1 face-button bindings in Dusklight's own Controller settings. Keyboard bindings are never changed.",
+        nullptr);
     UiControlDesc activate=UI_CONTROL_DESC_INIT;
     activate.kind=UI_CONTROL_BUTTON;
     activate.label="Use Swap X/Y Preset";
@@ -1531,7 +1538,7 @@ ModResult build_settings_11_panel(ModContext*,UiWindowHandle,UiElementHandle pan
     svc_ui->pane_add_text(mod_ctx,pane,"Calibration and restoring the saved default preset.",nullptr);
     svc_ui->pane_add_section(mod_ctx,pane,"Button Layout Presets");
     svc_ui->pane_add_text(mod_ctx,pane,
-        "Preset selection now lives in dedicated tabs. Functions remain attached to their original GameCube slots; only the modern face and preset-local calibration change.",
+        "Selecting a preset also permutes only Port 1 A/B/X/Y gamepad bindings through Dusklight's native Controller mapping and serializes them there. Keyboard, triggers, sticks, D-Pad and other bindings are untouched.",
         nullptr);
     svc_ui->pane_add_section(mod_ctx,pane,"Calibration Export");
     svc_ui->pane_add_text(mod_ctx,pane,
@@ -1579,14 +1586,111 @@ void select_xbox(ModContext*,void*) {
     if (!s_controllerStyleLocked) svc_config->set_int(mod_ctx,g_controllerStyle,1);
 }
 
+
+static int layout_preset_index(ButtonLayoutPreset preset) {
+    switch (preset) {
+    case ButtonLayoutPreset::SwapXY: return 1;
+    case ButtonLayoutPreset::SwapYB: return 2;
+    case ButtonLayoutPreset::SwapXYXB: return 3;
+    default: return 0;
+    }
+}
+
+static void input_preset_sources(int preset,int out[4]) {
+    out[0]=0; out[1]=1; out[2]=2; out[3]=3;
+    switch (preset) {
+    case 1: out[2]=3; out[3]=2; break;
+    case 2: out[1]=3; out[3]=1; break;
+    case 3: out[1]=3; out[2]=1; out[3]=2; break;
+    default: break;
+    }
+}
+
+static bool sync_dusklight_face_inputs(ButtonLayoutPreset targetPreset) {
+    const s32 controllerIndex=PADGetIndexForPort(PAD_CHAN0);
+    if (controllerIndex < 0)
+        return false;
+
+    u32 count=0;
+    PADButtonMapping* mappings=PADGetButtonMappings(PAD_CHAN0,&count);
+    if (mappings==nullptr || count==0)
+        return false;
+
+    PADButtonMapping* faces[4]={nullptr,nullptr,nullptr,nullptr};
+    for (u32 i=0;i<count;++i) {
+        switch (mappings[i].padButton) {
+        case PAD_BUTTON_A: faces[0]=&mappings[i]; break;
+        case PAD_BUTTON_B: faces[1]=&mappings[i]; break;
+        case PAD_BUTTON_X: faces[2]=&mappings[i]; break;
+        case PAD_BUTTON_Y: faces[3]=&mappings[i]; break;
+        default: break;
+        }
+    }
+    for (int i=0;i<4;++i)
+        if (faces[i]==nullptr) return false;
+
+    const int target=layout_preset_index(targetPreset);
+    int old=(int)cfg_int(g_inputSyncLastPreset,-1);
+    const int savedController=(int)cfg_int(g_inputSyncControllerIndex,-1);
+
+    if (savedController != controllerIndex || old<0 || old>3)
+        old=0;
+
+    u32 current[4]={
+        faces[0]->nativeButton, faces[1]->nativeButton,
+        faces[2]->nativeButton, faces[3]->nativeButton,
+    };
+
+    int oldSources[4];
+    input_preset_sources(old,oldSources);
+    u32 base[4]={current[0],current[1],current[2],current[3]};
+    for (int targetSlot=0;targetSlot<4;++targetSlot)
+        base[oldSources[targetSlot]]=current[targetSlot];
+
+    int newSources[4];
+    input_preset_sources(target,newSources);
+    for (int targetSlot=0;targetSlot<4;++targetSlot)
+        faces[targetSlot]->nativeButton=base[newSources[targetSlot]];
+
+    PADSerializeMappings();
+
+    if (g_inputSyncLastPreset!=0)
+        svc_config->set_int(mod_ctx,g_inputSyncLastPreset,target);
+    if (g_inputSyncControllerIndex!=0)
+        svc_config->set_int(mod_ctx,g_inputSyncControllerIndex,controllerIndex);
+
+    if (svc_log!=nullptr) {
+        const char* name="Base";
+        if (target==1) name="Swap X/Y";
+        else if (target==2) name="Swap Y/B";
+        else if (target==3) name="Swap X/Y + X/B";
+        std::string msg="Controller face-button mapping synced through Dusklight: ";
+        msg+=name;
+        svc_log->info(mod_ctx,msg.c_str());
+    }
+    return true;
+}
+
 bool base_xy_preset_selected(ModContext*,void*) { return current_layout_preset()==ButtonLayoutPreset::Base; }
 bool swap_xy_preset_selected(ModContext*,void*) { return current_layout_preset()==ButtonLayoutPreset::SwapXY; }
 bool swap_yb_preset_selected(ModContext*,void*) { return current_layout_preset()==ButtonLayoutPreset::SwapYB; }
 bool swap_xyxb_preset_selected(ModContext*,void*) { return current_layout_preset()==ButtonLayoutPreset::SwapXYXB; }
-void select_base_xy_preset(ModContext*,void*) { if(g_buttonLayoutPreset!=0) svc_config->set_int(mod_ctx,g_buttonLayoutPreset,0); }
-void select_swap_xy_preset(ModContext*,void*) { if(g_buttonLayoutPreset!=0) svc_config->set_int(mod_ctx,g_buttonLayoutPreset,1); }
-void select_swap_yb_preset(ModContext*,void*) { if(g_buttonLayoutPreset!=0) svc_config->set_int(mod_ctx,g_buttonLayoutPreset,2); }
-void select_swap_xyxb_preset(ModContext*,void*) { if(g_buttonLayoutPreset!=0) svc_config->set_int(mod_ctx,g_buttonLayoutPreset,3); }
+void select_base_xy_preset(ModContext*,void*) {
+    if(g_buttonLayoutPreset!=0) svc_config->set_int(mod_ctx,g_buttonLayoutPreset,0);
+    sync_dusklight_face_inputs(ButtonLayoutPreset::Base);
+}
+void select_swap_xy_preset(ModContext*,void*) {
+    if(g_buttonLayoutPreset!=0) svc_config->set_int(mod_ctx,g_buttonLayoutPreset,1);
+    sync_dusklight_face_inputs(ButtonLayoutPreset::SwapXY);
+}
+void select_swap_yb_preset(ModContext*,void*) {
+    if(g_buttonLayoutPreset!=0) svc_config->set_int(mod_ctx,g_buttonLayoutPreset,2);
+    sync_dusklight_face_inputs(ButtonLayoutPreset::SwapYB);
+}
+void select_swap_xyxb_preset(ModContext*,void*) {
+    if(g_buttonLayoutPreset!=0) svc_config->set_int(mod_ctx,g_buttonLayoutPreset,3);
+    sync_dusklight_face_inputs(ButtonLayoutPreset::SwapXYXB);
+}
 
 bool public_back_animation_selected(ModContext*,void*) {
     return cfg_bool(layout_handle4(g_backButtonAnim,g_swapBackButtonAnim,g_ybBackButtonAnim,g_xyxbBackButtonAnim),false) &&
@@ -5774,6 +5878,10 @@ ModResult mod_initialize(ModError* error) {
         rr=reg_bool("swapXYButtonLayout",false,g_swapXYButtonLayout,error);
         if(rr!=MOD_OK) return rr;
         rr=reg_int("buttonLayoutPreset",0,g_buttonLayoutPreset,error);
+        if(rr!=MOD_OK) return rr;
+        rr=reg_int("inputSyncLastPreset",-1,g_inputSyncLastPreset,error);
+        if(rr!=MOD_OK) return rr;
+        rr=reg_int("inputSyncControllerIndex",-1,g_inputSyncControllerIndex,error);
         if(rr!=MOD_OK) return rr;
 
         struct DevInt { const char* n; int64_t d; ConfigVarHandle* h; };
