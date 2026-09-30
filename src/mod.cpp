@@ -1645,7 +1645,9 @@ const ResTIMG* gc_b_face_texture() {
 const ResTIMG* gc_x_face_texture() {
     switch(current_layout_preset()) {
     case ButtonLayoutPreset::SwapXY:   return resource_timg(s_square);
-    case ButtonLayoutPreset::SwapXYXB: return gc_b_face_texture();
+    // Swap X/Y starts with Square on GC X, then X/B exchanges that Square
+    // with the original GC B face. GC X therefore becomes Circle.
+    case ButtonLayoutPreset::SwapXYXB: return resource_timg(s_circle);
     default:                            return resource_timg(s_triangle);
     }
 }
@@ -1654,8 +1656,10 @@ const ResTIMG* gc_y_face_texture() {
     case ButtonLayoutPreset::SwapXY:
     case ButtonLayoutPreset::SwapXYXB:
         return resource_timg(s_triangle);
+    // Base has Square on GC Y. Y/B exchanges that Square with GC B,
+    // therefore GC Y becomes Circle while GC B becomes Square.
     case ButtonLayoutPreset::SwapYB:
-        return gc_b_face_texture();
+        return resource_timg(s_circle);
     default:
         return resource_timg(s_square);
     }
@@ -3491,7 +3495,8 @@ HookAction before_outfont_draw_font(ModContext*, void* args, void*, void*) {
     }
 
     const ResTIMG* replacement = nullptr;
-    if (type == 2) replacement = resource_timg(s_analog);
+    if (type == 1) replacement = gc_b_face_texture(); // native GC B / Back slot
+    else if (type == 2) replacement = resource_timg(s_analog);
     else if (type == 3) replacement = resource_timg(s_l2);
     else if (type == 4) replacement = resource_timg(s_r2);
     // Inline item descriptions: native X/Y glyphs use font_02/font_03.
@@ -3529,7 +3534,7 @@ HookAction before_outfont_draw_font(ModContext*, void* args, void*, void*) {
             sx = w; sy = h;
         }
         return HOOK_CONTINUE;
-    }    if (type==5 || type==6) {
+    }    if (type==1 || type==5 || type==6) {
         // COutFont::draw applies the textbox ancestry scale, then subtracts
         // 2px (JPN) or 3px from X/Y glyph height. Compensate in final pixels.
         float scaleX=1.0f,scaleY=1.0f;
