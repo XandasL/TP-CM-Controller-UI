@@ -30,6 +30,7 @@ jobs:
 
   build:
     name: Build ${{matrix.platform}}
+    if: github.ref != 'refs/heads/twilit-compat-rebuild'
     needs: prepare
     runs-on: ${{matrix.runner}}
     strategy:
@@ -121,8 +122,61 @@ jobs:
           path: build/mods/*.dusk
           if-no-files-found: error
 
+  dev-build:
+    name: Build dev windows-amd64
+    if: github.ref == 'refs/heads/twilit-compat-rebuild'
+    needs: prepare
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Download shared banner
+        uses: actions/download-artifact@v8
+        with:
+          name: shared-banner-png
+          path: res
+
+      - name: Remove JPG banner source from distributable resources
+        shell: bash
+        run: rm -f res/banner.jpg
+
+      - name: Read pinned Dusklight version
+        id: dusklight
+        shell: bash
+        run: echo "version=$(sed -n 's/.*set(DUSKLIGHT_VERSION "\([^"]*\)").*/\1/p' CMakeLists.txt)" >> "$GITHUB_OUTPUT"
+
+      - name: Cache Dusklight sources
+        uses: actions/cache@v6
+        with:
+          path: dusklight
+          key: dusklight-Windows-${{steps.dusklight.outputs.version}}
+
+      - name: Enable Visual Studio environment
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: amd64
+
+      - name: Install ninja
+        run: choco install ninja
+
+      - name: Configure CMake (Developer)
+        shell: bash
+        run: cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=RelWithDebInfo -DTP_CLASSIC_DEV_OPTIONS=ON
+
+      - name: Build
+        run: cmake --build build --parallel
+
+      - name: Upload dev artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: mod-dev-windows-amd64
+          path: build/mods/*.dusk
+          if-no-files-found: error
+
   combine:
     name: Combine bundles
+    if: github.ref != 'refs/heads/twilit-compat-rebuild'
     needs: build
     runs-on: ubuntu-latest
     permissions:
