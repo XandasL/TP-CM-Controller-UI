@@ -761,6 +761,7 @@ DEFINE_HOOK(&dMeter2Draw_c::drawButtonCross, ButtonCrossDrawHook);
 DEFINE_HOOK(&CPaneMgr::paneTrans, PaneTransHook);
 DEFINE_HOOK(&J2DScreen::draw, ScreenDrawHook);
 DEFINE_HOOK(&dMenu_Collect2DTop_c::draw, CollectTopDrawHook);
+DEFINE_HOOK(&dMenu_Collect2D_c::_draw, CollectMainDrawHook);
 DEFINE_HOOK(&dDlst_FileSel_c::draw, FileSelDrawHook);
 DEFINE_HOOK(&COutFont_c::createPane, OutFontCreatePaneHook);
 DEFINE_HOOK(&COutFont_c::drawFont, OutFontDrawFontHook);
@@ -3760,6 +3761,18 @@ int classify_current_pikari() {
 }
 
 dMenu_Collect2D_c* s_compatCollectOwner = nullptr;
+dMenu_Collect2D_c* s_compatCollectMainOwner = nullptr;
+
+HookAction before_collect_main_draw(ModContext*, void* args, void*, void*) {
+    s_compatCollectMainOwner = args != nullptr ? mods::arg<dMenu_Collect2D_c*>(args, 0) : nullptr;
+    return HOOK_CONTINUE;
+}
+
+void after_collect_main_draw(ModContext*, void* args, void*, void*) {
+    dMenu_Collect2D_c* collect = args != nullptr ? mods::arg<dMenu_Collect2D_c*>(args, 0) : nullptr;
+    if (collect == s_compatCollectMainOwner)
+        s_compatCollectMainOwner = nullptr;
+}
 
 struct ScreenMutationFrame {
     J2DScreen* screen = nullptr;
@@ -3856,6 +3869,7 @@ HookAction before_screen_draw(ModContext* ctx, void* args, void* retval, void* u
     const bool nestedDraw = s_screenMutationDepth > 0;
     const bool protectedScreen =
         s_compatCollectOwner != nullptr ||
+        s_compatCollectMainOwner != nullptr ||
         compat_item_wheel_screen(screen) ||
         compat_twilit_quick_access_screen(screen);
 
@@ -4128,8 +4142,23 @@ ModResult mod_initialize(ModError* error) {
     s_buttonCrossHookInstalled = true;
 
     ModResult pt = mods::hook::add_pre<PaneTransHook>(svc_hook, before_pane_trans);
+    ModResult collectMainPre = mods::hook::add_pre<CollectMainDrawHook>(svc_hook, before_collect_main_draw);
+    if (collectMainPre != MOD_OK) {
+        mods::hook::uninstall<PaneTransHook>();
+        free_resources();
+        return mods::set_error(error, collectMainPre, "failed to install PRE hook for dMenu_Collect2D_c::_draw");
+    }
+    ModResult collectMainPost = mods::hook::add_post<CollectMainDrawHook>(svc_hook, after_collect_main_draw);
+    if (collectMainPost != MOD_OK) {
+        mods::hook::uninstall<CollectMainDrawHook>();
+        mods::hook::uninstall<PaneTransHook>();
+        free_resources();
+        return mods::set_error(error, collectMainPost, "failed to install POST hook for dMenu_Collect2D_c::_draw");
+    }
+
     ModResult collectTopPre = mods::hook::add_pre<CollectTopDrawHook>(svc_hook, before_collect_top_draw);
     if (collectTopPre != MOD_OK) {
+        mods::hook::uninstall<CollectMainDrawHook>();
         mods::hook::uninstall<PaneTransHook>();
         free_resources();
         return mods::set_error(error, collectTopPre, "failed to install PRE hook for dMenu_Collect2DTop_c::draw");
@@ -4137,6 +4166,7 @@ ModResult mod_initialize(ModError* error) {
     ModResult collectTopPost = mods::hook::add_post<CollectTopDrawHook>(svc_hook, after_collect_top_draw);
     if (collectTopPost != MOD_OK) {
         mods::hook::uninstall<CollectTopDrawHook>();
+        mods::hook::uninstall<CollectMainDrawHook>();
         mods::hook::uninstall<PaneTransHook>();
         free_resources();
         return mods::set_error(error, collectTopPost, "failed to install POST hook for dMenu_Collect2DTop_c::draw");
@@ -4209,6 +4239,7 @@ MOD_EXPORT ModResult mod_update(ModError*) { return MOD_OK; }
 
 MOD_EXPORT ModResult mod_shutdown(ModError*) {
     mods::hook::uninstall<CollectTopDrawHook>();
+    mods::hook::uninstall<CollectMainDrawHook>();
     mods::hook::uninstall<MeterButtonScreenInitHook>();
     if (s_buttonCrossHookInstalled) {
         mods::hook::uninstall<ButtonCrossDrawHook>();
