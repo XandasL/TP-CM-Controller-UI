@@ -321,22 +321,22 @@ void reset_layout(ModContext*, void*) {
     svc_config->set_int(mod_ctx,g_hudOrnamentX,20);
     svc_config->set_int(mod_ctx,g_hudOrnamentY,20);
     svc_config->set_int(mod_ctx,g_hudOrnamentScale,100);
-    svc_config->set_int(mod_ctx,g_wheelSquareX,0);
+    svc_config->set_int(mod_ctx,g_wheelSquareX,-170);
     svc_config->set_int(mod_ctx,g_wheelSquareY,-10);
-    svc_config->set_int(mod_ctx,g_wheelSquareScale,100);
-    svc_config->set_int(mod_ctx,g_wheelTriangleX,0);
+    svc_config->set_int(mod_ctx,g_wheelSquareScale,87);
+    svc_config->set_int(mod_ctx,g_wheelTriangleX,-100);
     svc_config->set_int(mod_ctx,g_wheelTriangleY,-40);
-    svc_config->set_int(mod_ctx,g_wheelTriangleScale,100);
-    svc_config->set_int(mod_ctx,g_wheelSelectAnalogX,0);
+    svc_config->set_int(mod_ctx,g_wheelTriangleScale,90);
+    svc_config->set_int(mod_ctx,g_wheelSelectAnalogX,50);
     svc_config->set_int(mod_ctx,g_wheelSelectAnalogY,0);
-    svc_config->set_int(mod_ctx,g_wheelSelectAnalogScale,100);
-    svc_config->set_int(mod_ctx,g_wheelDirectAnalogX,0);
+    svc_config->set_int(mod_ctx,g_wheelSelectAnalogScale,90);
+    svc_config->set_int(mod_ctx,g_wheelDirectAnalogX,100);
     svc_config->set_int(mod_ctx,g_wheelDirectAnalogY,0);
-    svc_config->set_int(mod_ctx,g_wheelDirectAnalogScale,100);
-    svc_config->set_int(mod_ctx,g_wheelL2X,80);
+    svc_config->set_int(mod_ctx,g_wheelDirectAnalogScale,90);
+    svc_config->set_int(mod_ctx,g_wheelL2X,250);
     svc_config->set_int(mod_ctx,g_wheelL2Y,-10);
-    svc_config->set_int(mod_ctx,g_wheelL2Scale,100);
-    svc_config->set_int(mod_ctx,g_wheelR2X,0);
+    svc_config->set_int(mod_ctx,g_wheelL2Scale,90);
+    svc_config->set_int(mod_ctx,g_wheelR2X,-130);
     svc_config->set_int(mod_ctx,g_wheelR2Y,0);
     svc_config->set_int(mod_ctx,g_wheelR2Scale,100);
     svc_config->set_int(mod_ctx,g_dungeonMapCrossX,-120);
@@ -4164,12 +4164,12 @@ ModResult mod_initialize(ModError* error) {
         {"mapBackTextX",230,&g_mapBackTextX},{"mapBackTextY",-240,&g_mapBackTextY},{"mapBackTextScale",75,&g_mapBackTextScale},
         {"mapOrnamentX",-300,&g_mapOrnamentX},{"mapOrnamentY",0,&g_mapOrnamentY},{"mapOrnamentScale",75,&g_mapOrnamentScale},
         {"hudOrnamentX",20,&g_hudOrnamentX},{"hudOrnamentY",20,&g_hudOrnamentY},{"hudOrnamentScale",100,&g_hudOrnamentScale},
-        {"wheelSquareX",0,&g_wheelSquareX},{"wheelSquareY",-10,&g_wheelSquareY},{"wheelSquareScale",100,&g_wheelSquareScale},
-        {"wheelTriangleX",0,&g_wheelTriangleX},{"wheelTriangleY",-40,&g_wheelTriangleY},{"wheelTriangleScale",100,&g_wheelTriangleScale},
-        {"wheelSelectAnalogX",0,&g_wheelSelectAnalogX},{"wheelSelectAnalogY",0,&g_wheelSelectAnalogY},{"wheelSelectAnalogScale",100,&g_wheelSelectAnalogScale},
-        {"wheelDirectAnalogX",0,&g_wheelDirectAnalogX},{"wheelDirectAnalogY",0,&g_wheelDirectAnalogY},{"wheelDirectAnalogScale",100,&g_wheelDirectAnalogScale},
-        {"wheelL2X",80,&g_wheelL2X},{"wheelL2Y",-10,&g_wheelL2Y},{"wheelL2Scale",100,&g_wheelL2Scale},
-        {"wheelR2X",0,&g_wheelR2X},{"wheelR2Y",0,&g_wheelR2Y},{"wheelR2Scale",100,&g_wheelR2Scale},
+        {"wheelSquareX",-170,&g_wheelSquareX},{"wheelSquareY",-10,&g_wheelSquareY},{"wheelSquareScale",87,&g_wheelSquareScale},
+        {"wheelTriangleX",-100,&g_wheelTriangleX},{"wheelTriangleY",-40,&g_wheelTriangleY},{"wheelTriangleScale",90,&g_wheelTriangleScale},
+        {"wheelSelectAnalogX",50,&g_wheelSelectAnalogX},{"wheelSelectAnalogY",0,&g_wheelSelectAnalogY},{"wheelSelectAnalogScale",90,&g_wheelSelectAnalogScale},
+        {"wheelDirectAnalogX",100,&g_wheelDirectAnalogX},{"wheelDirectAnalogY",0,&g_wheelDirectAnalogY},{"wheelDirectAnalogScale",90,&g_wheelDirectAnalogScale},
+        {"wheelL2X",250,&g_wheelL2X},{"wheelL2Y",-10,&g_wheelL2Y},{"wheelL2Scale",90,&g_wheelL2Scale},
+        {"wheelR2X",-130,&g_wheelR2X},{"wheelR2Y",0,&g_wheelR2Y},{"wheelR2Scale",100,&g_wheelR2Scale},
     };
     for (auto& v:vars) {
         ModResult rr=reg_int(v.n,v.d,*v.h,error);
