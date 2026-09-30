@@ -22,6 +22,8 @@
 #include "mods/svc/resource.h"
 #include "mods/svc/config.h"
 #include "mods/svc/ui.h"
+#include "dusk/config_var.hpp"
+#include <string_view>
 
 DEFINE_MOD();
 IMPORT_SERVICE(HookService, svc_hook);
@@ -31,6 +33,33 @@ IMPORT_SERVICE(ConfigService, svc_config);
 IMPORT_SERVICE(UiService, svc_ui);
 
 namespace {
+
+using HostGetConfigVarFn = dusk::config::ConfigVarBase* (*)(std::string_view);
+
+HostGetConfigVarFn host_get_config_var_for_compat() {
+    static HostGetConfigVarFn fn = nullptr;
+    static bool resolved = false;
+    if (!resolved) {
+        resolved = true;
+        void* addr = nullptr;
+        if (svc_hook != nullptr && mod_ctx != nullptr &&
+            svc_hook->resolve(mod_ctx, "dusk::config::GetConfigVar", &addr, nullptr) == MOD_OK) {
+            fn = reinterpret_cast<HostGetConfigVarFn>(addr);
+        }
+    }
+    return fn;
+}
+
+bool twilit_essentials_enabled() {
+    const auto getVar = host_get_config_var_for_compat();
+    if (getVar == nullptr) return false;
+
+    // Config IDs escape '.' as '_' and '_' as '__'.
+    const auto* var = getVar("mod.com_dusklight_twilit__essentials.enabled");
+    return var != nullptr
+        ? static_cast<const dusk::config::ConfigVar<bool>*>(var)->getValue()
+        : false;
+}
 
 ConfigVarHandle g_controllerStyle=0;
 bool s_controllerStyleLocked=false;
@@ -1888,7 +1917,9 @@ void after_meter_draw(ModContext*, void* args, void*, void*) {
     // v0.9.13 sword test: target the dynamically appended visible J2DPicture
     // instead of its mpItemB container.
 // Midna v0.9.8: leave the vanilla root alone and transform only its pictures.
-    if (meter->mpButtonMidona != nullptr) {
+    // When Twilit Essentials is active, it owns Midna's contextual layout and
+    // positioning. Do not apply TP Classic offsets/scaling on top of it.
+    if (!twilit_essentials_enabled() && meter->mpButtonMidona != nullptr) {
         adjust_midna_pictures(meter->mpButtonMidona->getPanePtr(),
             cfg_pos(g_midnaX,7.0f), cfg_pos(g_midnaY,-18.0f),
             cfg_scale(g_midnaScale,1.0f));
@@ -3584,10 +3615,15 @@ void after_meter_button_screen_init(ModContext*, void* args, void*, void*) {
     };
     for (u64 tag : fishingOldLayers)
         if (J2DPane* old = self->mpButtonScreen->search(tag)) old->hide();
-    // Contextual Midna jump Z prompt: preserve the portrait and root animation.
+    // Contextual Midna jump prompt.
+    // Twilit Essentials has its own Z/Midna prompt system (including its
+    // positioning, texture choice and visibility rules). If Essentials is
+    // enabled, leave this subtree completely untouched so its native style is
+    // preserved exactly instead of forcing TP Classic's R1 replacement.
     J2DPicture* jumpFace = as_picture(self->mpButtonScreen->search(MULTI_CHAR('zbtn')));
     const ResTIMG* r1 = resource_timg(s_r1);
-    if (jumpFace != nullptr && r1 != nullptr && r1->height != 0) {
+    if (!twilit_essentials_enabled() &&
+        jumpFace != nullptr && r1 != nullptr && r1->height != 0) {
         replace_picture_texture(jumpFace, r1);
         jumpFace->setBlackWhite(JUtility::TColor(0, 0, 0, 0),
                                JUtility::TColor(255, 255, 255, 255));
