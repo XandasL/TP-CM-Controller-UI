@@ -7,7 +7,7 @@ if (NOT DEFINED CMAKE_BUILD_TYPE AND NOT DEFINED ENV{CMAKE_BUILD_TYPE})
     set(CMAKE_BUILD_TYPE "RelWithDebInfo" CACHE STRING "Build type")
 endif ()
 
-project(tp_classic_modern_controller_ui VERSION 1.1.0 LANGUAGES CXX)
+project(tp_classic_modern_controller_ui VERSION 1.1.1 LANGUAGES CXX)
 
 # Internal calibration UI. Public/release builds leave this OFF so users get
 # the authored layout while developers can still expose every positioning
