@@ -7,7 +7,7 @@ if (NOT DEFINED CMAKE_BUILD_TYPE AND NOT DEFINED ENV{CMAKE_BUILD_TYPE})
     set(CMAKE_BUILD_TYPE "RelWithDebInfo" CACHE STRING "Build type")
 endif ()
 
-project(tp_classic_modern_controller_ui VERSION 1.0.0 LANGUAGES CXX)
+project(tp_classic_modern_controller_ui VERSION 1.1.0 LANGUAGES CXX)
 
 # Pin the same Dusklight SDK revision used and tested during development.
 # The official mod-template workflow will compile this source for every supported platform.

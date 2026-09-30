@@ -4464,7 +4464,7 @@ ModResult mod_initialize(ModError* error) {
         return mods::set_error(error,MOD_ERROR,"failed to register Classic Buttons menu tab");
 
     if (svc_log != nullptr)
-        svc_log->info(mod_ctx, "TP Classic Modern Controller UI v1.0.0 starting - by XandasLegend");
+        svc_log->info(mod_ctx, "TP Classic Modern Controller UI v1.1.0 starting - by XandasLegend");
 
     if (svc_hook == nullptr)
         return mods::set_error(error, MOD_ERROR, "HookService unavailable");
