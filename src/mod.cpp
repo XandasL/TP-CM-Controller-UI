@@ -1022,16 +1022,6 @@ ResourceBuffer s_circle = RESOURCE_BUFFER_INIT;
 ResourceBuffer s_square = RESOURCE_BUFFER_INIT;
 ResourceBuffer s_triangle = RESOURCE_BUFFER_INIT;
 
-// X/Y are treated as GameCube slots. The experimental layout option swaps only
-// the modern face assigned to each slot; game functions, items and per-slot
-// X/Y/Scale config handles remain unchanged.
-const ResTIMG* gc_x_face_texture() {
-    return resource_timg(cfg_bool(g_swapXYButtonLayout,false) ? s_square : s_triangle);
-}
-const ResTIMG* gc_y_face_texture() {
-    return resource_timg(cfg_bool(g_swapXYButtonLayout,false) ? s_triangle : s_square);
-}
-
 ResourceBuffer s_guide = RESOURCE_BUFFER_INIT;
 ResourceBuffer s_r1 = RESOURCE_BUFFER_INIT;
 ResourceBuffer s_r1_hud = RESOURCE_BUFFER_INIT;
@@ -1137,6 +1127,16 @@ const ResTIMG* resource_timg(const ResourceBuffer& requested) {
     const ResourceBuffer& buffer=*selected;
     if (buffer.data == nullptr || buffer.size < 0x20) return nullptr;
     return reinterpret_cast<const ResTIMG*>(buffer.data);
+}
+
+// X/Y are treated as GameCube slots. The experimental layout option swaps only
+// the modern face assigned to each slot; game functions, items and per-slot
+// X/Y/Scale config handles remain unchanged.
+const ResTIMG* gc_x_face_texture() {
+    return resource_timg(cfg_bool(g_swapXYButtonLayout,false) ? s_square : s_triangle);
+}
+const ResTIMG* gc_y_face_texture() {
+    return resource_timg(cfg_bool(g_swapXYButtonLayout,false) ? s_triangle : s_square);
 }
 
 // Twilit Essentials does not currently expose a public "is mod enabled" API/service.
