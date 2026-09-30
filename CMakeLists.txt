@@ -9,6 +9,11 @@ endif ()
 
 project(tp_classic_modern_controller_ui VERSION 1.1.0 LANGUAGES CXX)
 
+# Internal calibration UI. Public/release builds leave this OFF so users get
+# the authored layout while developers can still expose every positioning
+# control locally with -DTP_CLASSIC_DEV_OPTIONS=ON.
+option(TP_CLASSIC_DEV_OPTIONS "Enable internal HUD calibration/editor controls" OFF)
+
 # Pin the same Dusklight SDK revision used and tested during development.
 # The official mod-template workflow will compile this source for every supported platform.
 if (NOT DUSKLIGHT_VERSION)
@@ -26,3 +31,7 @@ add_mod(tp_classic_modern_controller_ui
     MOD_JSON "${CMAKE_CURRENT_BINARY_DIR}/mod.json"
     RES_DIR res
 )
+
+if (TP_CLASSIC_DEV_OPTIONS)
+    target_compile_definitions(tp_classic_modern_controller_ui PRIVATE TP_CLASSIC_DEV_OPTIONS=1)
+endif ()

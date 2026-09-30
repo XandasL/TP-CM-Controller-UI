@@ -32,6 +32,12 @@ IMPORT_SERVICE(UiService, svc_ui);
 
 namespace {
 
+#if defined(TP_CLASSIC_DEV_OPTIONS)
+constexpr bool kDeveloperOptions = true;
+#else
+constexpr bool kDeveloperOptions = false;
+#endif
+
 ConfigVarHandle g_controllerStyle=0;
 ConfigVarHandle g_layoutSchemaVersion=0;
 bool s_controllerStyleLocked=false;
@@ -787,7 +793,11 @@ ModResult build_layout_panel(ModContext*,UiElementHandle pane,void*,ModError*) {
     style.label="Xbox"; style.on_pressed=select_xbox; style.is_selected=xbox_selected;
     svc_ui->pane_add_control(mod_ctx,pane,&style,nullptr);
 
-    svc_ui->pane_add_text(mod_ctx,pane,"Open the CONTROLLER UI tab in the menu to access the editor organized by category.",nullptr);
+    if (kDeveloperOptions) {
+        svc_ui->pane_add_text(mod_ctx,pane,"Developer build: open the CONTROLLER UI tab for internal HUD calibration controls.",nullptr);
+    } else {
+        svc_ui->pane_add_text(mod_ctx,pane,"The HUD layout uses the calibrated release defaults.",nullptr);
+    }
     return MOD_OK;
 }
 
@@ -4457,14 +4467,19 @@ ModResult mod_initialize(ModError* error) {
     panel.build=build_layout_panel;
     if(svc_ui->register_mods_panel(mod_ctx,&panel)!=MOD_OK)
         return mods::set_error(error,MOD_ERROR,"failed to register layout editor panel");
-    UiMenuTabDesc menuTab=UI_MENU_TAB_DESC_INIT;
-    menuTab.label="CONTROLLER UI";
-    menuTab.on_selected=open_layout_window;
-    if(svc_ui->register_menu_tab(mod_ctx,&menuTab,&g_menuTab)!=MOD_OK)
-        return mods::set_error(error,MOD_ERROR,"failed to register Classic Buttons menu tab");
+    if (kDeveloperOptions) {
+        UiMenuTabDesc menuTab=UI_MENU_TAB_DESC_INIT;
+        menuTab.label="CONTROLLER UI";
+        menuTab.on_selected=open_layout_window;
+        if(svc_ui->register_menu_tab(mod_ctx,&menuTab,&g_menuTab)!=MOD_OK)
+            return mods::set_error(error,MOD_ERROR,"failed to register Classic Buttons developer menu tab");
+    }
 
-    if (svc_log != nullptr)
+    if (svc_log != nullptr) {
         svc_log->info(mod_ctx, "TP Classic Modern Controller UI v1.1.0 starting - by XandasLegend");
+        if (kDeveloperOptions)
+            svc_log->info(mod_ctx, "Developer HUD calibration options enabled");
+    }
 
     if (svc_hook == nullptr)
         return mods::set_error(error, MOD_ERROR, "HookService unavailable");
