@@ -9,6 +9,7 @@
 #include "d/d_meter_HIO.h"
 #include "d/d_meter2_info.h"
 #include "d/d_menu_ring.h"
+#include "d/d_menu_item_explain.h"
 #include "d/d_menu_collect.h"
 #include "d/d_item_data.h"
 #include "d/d_pane_class.h"
@@ -3961,14 +3962,13 @@ HookAction before_ring_controller_overlay(ModContext*, void* args, void*, void*)
 
     s_ringDrawOwner=ring;
 
-    // When the wolf Item Wheel opens an item explanation/message, the vanilla
-    // ring fades its control prompt group. Our independent overlays are drawn
-    // outside that tree, so they would otherwise stay visible over the message.
-    // In explanation states, leave the wolf wheel entirely to the vanilla draw;
-    // the native prompt alpha/visibility then behaves correctly.
-    if (ring->mPlayerIsWolf &&
-        (ring->mStatus == dMenu_Ring_c::STATUS_EXPLAIN ||
-         ring->mStatus == dMenu_Ring_c::STATUS_EXPLAIN_FORCE)) {
+    // The explanation window owns its own state machine. Checking the ring's
+    // mStatus is not sufficient: the item-description panel can remain visible
+    // while the ring itself has already returned to another status. Because our
+    // controller icons are independent overlays, suppress them whenever the
+    // actual dMenu_ItemExplain_c window is active. This applies to both human
+    // and wolf Item Wheels and covers opening, fully-open and closing states.
+    if (ring->mpItemExplain != nullptr && ring->mpItemExplain->getStatus() != 0) {
         s_ringDrawOwner=nullptr;
         return HOOK_CONTINUE;
     }
