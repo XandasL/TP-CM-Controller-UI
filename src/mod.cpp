@@ -2513,8 +2513,8 @@ static void adjust_sword_picture(J2DPicture* pane,float dx,float dy,float sc) {
 struct MidnaPictureState {
     J2DPane* pane = nullptr;
     JGeometry::TBox2<f32> base{};
-    float baseParentScaleX = 1.0f;
-    float baseParentScaleY = 1.0f;
+    float baseGlobalWidth = 0.0f;
+    float baseGlobalHeight = 0.0f;
     float lastDx = 0.0f, lastDy = 0.0f, lastScale = 1.0f;
     bool captured = false;
 };
@@ -2574,7 +2574,19 @@ static MidnaPictureState* midna_state_for(J2DPane* pane) {
 
     st.pane=pane;
     st.base=pane->getBounds();
-    midna_parent_scale(pane,st.baseParentScaleX,st.baseParentScaleY);
+    const auto& gb=pane->getGlbBounds();
+    st.baseGlobalWidth=gb.getWidth();
+    st.baseGlobalHeight=gb.getHeight();
+
+    // Fallback for the rare case where global bounds have not been evaluated
+    // yet on the first clean HUD frame.
+    if (fabsf(st.baseGlobalWidth)<0.0001f || fabsf(st.baseGlobalHeight)<0.0001f) {
+        float psx=1.0f,psy=1.0f;
+        midna_parent_scale(pane,psx,psy);
+        st.baseGlobalWidth=st.base.getWidth()*fabsf(psx);
+        st.baseGlobalHeight=st.base.getHeight()*fabsf(psy);
+    }
+
     st.lastDx=st.lastDy=0.0f;
     st.lastScale=1.0f;
     st.captured=true;
@@ -2607,19 +2619,32 @@ static void adjust_midna_pictures(J2DPane* pane,float dx,float dy,float sc) {
 
         const float nbw=st->base.getWidth(), nbh=st->base.getHeight();
 
-        // The game animates/scales Midna's parent/root across area transitions.
-        // Keep the configured visual size stable by compensating only the local
-        // picture bounds for the current ancestor scale. We intentionally do
-        // not touch parent transforms, alpha or visibility.
-        float parentScaleX=1.0f,parentScaleY=1.0f;
-        midna_parent_scale(pane,parentScaleX,parentScaleY);
-        float compensateX=st->baseParentScaleX/parentScaleX;
-        float compensateY=st->baseParentScaleY/parentScaleY;
-        if (!std::isfinite(compensateX) || fabsf(compensateX)<0.0001f) compensateX=1.0f;
-        if (!std::isfinite(compensateY) || fabsf(compensateY)<0.0001f) compensateY=1.0f;
+        // Stabilize against the FINAL J2D result rather than trying to infer
+        // which ancestor scale/animation changed. Cutscenes can leave a
+        // transform matrix active that is not represented cleanly by the
+        // individual getScaleX()/getScaleY() values.
+        const auto& globalNow=pane->getGlbBounds();
+        const auto& localNow=pane->getBounds();
+        const float globalW=fabsf(globalNow.getWidth());
+        const float globalH=fabsf(globalNow.getHeight());
+        const float targetGlobalW=fabsf(st->baseGlobalWidth*sc);
+        const float targetGlobalH=fabsf(st->baseGlobalHeight*sc);
 
-        const float nw=nbw*sc*compensateX;
-        const float nh=nbh*sc*compensateY;
+        float nw=nbw*sc;
+        float nh=nbh*sc;
+
+        if (globalW>0.0001f && globalH>0.0001f &&
+            targetGlobalW>0.0001f && targetGlobalH>0.0001f) {
+            const float fx=targetGlobalW/globalW;
+            const float fy=targetGlobalH/globalH;
+            if (std::isfinite(fx) && fx>0.0001f)
+                nw=fabsf(localNow.getWidth())*fx;
+            if (std::isfinite(fy) && fy>0.0001f)
+                nh=fabsf(localNow.getHeight())*fy;
+        }
+
+        // Keep the canonical local center/offset; only the local dimensions are
+        // compensated. Parent visibility/alpha/animation remain vanilla.
         pane->move(st->base.i.x+dx-(nw-nbw)*0.5f,
                    st->base.i.y+dy-(nh-nbh)*0.5f);
         pane->resize(nw,nh);
