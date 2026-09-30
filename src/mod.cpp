@@ -214,8 +214,8 @@ void apply_layout_schema_migrations() {
     migrate_int_default(g_wheelR2X,               0,  -130, migratedCount);
 
     svc_config->set_int(mod_ctx, g_layoutSchemaVersion, 1);
-    if (svc_log != nullptr)
-        svc_log->info(mod_ctx, "Layout config migrated to schema 1 ({} values updated)", migratedCount);
+    if (svc_log != nullptr && migratedCount > 0)
+        svc_log->info(mod_ctx, "Layout config migrated to schema 1");
 }
 void add_num(UiElementHandle pane,const char* label,ConfigVarHandle h,int64_t mn,int64_t mx,int64_t step,const char* suffix,const char* help) {
     UiControlDesc c=UI_CONTROL_DESC_INIT;
