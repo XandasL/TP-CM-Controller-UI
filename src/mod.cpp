@@ -3823,7 +3823,12 @@ void ring_add_draw_target(J2DPane* anchor, const ResTIMG* texture,
     t.shoulder=shoulder;
     t.maxSquare=maxSquare;
     t.bounds=anchor->getGlbBounds();
-    t.alpha=pane_effective_alpha(anchor);
+    // The vanilla Item Wheel fades several parent panes even when the
+    // controller prompt itself should be fully legible. Multiplying the entire
+    // parent alpha chain made our independent PS/Xbox overlays look washed out.
+    // Visibility is still respected above; once visible, draw controller art at
+    // full opacity just like the original TP Classic textures.
+    t.alpha=255;
     t.active=t.bounds.getWidth()>0.0f && t.bounds.getHeight()>0.0f;
 }
 
