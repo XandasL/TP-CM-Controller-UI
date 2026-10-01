@@ -446,6 +446,56 @@ void apply_layout_schema_migrations() {
         schemaVersion=4;
     }
 
+    if (schemaVersion < 5) {
+        migrate_int_default(g_whistleActionX,250,460,migratedCount);
+        migrate_int_default(g_whistleActionY,220,840,migratedCount);
+        migrate_int_default(g_whistleBackX,820,910,migratedCount);
+        migrate_int_default(g_whistleBackY,-350,310,migratedCount);
+
+        migrate_int_default(g_swapWhistleActionX,250,460,migratedCount);
+        migrate_int_default(g_swapWhistleActionY,220,840,migratedCount);
+        migrate_int_default(g_swapWhistleBackX,820,910,migratedCount);
+        migrate_int_default(g_swapWhistleBackY,-350,310,migratedCount);
+
+        migrate_int_default(g_ybTriX,962,1467,migratedCount);
+        migrate_int_default(g_ybCircleX,1505,997,migratedCount);
+        migrate_int_default(g_ybItemTriangleX,220,880,migratedCount);
+        migrate_int_default(g_ybSwordX,83,14,migratedCount);
+        migrate_int_default(g_ybSwordY,-52,-40,migratedCount);
+        migrate_int_default(g_ybBackTextX,820,310,migratedCount);
+        migrate_int_default(g_ybBackTextY,-350,-345,migratedCount);
+        migrate_int_default(g_ybWhistleActionX,250,460,migratedCount);
+        migrate_int_default(g_ybWhistleActionY,220,840,migratedCount);
+        migrate_int_default(g_ybWhistleBackX,820,410,migratedCount);
+        migrate_int_default(g_ybWhistleBackY,-350,300,migratedCount);
+        migrate_int_default(g_ybHowlBackX,910,400,migratedCount);
+        migrate_int_default(g_ybShopBackX,900,400,migratedCount);
+        migrate_int_default(g_ybWolfDigX,490,1000,migratedCount);
+        migrate_int_default(g_ybWheelSquareX,-170,-430,migratedCount);
+        migrate_int_default(g_ybWheelTriangleX,-100,160,migratedCount);
+
+        migrate_int_default(g_xyxbCircleX,1505,997,migratedCount);
+        migrate_int_default(g_xyxbSquareX,971,1477,migratedCount);
+        migrate_int_default(g_xyxbSquareY,380,379,migratedCount);
+        migrate_int_default(g_xyxbItemSquareX,-690,-30,migratedCount);
+        migrate_int_default(g_xyxbSwordX,83,14,migratedCount);
+        migrate_int_default(g_xyxbSwordY,-52,-40,migratedCount);
+        migrate_int_default(g_xyxbBackTextX,820,310,migratedCount);
+        migrate_int_default(g_xyxbBackTextY,-350,-345,migratedCount);
+        migrate_int_default(g_xyxbWolfSenseX,-920,-400,migratedCount);
+        migrate_int_default(g_xyxbWhistleActionX,250,460,migratedCount);
+        migrate_int_default(g_xyxbWhistleActionY,220,840,migratedCount);
+        migrate_int_default(g_xyxbWhistleBackX,820,410,migratedCount);
+        migrate_int_default(g_xyxbWhistleBackY,-350,300,migratedCount);
+        migrate_int_default(g_xyxbHowlBackX,910,400,migratedCount);
+        migrate_int_default(g_xyxbShopBackX,900,400,migratedCount);
+        migrate_int_default(g_xyxbWheelSquareX,-430,-170,migratedCount);
+        migrate_int_default(g_xyxbWheelTriangleX,160,-100,migratedCount);
+
+        svc_config->set_int(mod_ctx,g_layoutSchemaVersion,5);
+        schemaVersion=5;
+    }
+
     if (svc_log != nullptr && migratedCount > 0)
         svc_log->info(mod_ctx, "Layout config migrated to latest schema");
 }
@@ -548,8 +598,8 @@ void reset_layout(ModContext*, void*) {
     svc_config->set_int(mod_ctx,g_actionTextScale,55);
     svc_config->set_int(mod_ctx,g_dialogActionTextX,200);
     svc_config->set_int(mod_ctx,g_dialogActionTextY,480);
-    svc_config->set_int(mod_ctx,g_whistleActionX,250); svc_config->set_int(mod_ctx,g_whistleActionY,220); svc_config->set_int(mod_ctx,g_whistleActionScale,55);
-    svc_config->set_int(mod_ctx,g_whistleBackX,820); svc_config->set_int(mod_ctx,g_whistleBackY,-350); svc_config->set_int(mod_ctx,g_whistleBackScale,55);
+    svc_config->set_int(mod_ctx,g_whistleActionX,460); svc_config->set_int(mod_ctx,g_whistleActionY,840); svc_config->set_int(mod_ctx,g_whistleActionScale,55);
+    svc_config->set_int(mod_ctx,g_whistleBackX,910); svc_config->set_int(mod_ctx,g_whistleBackY,310); svc_config->set_int(mod_ctx,g_whistleBackScale,55);
     svc_config->set_int(mod_ctx,g_backTextX,820);
     svc_config->set_int(mod_ctx,g_backTextY,-350);
     svc_config->set_int(mod_ctx,g_backTextScale,55);
@@ -650,8 +700,8 @@ void reset_layout(ModContext*, void*) {
     svc_config->set_bool(mod_ctx,g_actionGlowEnabled,true);
     svc_config->set_bool(mod_ctx,g_backGlowEnabled,true);
     svc_config->set_bool(mod_ctx,g_glowPreview,false);
-    svc_config->set_bool(mod_ctx,g_wolfXGlowEnabled,true);
-    svc_config->set_bool(mod_ctx,g_wolfYGlowEnabled,true);
+    svc_config->set_bool(mod_ctx,g_wolfXGlowEnabled,false);
+    svc_config->set_bool(mod_ctx,g_wolfYGlowEnabled,false);
     svc_config->set_bool(mod_ctx,g_wolfGlowPreview,false);
     svc_config->set_bool(mod_ctx,g_backButtonAnim,false);
     svc_config->set_bool(mod_ctx,g_backTextAnim,false);
@@ -671,8 +721,8 @@ void reset_layout(ModContext*, void*) {
         svc_config->set_int(mod_ctx,g_swapItemTriangleX,480); svc_config->set_int(mod_ctx,g_swapItemTriangleY,-30); svc_config->set_int(mod_ctx,g_swapItemTriangleScale,50);
         svc_config->set_int(mod_ctx,g_swapDialogActionTextX,200); svc_config->set_int(mod_ctx,g_swapDialogActionTextY,480);
         svc_config->set_bool(mod_ctx,g_swapBackButtonAnim,false); svc_config->set_bool(mod_ctx,g_swapBackTextAnim,false);
-        svc_config->set_int(mod_ctx,g_swapWhistleActionX,250); svc_config->set_int(mod_ctx,g_swapWhistleActionY,220); svc_config->set_int(mod_ctx,g_swapWhistleActionScale,55);
-        svc_config->set_int(mod_ctx,g_swapWhistleBackX,820); svc_config->set_int(mod_ctx,g_swapWhistleBackY,-350); svc_config->set_int(mod_ctx,g_swapWhistleBackScale,55);
+        svc_config->set_int(mod_ctx,g_swapWhistleActionX,460); svc_config->set_int(mod_ctx,g_swapWhistleActionY,840); svc_config->set_int(mod_ctx,g_swapWhistleActionScale,55);
+        svc_config->set_int(mod_ctx,g_swapWhistleBackX,910); svc_config->set_int(mod_ctx,g_swapWhistleBackY,310); svc_config->set_int(mod_ctx,g_swapWhistleBackScale,55);
         svc_config->set_int(mod_ctx,g_swapHowlActionX,440); svc_config->set_int(mod_ctx,g_swapHowlActionY,830); svc_config->set_int(mod_ctx,g_swapHowlActionScale,65);
         svc_config->set_int(mod_ctx,g_swapHowlBackX,910); svc_config->set_int(mod_ctx,g_swapHowlBackY,300); svc_config->set_int(mod_ctx,g_swapHowlBackScale,65);
         svc_config->set_int(mod_ctx,g_swapShopActionX,450); svc_config->set_int(mod_ctx,g_swapShopActionY,830); svc_config->set_int(mod_ctx,g_swapShopActionScale,65);
@@ -688,24 +738,24 @@ void reset_layout(ModContext*, void*) {
         svc_config->set_bool(mod_ctx,g_swapWolfXGlowEnabled,true); svc_config->set_bool(mod_ctx,g_swapWolfYGlowEnabled,true);
         svc_config->set_int(mod_ctx,g_ybDialogActionTextX,200); svc_config->set_int(mod_ctx,g_ybDialogActionTextY,480);
         svc_config->set_bool(mod_ctx,g_ybBackButtonAnim,false); svc_config->set_bool(mod_ctx,g_ybBackTextAnim,false);
-        svc_config->set_int(mod_ctx,g_ybWhistleActionX,250); svc_config->set_int(mod_ctx,g_ybWhistleActionY,220); svc_config->set_int(mod_ctx,g_ybWhistleActionScale,55);
-        svc_config->set_int(mod_ctx,g_ybWhistleBackX,820); svc_config->set_int(mod_ctx,g_ybWhistleBackY,-350); svc_config->set_int(mod_ctx,g_ybWhistleBackScale,55);
+        svc_config->set_int(mod_ctx,g_ybWhistleActionX,460); svc_config->set_int(mod_ctx,g_ybWhistleActionY,840); svc_config->set_int(mod_ctx,g_ybWhistleActionScale,55);
+        svc_config->set_int(mod_ctx,g_ybWhistleBackX,410); svc_config->set_int(mod_ctx,g_ybWhistleBackY,300); svc_config->set_int(mod_ctx,g_ybWhistleBackScale,55);
         svc_config->set_int(mod_ctx,g_ybHowlActionX,440); svc_config->set_int(mod_ctx,g_ybHowlActionY,830); svc_config->set_int(mod_ctx,g_ybHowlActionScale,65);
-        svc_config->set_int(mod_ctx,g_ybHowlBackX,910); svc_config->set_int(mod_ctx,g_ybHowlBackY,300); svc_config->set_int(mod_ctx,g_ybHowlBackScale,65);
+        svc_config->set_int(mod_ctx,g_ybHowlBackX,400); svc_config->set_int(mod_ctx,g_ybHowlBackY,300); svc_config->set_int(mod_ctx,g_ybHowlBackScale,65);
         svc_config->set_int(mod_ctx,g_ybShopActionX,450); svc_config->set_int(mod_ctx,g_ybShopActionY,830); svc_config->set_int(mod_ctx,g_ybShopActionScale,65);
-        svc_config->set_int(mod_ctx,g_ybShopBackX,900); svc_config->set_int(mod_ctx,g_ybShopBackY,300); svc_config->set_int(mod_ctx,g_ybShopBackScale,65);
+        svc_config->set_int(mod_ctx,g_ybShopBackX,400); svc_config->set_int(mod_ctx,g_ybShopBackY,300); svc_config->set_int(mod_ctx,g_ybShopBackScale,65);
         svc_config->set_int(mod_ctx,g_xyxbDialogActionTextX,200); svc_config->set_int(mod_ctx,g_xyxbDialogActionTextY,480);
         svc_config->set_bool(mod_ctx,g_xyxbBackButtonAnim,false); svc_config->set_bool(mod_ctx,g_xyxbBackTextAnim,false);
-        svc_config->set_int(mod_ctx,g_xyxbWhistleActionX,250); svc_config->set_int(mod_ctx,g_xyxbWhistleActionY,220); svc_config->set_int(mod_ctx,g_xyxbWhistleActionScale,55);
-        svc_config->set_int(mod_ctx,g_xyxbWhistleBackX,820); svc_config->set_int(mod_ctx,g_xyxbWhistleBackY,-350); svc_config->set_int(mod_ctx,g_xyxbWhistleBackScale,55);
+        svc_config->set_int(mod_ctx,g_xyxbWhistleActionX,460); svc_config->set_int(mod_ctx,g_xyxbWhistleActionY,840); svc_config->set_int(mod_ctx,g_xyxbWhistleActionScale,55);
+        svc_config->set_int(mod_ctx,g_xyxbWhistleBackX,410); svc_config->set_int(mod_ctx,g_xyxbWhistleBackY,300); svc_config->set_int(mod_ctx,g_xyxbWhistleBackScale,55);
         svc_config->set_int(mod_ctx,g_xyxbHowlActionX,440); svc_config->set_int(mod_ctx,g_xyxbHowlActionY,830); svc_config->set_int(mod_ctx,g_xyxbHowlActionScale,65);
-        svc_config->set_int(mod_ctx,g_xyxbHowlBackX,910); svc_config->set_int(mod_ctx,g_xyxbHowlBackY,300); svc_config->set_int(mod_ctx,g_xyxbHowlBackScale,65);
+        svc_config->set_int(mod_ctx,g_xyxbHowlBackX,400); svc_config->set_int(mod_ctx,g_xyxbHowlBackY,300); svc_config->set_int(mod_ctx,g_xyxbHowlBackScale,65);
         svc_config->set_int(mod_ctx,g_xyxbShopActionX,450); svc_config->set_int(mod_ctx,g_xyxbShopActionY,830); svc_config->set_int(mod_ctx,g_xyxbShopActionScale,65);
-        svc_config->set_int(mod_ctx,g_xyxbShopBackX,900); svc_config->set_int(mod_ctx,g_xyxbShopBackY,300); svc_config->set_int(mod_ctx,g_xyxbShopBackScale,65);
-        svc_config->set_int(mod_ctx,g_ybBackTextX,820); svc_config->set_int(mod_ctx,g_ybBackTextY,-350); svc_config->set_int(mod_ctx,g_ybBackTextScale,55);
+        svc_config->set_int(mod_ctx,g_xyxbShopBackX,400); svc_config->set_int(mod_ctx,g_xyxbShopBackY,300); svc_config->set_int(mod_ctx,g_xyxbShopBackScale,65);
+        svc_config->set_int(mod_ctx,g_ybBackTextX,310); svc_config->set_int(mod_ctx,g_ybBackTextY,-345); svc_config->set_int(mod_ctx,g_ybBackTextScale,55);
         svc_config->set_int(mod_ctx,g_ybBackGlowX,10); svc_config->set_int(mod_ctx,g_ybBackGlowY,30); svc_config->set_int(mod_ctx,g_ybBackGlowScale,100);
         svc_config->set_bool(mod_ctx,g_ybBackGlowEnabled,true);
-        svc_config->set_int(mod_ctx,g_xyxbBackTextX,820); svc_config->set_int(mod_ctx,g_xyxbBackTextY,-350); svc_config->set_int(mod_ctx,g_xyxbBackTextScale,55);
+        svc_config->set_int(mod_ctx,g_xyxbBackTextX,310); svc_config->set_int(mod_ctx,g_xyxbBackTextY,-345); svc_config->set_int(mod_ctx,g_xyxbBackTextScale,55);
         svc_config->set_int(mod_ctx,g_xyxbBackGlowX,10); svc_config->set_int(mod_ctx,g_xyxbBackGlowY,30); svc_config->set_int(mod_ctx,g_xyxbBackGlowScale,100);
         svc_config->set_bool(mod_ctx,g_xyxbBackGlowEnabled,true);
     }
@@ -1790,7 +1840,6 @@ ModResult build_public_general_panel(ModContext*,UiWindowHandle,UiElementHandle 
     svc_ui->pane_add_section(mod_ctx,pane,"D-Pad");
     add_toggle(pane,"Orange Direction Arrows",g_dpadArrowsEnabled,"Show or hide the orange D-Pad direction indicators.");
     add_toggle(pane,"D-Pad Shadows",g_dpadShadowsEnabled,"Show or hide the original D-Pad shadow/ring layers.");
-    add_toggle(pane,"Map Rise Animation",g_dpadMapAnimation,"Keep the original Items/Map rise animation.");
 
     svc_ui->pane_add_section(mod_ctx,pane,"World Map");
     add_toggle(pane,"World Map Arrows",g_worldArrows,"Show or hide the World Map directional arrows.");
@@ -1809,14 +1858,6 @@ ModResult build_public_effects_panel(ModContext*,UiWindowHandle,UiElementHandle 
     hudGlows.is_selected=public_hud_glows_selected;
     svc_ui->pane_add_control(mod_ctx,pane,&hudGlows,nullptr);
 
-    svc_ui->pane_add_section(mod_ctx,pane,"Dialogue");
-    UiControlDesc backAnimation=UI_CONTROL_DESC_INIT;
-    backAnimation.kind=UI_CONTROL_BUTTON;
-    backAnimation.label="Back Prompt Animation";
-    backAnimation.help_rml="Enable or disable the original back-button and back-text dialogue animations together.";
-    backAnimation.on_pressed=toggle_public_back_animation;
-    backAnimation.is_selected=public_back_animation_selected;
-    svc_ui->pane_add_control(mod_ctx,pane,&backAnimation,nullptr);
     return MOD_OK;
 }
 
@@ -5822,8 +5863,8 @@ ModResult mod_initialize(ModError* error) {
         {"shopBackX",900,&g_shopBackX},{"shopBackY",300,&g_shopBackY},{"shopBackScale",65,&g_shopBackScale},
         {"actionTextX",250,&g_actionTextX},{"actionTextY",220,&g_actionTextY},{"actionTextScale",55,&g_actionTextScale},
         {"dialogActionTextX",200,&g_dialogActionTextX},{"dialogActionTextY",480,&g_dialogActionTextY},
-        {"whistleActionX",250,&g_whistleActionX},{"whistleActionY",220,&g_whistleActionY},{"whistleActionScale",55,&g_whistleActionScale},
-        {"whistleBackX",820,&g_whistleBackX},{"whistleBackY",-350,&g_whistleBackY},{"whistleBackScale",55,&g_whistleBackScale},
+        {"whistleActionX",460,&g_whistleActionX},{"whistleActionY",840,&g_whistleActionY},{"whistleActionScale",55,&g_whistleActionScale},
+        {"whistleBackX",910,&g_whistleBackX},{"whistleBackY",310,&g_whistleBackY},{"whistleBackScale",55,&g_whistleBackScale},
         {"backTextX",820,&g_backTextX},{"backTextY",-350,&g_backTextY},{"backTextScale",55,&g_backTextScale},
         {"wolfSenseX",-670,&g_wolfSenseX},{"wolfSenseY",-760,&g_wolfSenseY},{"wolfSenseScale",55,&g_wolfSenseScale},
         {"wolfDigX",490,&g_wolfDigX},{"wolfDigY",575,&g_wolfDigY},{"wolfDigScale",55,&g_wolfDigScale},
@@ -5866,8 +5907,8 @@ ModResult mod_initialize(ModError* error) {
         rr=reg_bool("actionGlowEnabled",true,g_actionGlowEnabled,error); if(rr!=MOD_OK) return rr;
         rr=reg_bool("backGlowEnabled",true,g_backGlowEnabled,error); if(rr!=MOD_OK) return rr;
         rr=reg_bool("glowAdjustmentPreview",false,g_glowPreview,error); if(rr!=MOD_OK) return rr;
-        rr=reg_bool("wolfXGlowEnabled",true,g_wolfXGlowEnabled,error); if(rr!=MOD_OK) return rr;
-        rr=reg_bool("wolfYGlowEnabled",true,g_wolfYGlowEnabled,error); if(rr!=MOD_OK) return rr;
+        rr=reg_bool("wolfXGlowEnabled",false,g_wolfXGlowEnabled,error); if(rr!=MOD_OK) return rr;
+        rr=reg_bool("wolfYGlowEnabled",false,g_wolfYGlowEnabled,error); if(rr!=MOD_OK) return rr;
         rr=reg_bool("wolfGlowPreview",false,g_wolfGlowPreview,error); if(rr!=MOD_OK) return rr;
         rr=reg_bool("backButtonAnimation",false,g_backButtonAnim,error); if(rr!=MOD_OK) return rr;
         rr=reg_bool("backTextAnimation",false,g_backTextAnim,error); if(rr!=MOD_OK) return rr;
@@ -5936,8 +5977,8 @@ ModResult mod_initialize(ModError* error) {
             {"swapItemSquareX",-670,&g_swapItemSquareX},{"swapItemSquareY",-380,&g_swapItemSquareY},{"swapItemSquareScale",50,&g_swapItemSquareScale},
             {"swapItemTriangleX",480,&g_swapItemTriangleX},{"swapItemTriangleY",-30,&g_swapItemTriangleY},{"swapItemTriangleScale",50,&g_swapItemTriangleScale},
             {"swapDialogActionTextX",200,&g_swapDialogActionTextX},{"swapDialogActionTextY",480,&g_swapDialogActionTextY},
-            {"swapWhistleActionX",250,&g_swapWhistleActionX},{"swapWhistleActionY",220,&g_swapWhistleActionY},{"swapWhistleActionScale",55,&g_swapWhistleActionScale},
-            {"swapWhistleBackX",820,&g_swapWhistleBackX},{"swapWhistleBackY",-350,&g_swapWhistleBackY},{"swapWhistleBackScale",55,&g_swapWhistleBackScale},
+            {"swapWhistleActionX",460,&g_swapWhistleActionX},{"swapWhistleActionY",840,&g_swapWhistleActionY},{"swapWhistleActionScale",55,&g_swapWhistleActionScale},
+            {"swapWhistleBackX",910,&g_swapWhistleBackX},{"swapWhistleBackY",310,&g_swapWhistleBackY},{"swapWhistleBackScale",55,&g_swapWhistleBackScale},
             {"swapHowlActionX",440,&g_swapHowlActionX},{"swapHowlActionY",830,&g_swapHowlActionY},{"swapHowlActionScale",65,&g_swapHowlActionScale},
             {"swapHowlBackX",910,&g_swapHowlBackX},{"swapHowlBackY",300,&g_swapHowlBackY},{"swapHowlBackScale",65,&g_swapHowlBackScale},
             {"swapShopActionX",450,&g_swapShopActionX},{"swapShopActionY",830,&g_swapShopActionY},{"swapShopActionScale",65,&g_swapShopActionScale},
@@ -5950,50 +5991,50 @@ ModResult mod_initialize(ModError* error) {
             {"swapWheelTriangleX",160,&g_swapWheelTriangleX},{"swapWheelTriangleY",-40,&g_swapWheelTriangleY},{"swapWheelTriangleScale",90,&g_swapWheelTriangleScale},
 
             // Swap Y/B starts from the calibrated Base preset.
-            {"ybTriX",962,&g_ybTriX},{"ybTriY",387,&g_ybTriY},{"ybTriScale",90,&g_ybTriScale},
+            {"ybTriX",1467,&g_ybTriX},{"ybTriY",387,&g_ybTriY},{"ybTriScale",90,&g_ybTriScale},
             {"ybSquareX",1218,&g_ybSquareX},{"ybSquareY",119,&g_ybSquareY},{"ybSquareScale",90,&g_ybSquareScale},
-            {"ybCircleX",1505,&g_ybCircleX},{"ybCircleY",414,&g_ybCircleY},{"ybCircleScale",90,&g_ybCircleScale},
+            {"ybCircleX",997,&g_ybCircleX},{"ybCircleY",414,&g_ybCircleY},{"ybCircleScale",90,&g_ybCircleScale},
             {"ybItemSquareX",-430,&g_ybItemSquareX},{"ybItemSquareY",-640,&g_ybItemSquareY},{"ybItemSquareScale",50,&g_ybItemSquareScale},
-            {"ybItemTriangleX",220,&g_ybItemTriangleX},{"ybItemTriangleY",230,&g_ybItemTriangleY},{"ybItemTriangleScale",50,&g_ybItemTriangleScale},
-            {"ybSwordX",83,&g_ybSwordX},{"ybSwordY",-52,&g_ybSwordY},{"ybSwordScale",50,&g_ybSwordScale},
-            {"ybBackTextX",820,&g_ybBackTextX},{"ybBackTextY",-350,&g_ybBackTextY},{"ybBackTextScale",55,&g_ybBackTextScale},
+            {"ybItemTriangleX",880,&g_ybItemTriangleX},{"ybItemTriangleY",230,&g_ybItemTriangleY},{"ybItemTriangleScale",50,&g_ybItemTriangleScale},
+            {"ybSwordX",14,&g_ybSwordX},{"ybSwordY",-40,&g_ybSwordY},{"ybSwordScale",50,&g_ybSwordScale},
+            {"ybBackTextX",310,&g_ybBackTextX},{"ybBackTextY",-345,&g_ybBackTextY},{"ybBackTextScale",55,&g_ybBackTextScale},
             {"ybBackGlowX",10,&g_ybBackGlowX},{"ybBackGlowY",30,&g_ybBackGlowY},{"ybBackGlowScale",100,&g_ybBackGlowScale},
             {"ybDialogActionTextX",200,&g_ybDialogActionTextX},{"ybDialogActionTextY",480,&g_ybDialogActionTextY},
-            {"ybWhistleActionX",250,&g_ybWhistleActionX},{"ybWhistleActionY",220,&g_ybWhistleActionY},{"ybWhistleActionScale",55,&g_ybWhistleActionScale},
-            {"ybWhistleBackX",820,&g_ybWhistleBackX},{"ybWhistleBackY",-350,&g_ybWhistleBackY},{"ybWhistleBackScale",55,&g_ybWhistleBackScale},
+            {"ybWhistleActionX",460,&g_ybWhistleActionX},{"ybWhistleActionY",840,&g_ybWhistleActionY},{"ybWhistleActionScale",55,&g_ybWhistleActionScale},
+            {"ybWhistleBackX",410,&g_ybWhistleBackX},{"ybWhistleBackY",300,&g_ybWhistleBackY},{"ybWhistleBackScale",55,&g_ybWhistleBackScale},
             {"ybHowlActionX",440,&g_ybHowlActionX},{"ybHowlActionY",830,&g_ybHowlActionY},{"ybHowlActionScale",65,&g_ybHowlActionScale},
-            {"ybHowlBackX",910,&g_ybHowlBackX},{"ybHowlBackY",300,&g_ybHowlBackY},{"ybHowlBackScale",65,&g_ybHowlBackScale},
+            {"ybHowlBackX",400,&g_ybHowlBackX},{"ybHowlBackY",300,&g_ybHowlBackY},{"ybHowlBackScale",65,&g_ybHowlBackScale},
             {"ybShopActionX",450,&g_ybShopActionX},{"ybShopActionY",830,&g_ybShopActionY},{"ybShopActionScale",65,&g_ybShopActionScale},
-            {"ybShopBackX",900,&g_ybShopBackX},{"ybShopBackY",300,&g_ybShopBackY},{"ybShopBackScale",65,&g_ybShopBackScale},
+            {"ybShopBackX",400,&g_ybShopBackX},{"ybShopBackY",300,&g_ybShopBackY},{"ybShopBackScale",65,&g_ybShopBackScale},
             {"ybWolfSenseX",-670,&g_ybWolfSenseX},{"ybWolfSenseY",-760,&g_ybWolfSenseY},{"ybWolfSenseScale",55,&g_ybWolfSenseScale},
-            {"ybWolfDigX",490,&g_ybWolfDigX},{"ybWolfDigY",575,&g_ybWolfDigY},{"ybWolfDigScale",55,&g_ybWolfDigScale},
+            {"ybWolfDigX",1000,&g_ybWolfDigX},{"ybWolfDigY",575,&g_ybWolfDigY},{"ybWolfDigScale",55,&g_ybWolfDigScale},
             {"ybWolfXGlowX",5,&g_ybWolfXGlowX},{"ybWolfXGlowY",-55,&g_ybWolfXGlowY},{"ybWolfXGlowScale",50,&g_ybWolfXGlowScale},
             {"ybWolfYGlowX",-70,&g_ybWolfYGlowX},{"ybWolfYGlowY",20,&g_ybWolfYGlowY},{"ybWolfYGlowScale",50,&g_ybWolfYGlowScale},
-            {"ybWheelSquareX",-170,&g_ybWheelSquareX},{"ybWheelSquareY",-10,&g_ybWheelSquareY},{"ybWheelSquareScale",87,&g_ybWheelSquareScale},
-            {"ybWheelTriangleX",-100,&g_ybWheelTriangleX},{"ybWheelTriangleY",-40,&g_ybWheelTriangleY},{"ybWheelTriangleScale",90,&g_ybWheelTriangleScale},
+            {"ybWheelSquareX",-430,&g_ybWheelSquareX},{"ybWheelSquareY",-10,&g_ybWheelSquareY},{"ybWheelSquareScale",87,&g_ybWheelSquareScale},
+            {"ybWheelTriangleX",160,&g_ybWheelTriangleX},{"ybWheelTriangleY",-40,&g_ybWheelTriangleY},{"ybWheelTriangleScale",90,&g_ybWheelTriangleScale},
 
             // Swap X/Y + X/B starts from the calibrated Swap X/Y preset.
             {"xyxbTriX",1208,&g_xyxbTriX},{"xyxbTriY",126,&g_xyxbTriY},{"xyxbTriScale",90,&g_xyxbTriScale},
-            {"xyxbSquareX",971,&g_xyxbSquareX},{"xyxbSquareY",380,&g_xyxbSquareY},{"xyxbSquareScale",90,&g_xyxbSquareScale},
-            {"xyxbCircleX",1505,&g_xyxbCircleX},{"xyxbCircleY",414,&g_xyxbCircleY},{"xyxbCircleScale",90,&g_xyxbCircleScale},
-            {"xyxbItemSquareX",-690,&g_xyxbItemSquareX},{"xyxbItemSquareY",-380,&g_xyxbItemSquareY},{"xyxbItemSquareScale",50,&g_xyxbItemSquareScale},
+            {"xyxbSquareX",1477,&g_xyxbSquareX},{"xyxbSquareY",379,&g_xyxbSquareY},{"xyxbSquareScale",90,&g_xyxbSquareScale},
+            {"xyxbCircleX",997,&g_xyxbCircleX},{"xyxbCircleY",414,&g_xyxbCircleY},{"xyxbCircleScale",90,&g_xyxbCircleScale},
+            {"xyxbItemSquareX",-30,&g_xyxbItemSquareX},{"xyxbItemSquareY",-380,&g_xyxbItemSquareY},{"xyxbItemSquareScale",50,&g_xyxbItemSquareScale},
             {"xyxbItemTriangleX",480,&g_xyxbItemTriangleX},{"xyxbItemTriangleY",-30,&g_xyxbItemTriangleY},{"xyxbItemTriangleScale",50,&g_xyxbItemTriangleScale},
-            {"xyxbSwordX",83,&g_xyxbSwordX},{"xyxbSwordY",-52,&g_xyxbSwordY},{"xyxbSwordScale",50,&g_xyxbSwordScale},
-            {"xyxbBackTextX",820,&g_xyxbBackTextX},{"xyxbBackTextY",-350,&g_xyxbBackTextY},{"xyxbBackTextScale",55,&g_xyxbBackTextScale},
+            {"xyxbSwordX",14,&g_xyxbSwordX},{"xyxbSwordY",-40,&g_xyxbSwordY},{"xyxbSwordScale",50,&g_xyxbSwordScale},
+            {"xyxbBackTextX",310,&g_xyxbBackTextX},{"xyxbBackTextY",-345,&g_xyxbBackTextY},{"xyxbBackTextScale",55,&g_xyxbBackTextScale},
             {"xyxbBackGlowX",10,&g_xyxbBackGlowX},{"xyxbBackGlowY",30,&g_xyxbBackGlowY},{"xyxbBackGlowScale",100,&g_xyxbBackGlowScale},
             {"xyxbDialogActionTextX",200,&g_xyxbDialogActionTextX},{"xyxbDialogActionTextY",480,&g_xyxbDialogActionTextY},
-            {"xyxbWhistleActionX",250,&g_xyxbWhistleActionX},{"xyxbWhistleActionY",220,&g_xyxbWhistleActionY},{"xyxbWhistleActionScale",55,&g_xyxbWhistleActionScale},
-            {"xyxbWhistleBackX",820,&g_xyxbWhistleBackX},{"xyxbWhistleBackY",-350,&g_xyxbWhistleBackY},{"xyxbWhistleBackScale",55,&g_xyxbWhistleBackScale},
+            {"xyxbWhistleActionX",460,&g_xyxbWhistleActionX},{"xyxbWhistleActionY",840,&g_xyxbWhistleActionY},{"xyxbWhistleActionScale",55,&g_xyxbWhistleActionScale},
+            {"xyxbWhistleBackX",410,&g_xyxbWhistleBackX},{"xyxbWhistleBackY",300,&g_xyxbWhistleBackY},{"xyxbWhistleBackScale",55,&g_xyxbWhistleBackScale},
             {"xyxbHowlActionX",440,&g_xyxbHowlActionX},{"xyxbHowlActionY",830,&g_xyxbHowlActionY},{"xyxbHowlActionScale",65,&g_xyxbHowlActionScale},
-            {"xyxbHowlBackX",910,&g_xyxbHowlBackX},{"xyxbHowlBackY",300,&g_xyxbHowlBackY},{"xyxbHowlBackScale",65,&g_xyxbHowlBackScale},
+            {"xyxbHowlBackX",400,&g_xyxbHowlBackX},{"xyxbHowlBackY",300,&g_xyxbHowlBackY},{"xyxbHowlBackScale",65,&g_xyxbHowlBackScale},
             {"xyxbShopActionX",450,&g_xyxbShopActionX},{"xyxbShopActionY",830,&g_xyxbShopActionY},{"xyxbShopActionScale",65,&g_xyxbShopActionScale},
-            {"xyxbShopBackX",900,&g_xyxbShopBackX},{"xyxbShopBackY",300,&g_xyxbShopBackY},{"xyxbShopBackScale",65,&g_xyxbShopBackScale},
-            {"xyxbWolfSenseX",-920,&g_xyxbWolfSenseX},{"xyxbWolfSenseY",-500,&g_xyxbWolfSenseY},{"xyxbWolfSenseScale",55,&g_xyxbWolfSenseScale},
+            {"xyxbShopBackX",400,&g_xyxbShopBackX},{"xyxbShopBackY",300,&g_xyxbShopBackY},{"xyxbShopBackScale",65,&g_xyxbShopBackScale},
+            {"xyxbWolfSenseX",-400,&g_xyxbWolfSenseX},{"xyxbWolfSenseY",-500,&g_xyxbWolfSenseY},{"xyxbWolfSenseScale",55,&g_xyxbWolfSenseScale},
             {"xyxbWolfDigX",730,&g_xyxbWolfDigX},{"xyxbWolfDigY",310,&g_xyxbWolfDigY},{"xyxbWolfDigScale",55,&g_xyxbWolfDigScale},
             {"xyxbWolfXGlowX",5,&g_xyxbWolfXGlowX},{"xyxbWolfXGlowY",-55,&g_xyxbWolfXGlowY},{"xyxbWolfXGlowScale",50,&g_xyxbWolfXGlowScale},
             {"xyxbWolfYGlowX",-75,&g_xyxbWolfYGlowX},{"xyxbWolfYGlowY",20,&g_xyxbWolfYGlowY},{"xyxbWolfYGlowScale",50,&g_xyxbWolfYGlowScale},
-            {"xyxbWheelSquareX",-430,&g_xyxbWheelSquareX},{"xyxbWheelSquareY",-10,&g_xyxbWheelSquareY},{"xyxbWheelSquareScale",87,&g_xyxbWheelSquareScale},
-            {"xyxbWheelTriangleX",160,&g_xyxbWheelTriangleX},{"xyxbWheelTriangleY",-40,&g_xyxbWheelTriangleY},{"xyxbWheelTriangleScale",90,&g_xyxbWheelTriangleScale},
+            {"xyxbWheelSquareX",-170,&g_xyxbWheelSquareX},{"xyxbWheelSquareY",-10,&g_xyxbWheelSquareY},{"xyxbWheelSquareScale",87,&g_xyxbWheelSquareScale},
+            {"xyxbWheelTriangleX",-100,&g_xyxbWheelTriangleX},{"xyxbWheelTriangleY",-40,&g_xyxbWheelTriangleY},{"xyxbWheelTriangleScale",90,&g_xyxbWheelTriangleScale},
         };
         for (auto& v : swapVars) {
             rr=reg_int(v.n,v.d,*v.h,error);
@@ -6046,7 +6087,7 @@ ModResult mod_initialize(ModError* error) {
     }
 
     if (svc_log != nullptr) {
-        svc_log->info(mod_ctx, "TP Classic Modern Controller UI v1.1.1 starting - by XandasLegend");
+        svc_log->info(mod_ctx, "TP Classic Modern Controller UI v1.2.0 starting - by XandasLegend");
         if (kDeveloperOptions)
             svc_log->info(mod_ctx, "Developer HUD calibration options enabled");
     }
