@@ -12,6 +12,7 @@
 #include "d/d_msg_object.h"
 #include "d/d_meter_HIO.h"
 #include "d/d_meter2_info.h"
+#include "dusk/settings.h"
 #include "d/d_menu_ring.h"
 #include "d/d_menu_item_explain.h"
 #include "d/d_menu_collect.h"
@@ -47,6 +48,7 @@ constexpr bool kDeveloperOptions = false;
 ConfigVarHandle g_controllerStyle=0;
 ConfigVarHandle g_layoutSchemaVersion=0;
 ConfigVarHandle g_visualHudEditorEnabled=0;
+ConfigVarHandle g_keepControllerPromptsNormalSize=0;
 // Legacy boolean kept only for migration from the first experimental X/Y build.
 ConfigVarHandle g_swapXYButtonLayout=0;
 ConfigVarHandle g_buttonLayoutPreset=0;
@@ -299,6 +301,21 @@ bool cfg_bool(ConfigVarHandle h, bool fallback) {
     bool v=fallback;
     if (h==0 || svc_config->get_bool(mod_ctx,h,&v)!=MOD_OK) return fallback;
     return v;
+}
+
+// Developer test: Dusklight scales the main gameplay button group through
+// mpButtonParent using game.hudScale. When requested, cancel only that size
+// component on TP Classic's A/B/X/Y/Z prompts. Position/anchoring and every
+// other HUD element remain owned by Dusklight.
+float controller_prompt_scale_compensation() {
+    if (!kDeveloperOptions || !cfg_bool(g_keepControllerPromptsNormalSize,false))
+        return 1.0f;
+
+    float hudScale=dusk::getSettings().game.hudScale.getValue();
+    if (hudScale < 0.5f) hudScale=0.5f;
+    if (hudScale > 2.0f) hudScale=2.0f;
+    if (std::fabs(hudScale) < 0.0001f) return 1.0f;
+    return 1.0f / hudScale;
 }
 
 bool visual_editor_enabled() {
@@ -1604,7 +1621,13 @@ ModResult build_settings_11_panel(ModContext*,UiWindowHandle,UiElementHandle pan
         nullptr);
     add_button(pane,"Export Midna Diagnostic",export_midna_diagnostic,
         "Writes midna_diagnostic.txt to the mod data folder. Send that file for analysis.");
-        svc_ui->pane_add_section(mod_ctx,pane,"Visual HUD Editor");
+    svc_ui->pane_add_section(mod_ctx,pane,"HUD Scale Compatibility Test");
+    add_toggle(pane,"Keep Controller Prompts at Normal Size",g_keepControllerPromptsNormalSize,
+        "DEV test: prevents only the gameplay A/B/X/Y and Z/R1/RB prompts from shrinking or growing with Dusklight HUD Scale. Position and all other HUD elements still follow Dusklight.");
+    svc_ui->pane_add_text(mod_ctx,pane,
+        "Use this to test reduced Dusklight HUD scales such as 60%. Disable it if prompt spacing or anchoring looks wrong.",
+        nullptr);
+    svc_ui->pane_add_section(mod_ctx,pane,"Visual HUD Editor");
     add_toggle(pane,"Enable Visual HUD Editor",g_visualHudEditorEnabled,
         "Developer-only visual editing mode. The editor is restricted to a whitelist of TP Classic elements with known X/Y/Scale config handles.");
     svc_ui->pane_add_text(mod_ctx,pane,
@@ -2674,7 +2697,7 @@ HookAction before_pane_trans(ModContext*, void* args, void*, void*) {
     if (mgr == s_activeMeter->mpButtonA) {
         mods::arg_ref<f32>(args, 1) = cfg_pos(g_crossX,118.0f) - 99.0f;
         mods::arg_ref<f32>(args, 2) = cfg_pos(g_crossY,65.7f) - 41.5f;
-        const float sc=cfg_scale(g_crossScale,1.45f);
+        const float sc=cfg_scale(g_crossScale,1.45f) * controller_prompt_scale_compensation();
         if (mgr->getPanePtr()!=nullptr) mgr->getPanePtr()->scale(sc,sc);
     } else if (mgr == s_activeMeter->mpButtonB) {
         // Current behavior stays the default. When enabled, re-add only the
@@ -2690,14 +2713,14 @@ HookAction before_pane_trans(ModContext*, void* args, void*, void*) {
         }
         mods::arg_ref<f32>(args, 1) = cfg_pos(layout_handle4(g_circleX,g_circleX,g_ybCircleX,g_xyxbCircleX),151.5f) - 81.5f + animX;
         mods::arg_ref<f32>(args, 2) = cfg_pos(layout_handle4(g_circleY,g_circleY,g_ybCircleY,g_xyxbCircleY),39.4f) - 76.0f + animY;
-        const float sc=cfg_scale(layout_handle4(g_circleScale,g_circleScale,g_ybCircleScale,g_xyxbCircleScale),1.45f);
+        const float sc=cfg_scale(layout_handle4(g_circleScale,g_circleScale,g_ybCircleScale,g_xyxbCircleScale),1.45f) * controller_prompt_scale_compensation();
         if (mgr->getPanePtr()!=nullptr) mgr->getPanePtr()->scale(sc,sc);
     } else if (mgr == s_activeMeter->mpButtonXY[2]) {
         // Z/R1 is also repositioned by vanilla each frame. Use the editor values
         // directly as paneTrans offsets; full-draw normalization below fixes bounds.
         mods::arg_ref<f32>(args,1)=cfg_pos(g_r1X,170.0f);
         mods::arg_ref<f32>(args,2)=cfg_pos(g_r1Y,-10.0f);
-        const float sc=cfg_scale(g_r1Scale,1.45f);
+        const float sc=cfg_scale(g_r1Scale,1.45f) * controller_prompt_scale_compensation();
         if (mgr->getPanePtr()!=nullptr) mgr->getPanePtr()->scale(sc,sc);
     }
     return HOOK_CONTINUE;
@@ -3259,7 +3282,7 @@ void after_meter_draw(ModContext*, void* args, void*, void*) {
             set_bounds(face,0.0f,0.0f,newW,newH);
             face->rotate(newW * 0.5f,newH * 0.5f,ROTATE_Z,0.0f);
         }
-        const float zsc=cfg_scale(g_r1Scale,1.45f);
+        const float zsc=cfg_scale(g_r1Scale,1.45f) * controller_prompt_scale_compensation();
         meter->mpButtonXY[2]->scale(zsc,zsc);
     }
 
@@ -3421,10 +3444,14 @@ void after_meter_draw(ModContext*, void* args, void*, void*) {
 
     // Normaliza a escala para que A/B nao mantenham o 1.1 vanilla enquanto X/Y usam 1.0.
     // Isso deixa o diametro aparente dos quatro botoes consistente.
-    { float sc=cfg_scale(g_crossScale,1.45f); meter->mpButtonA->scale(sc,sc); }
-    { float sc=cfg_scale(g_circleScale,1.45f); meter->mpButtonB->scale(sc,sc); }
-    { float sc=cfg_scale(layout_handle4(g_squareScale,g_swapSquareScale,g_ybSquareScale,g_xyxbSquareScale),1.45f); meter->mpButtonXY[0]->scale(sc,sc); }
-    { float sc=cfg_scale(layout_handle4(g_triScale,g_swapTriScale,g_ybTriScale,g_xyxbTriScale),1.45f); meter->mpButtonXY[1]->scale(sc,sc); }
+    { const float comp=controller_prompt_scale_compensation();
+      float sc=cfg_scale(g_crossScale,1.45f)*comp; meter->mpButtonA->scale(sc,sc); }
+    { const float comp=controller_prompt_scale_compensation();
+      float sc=cfg_scale(g_circleScale,1.45f)*comp; meter->mpButtonB->scale(sc,sc); }
+    { const float comp=controller_prompt_scale_compensation();
+      float sc=cfg_scale(layout_handle4(g_squareScale,g_swapSquareScale,g_ybSquareScale,g_xyxbSquareScale),1.45f)*comp; meter->mpButtonXY[0]->scale(sc,sc); }
+    { const float comp=controller_prompt_scale_compensation();
+      float sc=cfg_scale(layout_handle4(g_triScale,g_swapTriScale,g_ybTriScale,g_xyxbTriScale),1.45f)*comp; meter->mpButtonXY[1]->scale(sc,sc); }
 
     // Losango base da v0.6.17. Each GC slot selects its normal or swapped profile.
     set_bounds(y,
@@ -5955,6 +5982,8 @@ ModResult mod_initialize(ModError* error) {
         ModResult rr=MOD_OK;
         if (kDeveloperOptions) {
             rr=reg_bool("visualHudEditorEnabled",false,g_visualHudEditorEnabled,error);
+            if(rr!=MOD_OK) return rr;
+            rr=reg_bool("keepControllerPromptsNormalSize",false,g_keepControllerPromptsNormalSize,error);
             if(rr!=MOD_OK) return rr;
             rr=reg_bool("swapXYButtonLayout",false,g_swapXYButtonLayout,error);
             if(rr!=MOD_OK) return rr;
