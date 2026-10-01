@@ -12,7 +12,6 @@
 #include "d/d_msg_object.h"
 #include "d/d_meter_HIO.h"
 #include "d/d_meter2_info.h"
-#include "dusk/settings.h"
 #include "d/d_menu_ring.h"
 #include "d/d_menu_item_explain.h"
 #include "d/d_menu_collect.h"
@@ -307,15 +306,24 @@ bool cfg_bool(ConfigVarHandle h, bool fallback) {
 // mpButtonParent using game.hudScale. When requested, cancel only that size
 // component on TP Classic's A/B/X/Y/Z prompts. Position/anchoring and every
 // other HUD element remain owned by Dusklight.
-float controller_prompt_scale_compensation() {
-    if (!kDeveloperOptions || !cfg_bool(g_keepControllerPromptsNormalSize,false))
+float controller_prompt_scale_compensation(dMeter2Draw_c* meter) {
+    if (!kDeveloperOptions || !cfg_bool(g_keepControllerPromptsNormalSize,false) ||
+        meter == nullptr || meter->mpButtonParent == nullptr ||
+        meter->mpButtonParent->getPanePtr() == nullptr)
         return 1.0f;
 
-    float hudScale=dusk::getSettings().game.hudScale.getValue();
-    if (hudScale < 0.5f) hudScale=0.5f;
-    if (hudScale > 2.0f) hudScale=2.0f;
-    if (std::fabs(hudScale) < 0.0001f) return 1.0f;
-    return 1.0f / hudScale;
+    // Dusklight applies HUD Scale directly to mpButtonParent as:
+    // mMainHUDButtonsScale * userHudScale. Recover the effective user scale
+    // from the live parent instead of depending on Dusklight-internal headers.
+    const float baseScale=g_drawHIO.mMainHUDButtonsScale;
+    const float liveScale=meter->mpButtonParent->getPanePtr()->getScaleX();
+    if (std::fabs(baseScale) < 0.0001f || std::fabs(liveScale) < 0.0001f)
+        return 1.0f;
+
+    float hudScale=liveScale/baseScale;
+    if (hudScale < 0.5f || hudScale > 2.0f)
+        return 1.0f;
+    return 1.0f/hudScale;
 }
 
 bool visual_editor_enabled() {
@@ -2697,7 +2705,7 @@ HookAction before_pane_trans(ModContext*, void* args, void*, void*) {
     if (mgr == s_activeMeter->mpButtonA) {
         mods::arg_ref<f32>(args, 1) = cfg_pos(g_crossX,118.0f) - 99.0f;
         mods::arg_ref<f32>(args, 2) = cfg_pos(g_crossY,65.7f) - 41.5f;
-        const float sc=cfg_scale(g_crossScale,1.45f) * controller_prompt_scale_compensation();
+        const float sc=cfg_scale(g_crossScale,1.45f) * controller_prompt_scale_compensation(s_activeMeter);
         if (mgr->getPanePtr()!=nullptr) mgr->getPanePtr()->scale(sc,sc);
     } else if (mgr == s_activeMeter->mpButtonB) {
         // Current behavior stays the default. When enabled, re-add only the
@@ -2713,14 +2721,14 @@ HookAction before_pane_trans(ModContext*, void* args, void*, void*) {
         }
         mods::arg_ref<f32>(args, 1) = cfg_pos(layout_handle4(g_circleX,g_circleX,g_ybCircleX,g_xyxbCircleX),151.5f) - 81.5f + animX;
         mods::arg_ref<f32>(args, 2) = cfg_pos(layout_handle4(g_circleY,g_circleY,g_ybCircleY,g_xyxbCircleY),39.4f) - 76.0f + animY;
-        const float sc=cfg_scale(layout_handle4(g_circleScale,g_circleScale,g_ybCircleScale,g_xyxbCircleScale),1.45f) * controller_prompt_scale_compensation();
+        const float sc=cfg_scale(layout_handle4(g_circleScale,g_circleScale,g_ybCircleScale,g_xyxbCircleScale),1.45f) * controller_prompt_scale_compensation(s_activeMeter);
         if (mgr->getPanePtr()!=nullptr) mgr->getPanePtr()->scale(sc,sc);
     } else if (mgr == s_activeMeter->mpButtonXY[2]) {
         // Z/R1 is also repositioned by vanilla each frame. Use the editor values
         // directly as paneTrans offsets; full-draw normalization below fixes bounds.
         mods::arg_ref<f32>(args,1)=cfg_pos(g_r1X,170.0f);
         mods::arg_ref<f32>(args,2)=cfg_pos(g_r1Y,-10.0f);
-        const float sc=cfg_scale(g_r1Scale,1.45f) * controller_prompt_scale_compensation();
+        const float sc=cfg_scale(g_r1Scale,1.45f) * controller_prompt_scale_compensation(s_activeMeter);
         if (mgr->getPanePtr()!=nullptr) mgr->getPanePtr()->scale(sc,sc);
     }
     return HOOK_CONTINUE;
@@ -3282,7 +3290,7 @@ void after_meter_draw(ModContext*, void* args, void*, void*) {
             set_bounds(face,0.0f,0.0f,newW,newH);
             face->rotate(newW * 0.5f,newH * 0.5f,ROTATE_Z,0.0f);
         }
-        const float zsc=cfg_scale(g_r1Scale,1.45f) * controller_prompt_scale_compensation();
+        const float zsc=cfg_scale(g_r1Scale,1.45f) * controller_prompt_scale_compensation(meter);
         meter->mpButtonXY[2]->scale(zsc,zsc);
     }
 
@@ -3444,13 +3452,13 @@ void after_meter_draw(ModContext*, void* args, void*, void*) {
 
     // Normaliza a escala para que A/B nao mantenham o 1.1 vanilla enquanto X/Y usam 1.0.
     // Isso deixa o diametro aparente dos quatro botoes consistente.
-    { const float comp=controller_prompt_scale_compensation();
+    { const float comp=controller_prompt_scale_compensation(meter);
       float sc=cfg_scale(g_crossScale,1.45f)*comp; meter->mpButtonA->scale(sc,sc); }
-    { const float comp=controller_prompt_scale_compensation();
+    { const float comp=controller_prompt_scale_compensation(meter);
       float sc=cfg_scale(g_circleScale,1.45f)*comp; meter->mpButtonB->scale(sc,sc); }
-    { const float comp=controller_prompt_scale_compensation();
+    { const float comp=controller_prompt_scale_compensation(meter);
       float sc=cfg_scale(layout_handle4(g_squareScale,g_swapSquareScale,g_ybSquareScale,g_xyxbSquareScale),1.45f)*comp; meter->mpButtonXY[0]->scale(sc,sc); }
-    { const float comp=controller_prompt_scale_compensation();
+    { const float comp=controller_prompt_scale_compensation(meter);
       float sc=cfg_scale(layout_handle4(g_triScale,g_swapTriScale,g_ybTriScale,g_xyxbTriScale),1.45f)*comp; meter->mpButtonXY[1]->scale(sc,sc); }
 
     // Losango base da v0.6.17. Each GC slot selects its normal or swapped profile.
