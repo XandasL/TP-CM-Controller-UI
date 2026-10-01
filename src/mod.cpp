@@ -313,7 +313,9 @@ enum class ButtonLayoutPreset : int64_t {
 };
 
 ButtonLayoutPreset current_layout_preset() {
-    if (!kDeveloperOptions || g_buttonLayoutPreset == 0) return ButtonLayoutPreset::Base;
+    // Preset selection is a public feature. Only the calibration/editor UI is
+    // developer-only; release builds must honor the persisted preset as well.
+    if (g_buttonLayoutPreset == 0) return ButtonLayoutPreset::Base;
     int64_t raw=cfg_int(g_buttonLayoutPreset,0);
     if (raw < 0 || raw > 3) raw=0;
     return static_cast<ButtonLayoutPreset>(raw);
