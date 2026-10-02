@@ -25,6 +25,20 @@ add_subdirectory("${DUSKLIGHT_DIR}/sdk" dusklight-sdk EXCLUDE_FROM_ALL)
 
 configure_file(mod.json.in "${CMAKE_CURRENT_BINARY_DIR}/mod.json" @ONLY NEWLINE_STYLE LF)
 
+# Switch/Retroid-family artwork is stored as small per-texture archives so the
+# binary assets can be versioned safely. Extract them into the normal mod
+# resource tree at configure time; the runtime only sees res/switch/*.bti.
+set(SWITCH_RESOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/res/switch")
+file(MAKE_DIRECTORY "${SWITCH_RESOURCE_DIR}")
+file(GLOB SWITCH_TEXTURE_ARCHIVES
+    "${CMAKE_CURRENT_SOURCE_DIR}/assets/switch/*.tar.gz")
+list(SORT SWITCH_TEXTURE_ARCHIVES)
+foreach(_switch_archive IN LISTS SWITCH_TEXTURE_ARCHIVES)
+    file(ARCHIVE_EXTRACT
+        INPUT "${_switch_archive}"
+        DESTINATION "${SWITCH_RESOURCE_DIR}")
+endforeach()
+
 add_mod(tp_classic_modern_controller_ui
     FEATURES game
     SOURCES src/mod.cpp

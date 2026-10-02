@@ -2726,32 +2726,38 @@ void set_bounds(J2DPane* pane, float x, float y, float w, float h) {
     pane->resize(w, h);
 }
 
+// Internal resource slots retain their historical PlayStation-oriented names.
+// Switch resources are semantic instead: A stays A, B stays B, X stays X and
+// Y stays Y. The switch_* calibration owns the Nintendo physical placement;
+// no PS/Xbox face swap is used to reinterpret the Switch artwork.
 struct ControllerTexture {
     ResourceBuffer* playstation;
     const char* xboxPath;
     ResourceBuffer xbox;
+    const char* switchPath;
+    ResourceBuffer switchTexture;
 };
 ControllerTexture s_controllerTextures[]={
-    {&s_cross, "xbox/cross.bti", RESOURCE_BUFFER_INIT},
-    {&s_circle, "xbox/circle.bti", RESOURCE_BUFFER_INIT},
-    {&s_square, "xbox/square.bti", RESOURCE_BUFFER_INIT},
-    {&s_triangle, "xbox/triangle.bti", RESOURCE_BUFFER_INIT},
-    {&s_r1, "xbox/r1.bti", RESOURCE_BUFFER_INIT},
-    {&s_r1_hud, "xbox/r1_hud.bti", RESOURCE_BUFFER_INIT},
-    {&s_analog, "xbox/l3.bti", RESOURCE_BUFFER_INIT},
-    {&s_animated_analog_base, "xbox/animated_analog_base.bti", RESOURCE_BUFFER_INIT},
-    {&s_skill_l3, "xbox/skill_l3.bti", RESOURCE_BUFFER_INIT},
-    {&s_shop_l3_right, "xbox/shop_l3_right.bti", RESOURCE_BUFFER_INIT},
-    {&s_r3, "xbox/r3.bti", RESOURCE_BUFFER_INIT},
-    {&s_l2, "xbox/l2.bti", RESOURCE_BUFFER_INIT},
-    {&s_r2, "xbox/r2.bti", RESOURCE_BUFFER_INIT},
-    {&s_options, "xbox/options.bti", RESOURCE_BUFFER_INIT},
-    {&s_dpad, "xbox/dpad.bti", RESOURCE_BUFFER_INIT}
+    {&s_cross, "xbox/cross.bti", RESOURCE_BUFFER_INIT, "switch/a.bti", RESOURCE_BUFFER_INIT},
+    {&s_circle, "xbox/circle.bti", RESOURCE_BUFFER_INIT, "switch/b.bti", RESOURCE_BUFFER_INIT},
+    {&s_square, "xbox/square.bti", RESOURCE_BUFFER_INIT, "switch/y.bti", RESOURCE_BUFFER_INIT},
+    {&s_triangle, "xbox/triangle.bti", RESOURCE_BUFFER_INIT, "switch/x.bti", RESOURCE_BUFFER_INIT},
+    {&s_r1, "xbox/r1.bti", RESOURCE_BUFFER_INIT, "switch/r.bti", RESOURCE_BUFFER_INIT},
+    {&s_r1_hud, "xbox/r1_hud.bti", RESOURCE_BUFFER_INIT, "switch/r.bti", RESOURCE_BUFFER_INIT},
+    {&s_analog, "xbox/l3.bti", RESOURCE_BUFFER_INIT, "switch/l_stick.bti", RESOURCE_BUFFER_INIT},
+    {&s_animated_analog_base, "xbox/animated_analog_base.bti", RESOURCE_BUFFER_INIT, "switch/animated_analog_base.bti", RESOURCE_BUFFER_INIT},
+    {&s_skill_l3, "xbox/skill_l3.bti", RESOURCE_BUFFER_INIT, "switch/skill_l_stick.bti", RESOURCE_BUFFER_INIT},
+    {&s_shop_l3_right, "xbox/shop_l3_right.bti", RESOURCE_BUFFER_INIT, "switch/skill_l_stick.bti", RESOURCE_BUFFER_INIT},
+    {&s_r3, "xbox/r3.bti", RESOURCE_BUFFER_INIT, "switch/r_stick.bti", RESOURCE_BUFFER_INIT},
+    {&s_l2, "xbox/l2.bti", RESOURCE_BUFFER_INIT, "switch/zl.bti", RESOURCE_BUFFER_INIT},
+    {&s_r2, "xbox/r2.bti", RESOURCE_BUFFER_INIT, "switch/zr.bti", RESOURCE_BUFFER_INIT},
+    {&s_options, "xbox/options.bti", RESOURCE_BUFFER_INIT, "switch/plus.bti", RESOURCE_BUFFER_INIT},
+    {&s_dpad, "xbox/dpad.bti", RESOURCE_BUFFER_INIT, "switch/dpad.bti", RESOURCE_BUFFER_INIT}
 };
 
 const ResTIMG* resource_timg(const ResourceBuffer& requested) {
     // Latch once, before any replacement texture can be attached to a game pane.
-    // Both packs remain allocated; no live reload or pointer invalidation occurs.
+    // All controller packs remain allocated; no live reload or pointer invalidation occurs.
     if (!s_controllerStyleLocked) {
         const int64_t style=raw_controller_style();
         s_useXbox=style==1;
@@ -2766,17 +2772,8 @@ const ResTIMG* resource_timg(const ResourceBuffer& requested) {
     }
     const ResourceBuffer* selected=&requested;
     if (s_useSwitch) {
-        // Infrastructure test only: use already-packaged Xbox artwork as a
-        // fallback while preserving Switch's physical B/A/Y/X arrangement.
-        // Exact Switch BTIs are kept separate from this first logic test.
-        const ResourceBuffer* physical=&requested;
-        if (&requested==&s_cross) physical=&s_circle;       // bottom -> B
-        else if (&requested==&s_circle) physical=&s_cross; // right  -> A
-        else if (&requested==&s_square) physical=&s_triangle; // left -> Y
-        else if (&requested==&s_triangle) physical=&s_square; // top -> X
-        for(auto& texture:s_controllerTextures) {
-            if(texture.playstation==physical) { selected=&texture.xbox; break; }
-        }
+        for(auto& texture:s_controllerTextures)
+            if(texture.playstation==&requested) { selected=&texture.switchTexture; break; }
     } else if (s_useXbox) {
         for(auto& texture:s_controllerTextures)
             if(texture.playstation==&requested) { selected=&texture.xbox; break; }
@@ -4168,8 +4165,10 @@ void after_meter_draw(ModContext*, void* args, void*, void*) {
 
 void free_resources() {
     if (svc_resource == nullptr) return;
-    for(auto& texture:s_controllerTextures)
+    for(auto& texture:s_controllerTextures) {
         svc_resource->free(mod_ctx,&texture.xbox);
+        svc_resource->free(mod_ctx,&texture.switchTexture);
+    }
     svc_resource->free(mod_ctx, &s_cross);
     svc_resource->free(mod_ctx, &s_circle);
     svc_resource->free(mod_ctx, &s_square);
@@ -7060,6 +7059,10 @@ ModResult mod_initialize(ModError* error) {
         if(!load_button_texture(texture.xboxPath,&texture.xbox)) {
             free_resources();
             return mods::set_error(error,MOD_UNAVAILABLE,"failed to load Xbox controller texture");
+        }
+        if(!load_button_texture(texture.switchPath,&texture.switchTexture)) {
+            free_resources();
+            return mods::set_error(error,MOD_UNAVAILABLE,"failed to load Switch controller texture");
         }
     }
 
