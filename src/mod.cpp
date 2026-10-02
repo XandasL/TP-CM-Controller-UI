@@ -977,11 +977,11 @@ void reset_layout(ModContext*, void*) {
         svc_config->set_int(mod_ctx,g_swSquareX,1218);
         svc_config->set_int(mod_ctx,g_swSquareY,119);
         svc_config->set_int(mod_ctx,g_swSquareScale,90);
-        svc_config->set_int(mod_ctx,g_swCircleX,1505);
-        svc_config->set_int(mod_ctx,g_swCircleY,414);
+        svc_config->set_int(mod_ctx,g_swCircleX,1245);
+        svc_config->set_int(mod_ctx,g_swCircleY,665);
         svc_config->set_int(mod_ctx,g_swCircleScale,90);
-        svc_config->set_int(mod_ctx,g_swCrossX,1174);
-        svc_config->set_int(mod_ctx,g_swCrossY,597);
+        svc_config->set_int(mod_ctx,g_swCrossX,1432);
+        svc_config->set_int(mod_ctx,g_swCrossY,343);
         svc_config->set_int(mod_ctx,g_swCrossScale,90);
         svc_config->set_int(mod_ctx,g_swFishingCheckX,190);
         svc_config->set_int(mod_ctx,g_swFishingCheckY,110);
@@ -1021,28 +1021,28 @@ void reset_layout(ModContext*, void*) {
         svc_config->set_int(mod_ctx,g_swMidnaX,80);
         svc_config->set_int(mod_ctx,g_swMidnaY,-90);
         svc_config->set_int(mod_ctx,g_swMidnaScale,65);
-        svc_config->set_int(mod_ctx,g_swHowlActionX,440);
-        svc_config->set_int(mod_ctx,g_swHowlActionY,830);
+        svc_config->set_int(mod_ctx,g_swHowlActionX,710);
+        svc_config->set_int(mod_ctx,g_swHowlActionY,580);
         svc_config->set_int(mod_ctx,g_swHowlActionScale,65);
-        svc_config->set_int(mod_ctx,g_swShopActionX,450);
-        svc_config->set_int(mod_ctx,g_swShopActionY,830);
+        svc_config->set_int(mod_ctx,g_swShopActionX,700);
+        svc_config->set_int(mod_ctx,g_swShopActionY,570);
         svc_config->set_int(mod_ctx,g_swShopActionScale,65);
-        svc_config->set_int(mod_ctx,g_swHowlBackX,910);
-        svc_config->set_int(mod_ctx,g_swHowlBackY,300);
+        svc_config->set_int(mod_ctx,g_swHowlBackX,640);
+        svc_config->set_int(mod_ctx,g_swHowlBackY,550);
         svc_config->set_int(mod_ctx,g_swHowlBackScale,65);
-        svc_config->set_int(mod_ctx,g_swShopBackX,900);
-        svc_config->set_int(mod_ctx,g_swShopBackY,300);
+        svc_config->set_int(mod_ctx,g_swShopBackX,640);
+        svc_config->set_int(mod_ctx,g_swShopBackY,550);
         svc_config->set_int(mod_ctx,g_swShopBackScale,65);
         svc_config->set_int(mod_ctx,g_swActionTextX,250);
         svc_config->set_int(mod_ctx,g_swActionTextY,220);
         svc_config->set_int(mod_ctx,g_swActionTextScale,55);
         svc_config->set_int(mod_ctx,g_swDialogActionTextX,200);
         svc_config->set_int(mod_ctx,g_swDialogActionTextY,480);
-        svc_config->set_int(mod_ctx,g_swWhistleActionX,460);
-        svc_config->set_int(mod_ctx,g_swWhistleActionY,840);
+        svc_config->set_int(mod_ctx,g_swWhistleActionX,710);
+        svc_config->set_int(mod_ctx,g_swWhistleActionY,585);
         svc_config->set_int(mod_ctx,g_swWhistleActionScale,55);
-        svc_config->set_int(mod_ctx,g_swWhistleBackX,910);
-        svc_config->set_int(mod_ctx,g_swWhistleBackY,310);
+        svc_config->set_int(mod_ctx,g_swWhistleBackX,640);
+        svc_config->set_int(mod_ctx,g_swWhistleBackY,555);
         svc_config->set_int(mod_ctx,g_swWhistleBackScale,55);
         svc_config->set_int(mod_ctx,g_swBackTextX,820);
         svc_config->set_int(mod_ctx,g_swBackTextY,-350);
@@ -6692,11 +6692,11 @@ ModResult mod_initialize(ModError* error) {
             {"switch_squareX",1218,&g_swSquareX},
             {"switch_squareY",119,&g_swSquareY},
             {"switch_squareScale",90,&g_swSquareScale},
-            {"switch_circleX",1505,&g_swCircleX},
-            {"switch_circleY",414,&g_swCircleY},
+            {"switch_circleX",1245,&g_swCircleX},
+            {"switch_circleY",665,&g_swCircleY},
             {"switch_circleScale",90,&g_swCircleScale},
-            {"switch_crossX",1174,&g_swCrossX},
-            {"switch_crossY",597,&g_swCrossY},
+            {"switch_crossX",1432,&g_swCrossX},
+            {"switch_crossY",343,&g_swCrossY},
             {"switch_crossScale",90,&g_swCrossScale},
             {"switch_fishingCheckX",190,&g_swFishingCheckX},
             {"switch_fishingCheckY",110,&g_swFishingCheckY},
@@ -6736,28 +6736,28 @@ ModResult mod_initialize(ModError* error) {
             {"switch_midnaX",80,&g_swMidnaX},
             {"switch_midnaY",-90,&g_swMidnaY},
             {"switch_midnaScale",65,&g_swMidnaScale},
-            {"switch_howlActionX",440,&g_swHowlActionX},
-            {"switch_howlActionY",830,&g_swHowlActionY},
+            {"switch_howlActionX",710,&g_swHowlActionX},
+            {"switch_howlActionY",580,&g_swHowlActionY},
             {"switch_howlActionScale",65,&g_swHowlActionScale},
-            {"switch_shopActionX",450,&g_swShopActionX},
-            {"switch_shopActionY",830,&g_swShopActionY},
+            {"switch_shopActionX",700,&g_swShopActionX},
+            {"switch_shopActionY",570,&g_swShopActionY},
             {"switch_shopActionScale",65,&g_swShopActionScale},
-            {"switch_howlBackX",910,&g_swHowlBackX},
-            {"switch_howlBackY",300,&g_swHowlBackY},
+            {"switch_howlBackX",640,&g_swHowlBackX},
+            {"switch_howlBackY",550,&g_swHowlBackY},
             {"switch_howlBackScale",65,&g_swHowlBackScale},
-            {"switch_shopBackX",900,&g_swShopBackX},
-            {"switch_shopBackY",300,&g_swShopBackY},
+            {"switch_shopBackX",640,&g_swShopBackX},
+            {"switch_shopBackY",550,&g_swShopBackY},
             {"switch_shopBackScale",65,&g_swShopBackScale},
             {"switch_actionTextX",250,&g_swActionTextX},
             {"switch_actionTextY",220,&g_swActionTextY},
             {"switch_actionTextScale",55,&g_swActionTextScale},
             {"switch_dialogActionTextX",200,&g_swDialogActionTextX},
             {"switch_dialogActionTextY",480,&g_swDialogActionTextY},
-            {"switch_whistleActionX",460,&g_swWhistleActionX},
-            {"switch_whistleActionY",840,&g_swWhistleActionY},
+            {"switch_whistleActionX",710,&g_swWhistleActionX},
+            {"switch_whistleActionY",585,&g_swWhistleActionY},
             {"switch_whistleActionScale",55,&g_swWhistleActionScale},
-            {"switch_whistleBackX",910,&g_swWhistleBackX},
-            {"switch_whistleBackY",310,&g_swWhistleBackY},
+            {"switch_whistleBackX",640,&g_swWhistleBackX},
+            {"switch_whistleBackY",555,&g_swWhistleBackY},
             {"switch_whistleBackScale",55,&g_swWhistleBackScale},
             {"switch_backTextX",820,&g_swBackTextX},
             {"switch_backTextY",-350,&g_swBackTextY},
