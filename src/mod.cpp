@@ -2769,7 +2769,7 @@ const ResTIMG* resource_timg(const ResourceBuffer& requested) {
         // Infrastructure test only: use already-packaged Xbox artwork as a
         // fallback while preserving Switch's physical B/A/Y/X arrangement.
         // Exact Switch BTIs are kept separate from this first logic test.
-        ResourceBuffer* physical=&requested;
+        const ResourceBuffer* physical=&requested;
         if (&requested==&s_cross) physical=&s_circle;       // bottom -> B
         else if (&requested==&s_circle) physical=&s_cross; // right  -> A
         else if (&requested==&s_square) physical=&s_triangle; // left -> Y
