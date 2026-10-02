@@ -25,18 +25,6 @@ add_subdirectory("${DUSKLIGHT_DIR}/sdk" dusklight-sdk EXCLUDE_FROM_ALL)
 
 configure_file(mod.json.in "${CMAKE_CURRENT_BINARY_DIR}/mod.json" @ONLY NEWLINE_STYLE LF)
 
-# Switch controller artwork is kept as a compact source archive. Extract it at
-# configure time so add_mod packages it exactly like the existing PS/Xbox BTIs.
-set(SWITCH_ASSET_ARCHIVE "${CMAKE_CURRENT_SOURCE_DIR}/assets/switch_bti.zip")
-if (EXISTS "${SWITCH_ASSET_ARCHIVE}")
-    file(MAKE_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/res/switch")
-    file(ARCHIVE_EXTRACT INPUT "${SWITCH_ASSET_ARCHIVE}" DESTINATION "${CMAKE_CURRENT_SOURCE_DIR}/res/switch")
-    configure_file("${CMAKE_CURRENT_SOURCE_DIR}/res/switch/r1.bti"
-                   "${CMAKE_CURRENT_SOURCE_DIR}/res/switch/r1_hud.bti" COPYONLY)
-    configure_file("${CMAKE_CURRENT_SOURCE_DIR}/res/switch/skill_l3.bti"
-                   "${CMAKE_CURRENT_SOURCE_DIR}/res/switch/shop_l3_right.bti" COPYONLY)
-endif ()
-
 add_mod(tp_classic_modern_controller_ui
     FEATURES game
     SOURCES src/mod.cpp
