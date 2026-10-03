@@ -16,6 +16,29 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
+      - name: Rebuild and validate banner PNG
+        run: |
+          python -m pip install --disable-pip-version-check pillow
+          python - <<'PY'
+          from pathlib import Path
+          from PIL import Image
+
+          src = Path("assets/banner/banner_source.jpg")
+          dst = Path("res/banner.png")
+          with Image.open(src) as im:
+              im = im.convert("RGB")
+              im = im.resize((2048, 877), Image.Resampling.LANCZOS)
+              im.save(dst, "PNG", optimize=True)
+
+          with Image.open(dst) as check:
+              assert check.format == "PNG", check.format
+              assert check.mode == "RGB", check.mode
+              assert check.size == (2048, 877), check.size
+              check.verify()
+
+          print(f"Validated {dst}: {dst.stat().st_size} bytes")
+          PY
+
       - name: Upload shared banner
         uses: actions/upload-artifact@v7
         with:
