@@ -55,6 +55,7 @@ ConfigVarHandle g_inputSyncControllerIndex=0;
 bool s_controllerStyleLocked=false;
 bool s_useXbox=false;
 bool s_useSwitch=false;
+bool s_useRetroidAyn=false;
 
 // Developer-only Midna diagnostics. This records geometry only; it never
 // changes the HUD. Export from CONTROLLER DEV > Tools after reproducing.
@@ -501,7 +502,12 @@ int64_t raw_controller_style() {
     if (g_controllerStyle==0 || svc_config->get_int(mod_ctx,g_controllerStyle,&v)!=MOD_OK) return 0;
     return v;
 }
-bool switch_controller_selected_now() { return raw_controller_style()==2; }
+// Switch and Retroid/AYN share the same Nintendo-style layout/calibration family.
+bool switch_controller_selected_now() {
+    const int64_t style=raw_controller_style();
+    return style==2 || style==3;
+}
+bool retroid_ayn_controller_selected_now() { return raw_controller_style()==3; }
 
 ConfigVarHandle switch_variant(ConfigVarHandle h) {
     if (!switch_controller_selected_now()) return h;
@@ -1809,7 +1815,7 @@ ModResult build_swap_xyxb_preset_panel(ModContext*,UiWindowHandle,UiElementHandl
 ModResult build_base_xy_preset_panel(ModContext*,UiWindowHandle,UiElementHandle pane,UiElementHandle,void*,ModError*) {
     if (switch_controller_selected_now()) {
         svc_ui->pane_add_text(mod_ctx,pane,
-            "Switch-only calibration. These values are stored separately from every PlayStation/Xbox preset.",
+            "Switch / Retroid-AYN calibration. These values are shared by both designs and stored separately from every PlayStation/Xbox preset.",
             nullptr);
     } else {
         svc_ui->pane_add_text(mod_ctx,pane,
@@ -1824,12 +1830,12 @@ ModResult build_base_xy_preset_panel(ModContext*,UiWindowHandle,UiElementHandle 
     }
 
     svc_ui->pane_add_section(mod_ctx,pane,
-        switch_controller_selected_now() ? "HUD - Y (GC) / X (Switch)" : "HUD - Y (GC) / Square (PS) / X (XB)");
+        switch_controller_selected_now() ? "HUD - Y (GC) / X (Switch/Retroid)" : "HUD - Y (GC) / Square (PS) / X (XB)");
     add_num(pane,"Y Slot - X",g_triX,0,2500,10," /10 px","Base-preset position of the original GC Y slot.");
     add_num(pane,"Y Slot - Y",g_triY,-1000,2000,10," /10 px","Base-preset position of the original GC Y slot.");
     add_num(pane,"Y Slot - Scale",g_triScale,50,200,1,"%","Base-preset Y-slot scale.");
     svc_ui->pane_add_section(mod_ctx,pane,
-        switch_controller_selected_now() ? "HUD - X (GC) / Y (Switch)" : "HUD - X (GC) / Triangle (PS) / Y (XB)");
+        switch_controller_selected_now() ? "HUD - X (GC) / Y (Switch/Retroid)" : "HUD - X (GC) / Triangle (PS) / Y (XB)");
     add_num(pane,"X Slot - X",g_squareX,0,2500,10," /10 px","Base-preset position of the original GC X slot.");
     add_num(pane,"X Slot - Y",g_squareY,-1000,2000,10," /10 px","Base-preset position of the original GC X slot.");
     add_num(pane,"X Slot - Scale",g_squareScale,50,200,1,"%","Base-preset X-slot scale.");
@@ -2290,6 +2296,7 @@ bool controller_style_locked(ModContext*,void*) { return s_controllerStyleLocked
 bool playstation_selected(ModContext*,void*) { return raw_controller_style()==0; }
 bool xbox_selected(ModContext*,void*) { return raw_controller_style()==1; }
 bool switch_selected(ModContext*,void*) { return raw_controller_style()==2; }
+bool retroid_ayn_selected(ModContext*,void*) { return raw_controller_style()==3; }
 void select_playstation(ModContext*,void*) {
     if (!s_controllerStyleLocked) svc_config->set_int(mod_ctx,g_controllerStyle,0);
 }
@@ -2298,6 +2305,9 @@ void select_xbox(ModContext*,void*) {
 }
 void select_switch(ModContext*,void*) {
     if (!s_controllerStyleLocked) svc_config->set_int(mod_ctx,g_controllerStyle,2);
+}
+void select_retroid_ayn(ModContext*,void*) {
+    if (!s_controllerStyleLocked) svc_config->set_int(mod_ctx,g_controllerStyle,3);
 }
 
 
@@ -2450,6 +2460,8 @@ ModResult build_layout_panel(ModContext*,UiElementHandle pane,void*,ModError*) {
     svc_ui->pane_add_control(mod_ctx,pane,&style,nullptr);
     style.label="Switch"; style.on_pressed=select_switch; style.is_selected=switch_selected;
     svc_ui->pane_add_control(mod_ctx,pane,&style,nullptr);
+    style.label="Retroid / AYN"; style.on_pressed=select_retroid_ayn; style.is_selected=retroid_ayn_selected;
+    svc_ui->pane_add_control(mod_ctx,pane,&style,nullptr);
 
     svc_ui->pane_add_text(mod_ctx,pane,"Open the CONTROLLER UI tab in-game for visual options.",nullptr);
     if (kDeveloperOptions)
@@ -2461,9 +2473,9 @@ ModResult build_public_general_panel(ModContext*,UiWindowHandle,UiElementHandle 
     svc_ui->pane_add_text(mod_ctx,pane,"Simple presentation options. Button positions and scales use the calibrated layout included with the mod.",nullptr);
 
     if (switch_controller_selected_now()) {
-        svc_ui->pane_add_section(mod_ctx,pane,"Switch Layout");
+        svc_ui->pane_add_section(mod_ctx,pane,"Switch / Retroid-AYN Layout");
         svc_ui->pane_add_text(mod_ctx,pane,
-            "Switch uses its own native B/A/Y/X physical layout and a separate calibration profile. PlayStation/Xbox layout presets and input-sync presets are not applied.",
+            "Switch and Retroid/AYN use the same Nintendo-style layout/calibration family. PlayStation/Xbox layout presets and input-sync presets are not applied.",
             nullptr);
     } else {
         svc_ui->pane_add_section(mod_ctx,pane,"Button Layout Preset");
@@ -2586,10 +2598,10 @@ void open_layout_window(ModContext*,void*) {
         build_settings_11_panel
     };
     const char* switchTitles[14] = {
-        "SWITCH PROFILE", "Switch HUD", "Switch Items", "Switch HUD Text",
-        "Switch Dialogue", "Switch Wolf", "Switch Shops", "Switch Fishing",
-        "Switch Item Wheel", "Switch Menus", "Switch World Map",
-        "Switch Dungeon Map", "Switch Save", "Tools"
+        "SWITCH / RETROID PROFILE", "Family HUD", "Family Items", "Family HUD Text",
+        "Family Dialogue", "Family Wolf", "Family Shops", "Family Fishing",
+        "Family Item Wheel", "Family Menus", "Family World Map",
+        "Family Dungeon Map", "Family Save", "Tools"
     };
     decltype(tabs[0].build) switchBuilders[14] = {
         build_base_xy_preset_panel,
@@ -2727,32 +2739,33 @@ void set_bounds(J2DPane* pane, float x, float y, float w, float h) {
 }
 
 // Internal resource slots retain their historical PlayStation-oriented names.
-// Switch resources are semantic instead: A stays A, B stays B, X stays X and
-// Y stays Y. The switch_* calibration owns the Nintendo physical placement;
-// no PS/Xbox face swap is used to reinterpret the Switch artwork.
+// Switch and Retroid/AYN share the Nintendo-style calibration family, but keep
+// independent texture packs. No PS/Xbox face-layout preset is applied to either.
 struct ControllerTexture {
     ResourceBuffer* playstation;
     const char* xboxPath;
     ResourceBuffer xbox;
     const char* switchPath;
     ResourceBuffer switchTexture;
+    const char* retroidAynPath;
+    ResourceBuffer retroidAynTexture;
 };
 ControllerTexture s_controllerTextures[]={
-    {&s_cross, "xbox/cross.bti", RESOURCE_BUFFER_INIT, "switch/a.bti", RESOURCE_BUFFER_INIT},
-    {&s_circle, "xbox/circle.bti", RESOURCE_BUFFER_INIT, "switch/b.bti", RESOURCE_BUFFER_INIT},
-    {&s_square, "xbox/square.bti", RESOURCE_BUFFER_INIT, "switch/y.bti", RESOURCE_BUFFER_INIT},
-    {&s_triangle, "xbox/triangle.bti", RESOURCE_BUFFER_INIT, "switch/x.bti", RESOURCE_BUFFER_INIT},
-    {&s_r1, "xbox/r1.bti", RESOURCE_BUFFER_INIT, "switch/r.bti", RESOURCE_BUFFER_INIT},
-    {&s_r1_hud, "xbox/r1_hud.bti", RESOURCE_BUFFER_INIT, "switch/r.bti", RESOURCE_BUFFER_INIT},
-    {&s_analog, "xbox/l3.bti", RESOURCE_BUFFER_INIT, "switch/l_stick.bti", RESOURCE_BUFFER_INIT},
-    {&s_animated_analog_base, "xbox/animated_analog_base.bti", RESOURCE_BUFFER_INIT, "xbox/animated_analog_base.bti", RESOURCE_BUFFER_INIT},
-    {&s_skill_l3, "xbox/skill_l3.bti", RESOURCE_BUFFER_INIT, "xbox/skill_l3.bti", RESOURCE_BUFFER_INIT},
-    {&s_shop_l3_right, "xbox/shop_l3_right.bti", RESOURCE_BUFFER_INIT, "xbox/shop_l3_right.bti", RESOURCE_BUFFER_INIT},
-    {&s_r3, "xbox/r3.bti", RESOURCE_BUFFER_INIT, "switch/r_stick.bti", RESOURCE_BUFFER_INIT},
-    {&s_l2, "xbox/l2.bti", RESOURCE_BUFFER_INIT, "switch/zl.bti", RESOURCE_BUFFER_INIT},
-    {&s_r2, "xbox/r2.bti", RESOURCE_BUFFER_INIT, "switch/zr.bti", RESOURCE_BUFFER_INIT},
-    {&s_options, "xbox/options.bti", RESOURCE_BUFFER_INIT, "switch/plus.bti", RESOURCE_BUFFER_INIT},
-    {&s_dpad, "xbox/dpad.bti", RESOURCE_BUFFER_INIT, "switch/dpad.bti", RESOURCE_BUFFER_INIT}
+    {&s_cross, "xbox/cross.bti", RESOURCE_BUFFER_INIT, "switch/a.bti", RESOURCE_BUFFER_INIT, "retroid-ayn/cross.bti", RESOURCE_BUFFER_INIT},
+    {&s_circle, "xbox/circle.bti", RESOURCE_BUFFER_INIT, "switch/b.bti", RESOURCE_BUFFER_INIT, "retroid-ayn/circle.bti", RESOURCE_BUFFER_INIT},
+    {&s_square, "xbox/square.bti", RESOURCE_BUFFER_INIT, "switch/y.bti", RESOURCE_BUFFER_INIT, "retroid-ayn/square.bti", RESOURCE_BUFFER_INIT},
+    {&s_triangle, "xbox/triangle.bti", RESOURCE_BUFFER_INIT, "switch/x.bti", RESOURCE_BUFFER_INIT, "retroid-ayn/triangle.bti", RESOURCE_BUFFER_INIT},
+    {&s_r1, "xbox/r1.bti", RESOURCE_BUFFER_INIT, "switch/r.bti", RESOURCE_BUFFER_INIT, "retroid-ayn/r1.bti", RESOURCE_BUFFER_INIT},
+    {&s_r1_hud, "xbox/r1_hud.bti", RESOURCE_BUFFER_INIT, "switch/r.bti", RESOURCE_BUFFER_INIT, "retroid-ayn/r1_hud.bti", RESOURCE_BUFFER_INIT},
+    {&s_analog, "xbox/l3.bti", RESOURCE_BUFFER_INIT, "switch/l_stick.bti", RESOURCE_BUFFER_INIT, "retroid-ayn/l3.bti", RESOURCE_BUFFER_INIT},
+    {&s_animated_analog_base, "xbox/animated_analog_base.bti", RESOURCE_BUFFER_INIT, "xbox/animated_analog_base.bti", RESOURCE_BUFFER_INIT, "retroid-ayn/animated_analog_base.bti", RESOURCE_BUFFER_INIT},
+    {&s_skill_l3, "xbox/skill_l3.bti", RESOURCE_BUFFER_INIT, "xbox/skill_l3.bti", RESOURCE_BUFFER_INIT, "retroid-ayn/skill_l3.bti", RESOURCE_BUFFER_INIT},
+    {&s_shop_l3_right, "xbox/shop_l3_right.bti", RESOURCE_BUFFER_INIT, "xbox/shop_l3_right.bti", RESOURCE_BUFFER_INIT, "retroid-ayn/shop_l3_right.bti", RESOURCE_BUFFER_INIT},
+    {&s_r3, "xbox/r3.bti", RESOURCE_BUFFER_INIT, "switch/r_stick.bti", RESOURCE_BUFFER_INIT, "retroid-ayn/r3.bti", RESOURCE_BUFFER_INIT},
+    {&s_l2, "xbox/l2.bti", RESOURCE_BUFFER_INIT, "switch/zl.bti", RESOURCE_BUFFER_INIT, "retroid-ayn/l2.bti", RESOURCE_BUFFER_INIT},
+    {&s_r2, "xbox/r2.bti", RESOURCE_BUFFER_INIT, "switch/zr.bti", RESOURCE_BUFFER_INIT, "retroid-ayn/r2.bti", RESOURCE_BUFFER_INIT},
+    {&s_options, "xbox/options.bti", RESOURCE_BUFFER_INIT, "switch/plus.bti", RESOURCE_BUFFER_INIT, "retroid-ayn/options.bti", RESOURCE_BUFFER_INIT},
+    {&s_dpad, "xbox/dpad.bti", RESOURCE_BUFFER_INIT, "switch/dpad.bti", RESOURCE_BUFFER_INIT, "retroid-ayn/dpad.bti", RESOURCE_BUFFER_INIT}
 };
 
 const ResTIMG* resource_timg(const ResourceBuffer& requested) {
@@ -2762,21 +2775,33 @@ const ResTIMG* resource_timg(const ResourceBuffer& requested) {
         const int64_t style=raw_controller_style();
         s_useXbox=style==1;
         s_useSwitch=style==2;
+        s_useRetroidAyn=style==3;
         s_controllerStyleLocked=true;
         if(svc_log) {
-            const char* name=s_useSwitch ? "Switch" : (s_useXbox ? "Xbox" : "PlayStation");
+            const char* name=s_useRetroidAyn ? "Retroid / AYN" : (s_useSwitch ? "Switch" : (s_useXbox ? "Xbox" : "PlayStation"));
             std::string msg="Controller design locked: ";
             msg+=name;
             svc_log->info(mod_ctx,msg.c_str());
         }
     }
     const ResourceBuffer* selected=&requested;
-    if (s_useSwitch) {
+    if (s_useRetroidAyn) {
+        for(auto& texture:s_controllerTextures)
+            if(texture.playstation==&requested) { selected=&texture.retroidAynTexture; break; }
+    } else if (s_useSwitch) {
         for(auto& texture:s_controllerTextures)
             if(texture.playstation==&requested) { selected=&texture.switchTexture; break; }
     } else if (s_useXbox) {
         for(auto& texture:s_controllerTextures)
             if(texture.playstation==&requested) { selected=&texture.xbox; break; }
+    }
+    if (s_useRetroidAyn &&
+        (&requested==&s_cross || &requested==&s_circle ||
+         &requested==&s_square || &requested==&s_triangle) &&
+        selected->data != nullptr && selected->size >= sizeof(ResTIMG)) {
+        // Celeste's Retroid/AYN face BTIs contain transparent palette entries
+        // but ship with the BTI alpha flag unset.
+        static_cast<ResTIMG*>(selected->data)->alphaEnabled=1;
     }
     const ResourceBuffer& buffer=*selected;
     if (buffer.data == nullptr || buffer.size < 0x20) return nullptr;
@@ -4168,6 +4193,7 @@ void free_resources() {
     for(auto& texture:s_controllerTextures) {
         svc_resource->free(mod_ctx,&texture.xbox);
         svc_resource->free(mod_ctx,&texture.switchTexture);
+        svc_resource->free(mod_ctx,&texture.retroidAynTexture);
     }
     svc_resource->free(mod_ctx, &s_cross);
     svc_resource->free(mod_ctx, &s_circle);
@@ -6536,7 +6562,7 @@ void after_screen_draw(ModContext*, void* args, void*, void*) {
 ModResult mod_initialize(ModError* error) {
     ModResult styleResult=reg_int("controllerStyle",0,g_controllerStyle,error);
     if(styleResult!=MOD_OK) return styleResult;
-    s_controllerStyleLocked=false; s_useXbox=false; s_useSwitch=false;
+    s_controllerStyleLocked=false; s_useXbox=false; s_useSwitch=false; s_useRetroidAyn=false;
     // Persisted live layout editor values. X/Y are stored as tenths of a pixel;
     // scale is stored as percent to use Dusklight's native integer steppers.
     struct R { const char* n; int64_t d; ConfigVarHandle* h; };
@@ -7063,6 +7089,10 @@ ModResult mod_initialize(ModError* error) {
         if(!load_button_texture(texture.switchPath,&texture.switchTexture)) {
             free_resources();
             return mods::set_error(error,MOD_UNAVAILABLE,"failed to load Switch controller texture");
+        }
+        if(!load_button_texture(texture.retroidAynPath,&texture.retroidAynTexture)) {
+            free_resources();
+            return mods::set_error(error,MOD_UNAVAILABLE,"failed to load Retroid / AYN controller texture");
         }
     }
 
