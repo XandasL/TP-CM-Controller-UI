@@ -34,7 +34,7 @@ namespace {
 
 ConfigVarHandle g_controllerStyle=0;
 bool s_controllerStyleLocked=false;
-bool s_useXbox=false;
+int s_activeControllerStyle=0;
 
 ConfigVarHandle g_triX=0, g_triY=0, g_triScale=0;
 ConfigVarHandle g_squareX=0, g_squareY=0, g_squareScale=0;
@@ -711,13 +711,17 @@ ModResult build_dialogue_panel(ModContext*,UiWindowHandle,UiElementHandle pane,U
 }
 
 bool controller_style_locked(ModContext*,void*) { return s_controllerStyleLocked; }
-bool playstation_selected(ModContext*,void*) { return cfg_int(g_controllerStyle,0)!=1; }
+bool playstation_selected(ModContext*,void*) { return cfg_int(g_controllerStyle,0)==0; }
 bool xbox_selected(ModContext*,void*) { return cfg_int(g_controllerStyle,0)==1; }
+bool retroid_ayn_selected(ModContext*,void*) { return cfg_int(g_controllerStyle,0)==2; }
 void select_playstation(ModContext*,void*) {
     if (!s_controllerStyleLocked) svc_config->set_int(mod_ctx,g_controllerStyle,0);
 }
 void select_xbox(ModContext*,void*) {
     if (!s_controllerStyleLocked) svc_config->set_int(mod_ctx,g_controllerStyle,1);
+}
+void select_retroid_ayn(ModContext*,void*) {
+    if (!s_controllerStyleLocked) svc_config->set_int(mod_ctx,g_controllerStyle,2);
 }
 
 ModResult build_layout_panel(ModContext*,UiElementHandle pane,void*,ModError*) {
@@ -730,6 +734,8 @@ ModResult build_layout_panel(ModContext*,UiElementHandle pane,void*,ModError*) {
     style.label="PlayStation"; style.on_pressed=select_playstation; style.is_selected=playstation_selected;
     svc_ui->pane_add_control(mod_ctx,pane,&style,nullptr);
     style.label="Xbox"; style.on_pressed=select_xbox; style.is_selected=xbox_selected;
+    svc_ui->pane_add_control(mod_ctx,pane,&style,nullptr);
+    style.label="Retroid-AYN"; style.on_pressed=select_retroid_ayn; style.is_selected=retroid_ayn_selected;
     svc_ui->pane_add_control(mod_ctx,pane,&style,nullptr);
 
     svc_ui->pane_add_text(mod_ctx,pane,"Open the CONTROLLER UI tab in the menu to access the editor organized by category.",nullptr);
@@ -881,36 +887,59 @@ void set_bounds(J2DPane* pane, float x, float y, float w, float h) {
     pane->resize(w, h);
 }
 
-struct ControllerTexture { ResourceBuffer* playstation; const char* xboxPath; ResourceBuffer xbox; };
+struct ControllerTexture {
+    ResourceBuffer* playstation;
+    const char* xboxPath;
+    const char* retroidAynPath;
+    ResourceBuffer xbox;
+    ResourceBuffer retroidAyn;
+};
 ControllerTexture s_controllerTextures[]={
-    {&s_cross, "xbox/cross.bti", RESOURCE_BUFFER_INIT},
-    {&s_circle, "xbox/circle.bti", RESOURCE_BUFFER_INIT},
-    {&s_square, "xbox/square.bti", RESOURCE_BUFFER_INIT},
-    {&s_triangle, "xbox/triangle.bti", RESOURCE_BUFFER_INIT},
-    {&s_r1, "xbox/r1.bti", RESOURCE_BUFFER_INIT},
-    {&s_r1_hud, "xbox/r1_hud.bti", RESOURCE_BUFFER_INIT},
-    {&s_analog, "xbox/l3.bti", RESOURCE_BUFFER_INIT},
-    {&s_animated_analog_base, "xbox/animated_analog_base.bti", RESOURCE_BUFFER_INIT},
-    {&s_skill_l3, "xbox/skill_l3.bti", RESOURCE_BUFFER_INIT},
-    {&s_shop_l3_right, "xbox/shop_l3_right.bti", RESOURCE_BUFFER_INIT},
-    {&s_r3, "xbox/r3.bti", RESOURCE_BUFFER_INIT},
-    {&s_l2, "xbox/l2.bti", RESOURCE_BUFFER_INIT},
-    {&s_r2, "xbox/r2.bti", RESOURCE_BUFFER_INIT},
-    {&s_options, "xbox/options.bti", RESOURCE_BUFFER_INIT},
-    {&s_dpad, "xbox/dpad.bti", RESOURCE_BUFFER_INIT}
+    {&s_cross, "xbox/cross.bti", "retroid-ayn/cross.bti", RESOURCE_BUFFER_INIT, RESOURCE_BUFFER_INIT},
+    {&s_circle, "xbox/circle.bti", "retroid-ayn/circle.bti", RESOURCE_BUFFER_INIT, RESOURCE_BUFFER_INIT},
+    {&s_square, "xbox/square.bti", "retroid-ayn/square.bti", RESOURCE_BUFFER_INIT, RESOURCE_BUFFER_INIT},
+    {&s_triangle, "xbox/triangle.bti", "retroid-ayn/triangle.bti", RESOURCE_BUFFER_INIT, RESOURCE_BUFFER_INIT},
+    {&s_r1, "xbox/r1.bti", "retroid-ayn/r1.bti", RESOURCE_BUFFER_INIT, RESOURCE_BUFFER_INIT},
+    {&s_r1_hud, "xbox/r1_hud.bti", "retroid-ayn/r1_hud.bti", RESOURCE_BUFFER_INIT, RESOURCE_BUFFER_INIT},
+    {&s_analog, "xbox/l3.bti", "retroid-ayn/l3.bti", RESOURCE_BUFFER_INIT, RESOURCE_BUFFER_INIT},
+    {&s_animated_analog_base, "xbox/animated_analog_base.bti", "retroid-ayn/animated_analog_base.bti", RESOURCE_BUFFER_INIT, RESOURCE_BUFFER_INIT},
+    {&s_skill_l3, "xbox/skill_l3.bti", "retroid-ayn/skill_l3.bti", RESOURCE_BUFFER_INIT, RESOURCE_BUFFER_INIT},
+    {&s_shop_l3_right, "xbox/shop_l3_right.bti", "retroid-ayn/shop_l3_right.bti", RESOURCE_BUFFER_INIT, RESOURCE_BUFFER_INIT},
+    {&s_r3, "xbox/r3.bti", "retroid-ayn/r3.bti", RESOURCE_BUFFER_INIT, RESOURCE_BUFFER_INIT},
+    {&s_l2, "xbox/l2.bti", "retroid-ayn/l2.bti", RESOURCE_BUFFER_INIT, RESOURCE_BUFFER_INIT},
+    {&s_r2, "xbox/r2.bti", "retroid-ayn/r2.bti", RESOURCE_BUFFER_INIT, RESOURCE_BUFFER_INIT},
+    {&s_options, "xbox/options.bti", "retroid-ayn/options.bti", RESOURCE_BUFFER_INIT, RESOURCE_BUFFER_INIT},
+    {&s_dpad, "xbox/dpad.bti", "retroid-ayn/dpad.bti", RESOURCE_BUFFER_INIT, RESOURCE_BUFFER_INIT}
 };
 
 const ResTIMG* resource_timg(const ResourceBuffer& requested) {
     // Latch once, before any replacement texture can be attached to a game pane.
     // Both packs remain allocated; no live reload or pointer invalidation occurs.
     if (!s_controllerStyleLocked) {
-        s_useXbox=cfg_int(g_controllerStyle,0)==1;
+        s_activeControllerStyle=static_cast<int>(cfg_int(g_controllerStyle,0));
+        if (s_activeControllerStyle < 0 || s_activeControllerStyle > 2)
+            s_activeControllerStyle=0;
         s_controllerStyleLocked=true;
-        if(svc_log) svc_log->info(mod_ctx,s_useXbox ? "Controller design locked: Xbox" : "Controller design locked: PlayStation");
+        if (svc_log != nullptr) {
+            const char* styleName = s_activeControllerStyle == 1 ? "Xbox" :
+                                    s_activeControllerStyle == 2 ? "Retroid-AYN" : "PlayStation";
+            svc_log->info(mod_ctx, styleName);
+        }
     }
     const ResourceBuffer* selected=&requested;
-    if(s_useXbox) for(auto& texture:s_controllerTextures)
-        if(texture.playstation==&requested) { selected=&texture.xbox; break; }
+    for (auto& texture : s_controllerTextures) {
+        if (texture.playstation != &requested) continue;
+        if (s_activeControllerStyle == 1) selected = &texture.xbox;
+        else if (s_activeControllerStyle == 2) selected = &texture.retroidAyn;
+        break;
+    }
+    if (s_activeControllerStyle == 2 &&
+        (&requested == &s_cross || &requested == &s_circle ||
+         &requested == &s_square || &requested == &s_triangle) &&
+        selected->data != nullptr && selected->size >= sizeof(ResTIMG)) {
+        // Retroid CI8/RGB5A3 palettes contain transparency, but their BTI alpha flag is unset.
+        static_cast<ResTIMG*>(selected->data)->alphaEnabled = 1;
+    }
     const ResourceBuffer& buffer=*selected;
     if (buffer.data == nullptr || buffer.size < 0x20) return nullptr;
     return reinterpret_cast<const ResTIMG*>(buffer.data);
@@ -2388,7 +2417,10 @@ void after_meter_draw(ModContext*, void* args, void*, void*) {
 
 void free_resources() {
     if (svc_resource == nullptr) return;
-    for(auto& texture:s_controllerTextures) svc_resource->free(mod_ctx,&texture.xbox);
+    for (auto& texture : s_controllerTextures) {
+        svc_resource->free(mod_ctx, &texture.xbox);
+        svc_resource->free(mod_ctx, &texture.retroidAyn);
+    }
     svc_resource->free(mod_ctx, &s_cross);
     svc_resource->free(mod_ctx, &s_circle);
     svc_resource->free(mod_ctx, &s_square);
@@ -3897,7 +3929,7 @@ void after_screen_draw(ModContext*, void* args, void*, void*) {
 ModResult mod_initialize(ModError* error) {
     ModResult styleResult=reg_int("controllerStyle",0,g_controllerStyle,error);
     if(styleResult!=MOD_OK) return styleResult;
-    s_controllerStyleLocked=false; s_useXbox=false;
+    s_controllerStyleLocked=false; s_activeControllerStyle=0;
     // Persisted live layout editor values. X/Y are stored as tenths of a pixel;
     // scale is stored as percent to use Dusklight's native integer steppers.
     struct R { const char* n; int64_t d; ConfigVarHandle* h; };
@@ -4061,6 +4093,10 @@ ModResult mod_initialize(ModError* error) {
         if(!load_button_texture(texture.xboxPath,&texture.xbox)) {
             free_resources();
             return mods::set_error(error,MOD_UNAVAILABLE,"failed to load Xbox controller texture");
+        }
+        if(!load_button_texture(texture.retroidAynPath,&texture.retroidAyn)) {
+            free_resources();
+            return mods::set_error(error,MOD_UNAVAILABLE,"failed to load Retroid-AYN controller texture");
         }
     }
 
