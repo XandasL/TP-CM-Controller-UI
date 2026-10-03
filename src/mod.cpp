@@ -1143,8 +1143,8 @@ void reset_layout(ModContext*, void*) {
         svc_config->set_bool(mod_ctx,g_swActionGlowEnabled,true);
         svc_config->set_bool(mod_ctx,g_swBackGlowEnabled,true);
         svc_config->set_bool(mod_ctx,g_swGlowPreview,false);
-        svc_config->set_bool(mod_ctx,g_swWolfXGlowEnabled,false);
-        svc_config->set_bool(mod_ctx,g_swWolfYGlowEnabled,false);
+        svc_config->set_bool(mod_ctx,g_swWolfXGlowEnabled,true);
+        svc_config->set_bool(mod_ctx,g_swWolfYGlowEnabled,true);
         svc_config->set_bool(mod_ctx,g_swWolfGlowPreview,false);
         svc_config->set_bool(mod_ctx,g_swBackButtonAnim,false);
         svc_config->set_bool(mod_ctx,g_swBackTextAnim,false);
@@ -6872,8 +6872,8 @@ ModResult mod_initialize(ModError* error) {
         rr=reg_bool("switch_actionGlowEnabled",true,g_swActionGlowEnabled,error); if(rr!=MOD_OK) return rr;
         rr=reg_bool("switch_backGlowEnabled",true,g_swBackGlowEnabled,error); if(rr!=MOD_OK) return rr;
         rr=reg_bool("switch_glowAdjustmentPreview",false,g_swGlowPreview,error); if(rr!=MOD_OK) return rr;
-        rr=reg_bool("switch_wolfXGlowEnabled",false,g_swWolfXGlowEnabled,error); if(rr!=MOD_OK) return rr;
-        rr=reg_bool("switch_wolfYGlowEnabled",false,g_swWolfYGlowEnabled,error); if(rr!=MOD_OK) return rr;
+        rr=reg_bool("switch_wolfXGlowEnabled",true,g_swWolfXGlowEnabled,error); if(rr!=MOD_OK) return rr;
+        rr=reg_bool("switch_wolfYGlowEnabled",true,g_swWolfYGlowEnabled,error); if(rr!=MOD_OK) return rr;
         rr=reg_bool("switch_wolfGlowPreview",false,g_swWolfGlowPreview,error); if(rr!=MOD_OK) return rr;
         rr=reg_bool("switch_backButtonAnimation",false,g_swBackButtonAnim,error); if(rr!=MOD_OK) return rr;
         rr=reg_bool("switch_backTextAnimation",false,g_swBackTextAnim,error); if(rr!=MOD_OK) return rr;
