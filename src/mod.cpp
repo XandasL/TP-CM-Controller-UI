@@ -2421,20 +2421,27 @@ void toggle_public_back_animation(ModContext*,void*) {
 }
 
 bool public_hud_glows_selected(ModContext*,void*) {
+    const ConfigVarHandle actionEnabled = switch_variant(g_actionGlowEnabled);
     const ConfigVarHandle backEnabled =
         layout_handle4(g_backGlowEnabled,g_backGlowEnabled,g_ybBackGlowEnabled,g_xyxbBackGlowEnabled);
-    return cfg_bool(g_actionGlowEnabled,true) &&
+    const ConfigVarHandle wolfXEnabled =
+        layout_handle4(g_wolfXGlowEnabled,g_swapWolfXGlowEnabled,g_ybWolfXGlowEnabled,g_xyxbWolfXGlowEnabled);
+    const ConfigVarHandle wolfYEnabled =
+        layout_handle4(g_wolfYGlowEnabled,g_swapWolfYGlowEnabled,g_ybWolfYGlowEnabled,g_xyxbWolfYGlowEnabled);
+    return cfg_bool(actionEnabled,true) &&
            cfg_bool(backEnabled,true) &&
-           cfg_bool(g_wolfXGlowEnabled,true) &&
-           cfg_bool(g_wolfYGlowEnabled,true);
+           cfg_bool(wolfXEnabled,true) &&
+           cfg_bool(wolfYEnabled,true);
 }
 void toggle_public_hud_glows(ModContext*,void*) {
     const bool next = !public_hud_glows_selected(nullptr,nullptr);
-    svc_config->set_bool(mod_ctx,g_actionGlowEnabled,next);
+    svc_config->set_bool(mod_ctx,switch_variant(g_actionGlowEnabled),next);
     svc_config->set_bool(mod_ctx,
         layout_handle4(g_backGlowEnabled,g_backGlowEnabled,g_ybBackGlowEnabled,g_xyxbBackGlowEnabled),next);
-    svc_config->set_bool(mod_ctx,g_wolfXGlowEnabled,next);
-    svc_config->set_bool(mod_ctx,g_wolfYGlowEnabled,next);
+    svc_config->set_bool(mod_ctx,
+        layout_handle4(g_wolfXGlowEnabled,g_swapWolfXGlowEnabled,g_ybWolfXGlowEnabled,g_xyxbWolfXGlowEnabled),next);
+    svc_config->set_bool(mod_ctx,
+        layout_handle4(g_wolfYGlowEnabled,g_swapWolfYGlowEnabled,g_ybWolfYGlowEnabled,g_xyxbWolfYGlowEnabled),next);
 }
 
 ModResult build_layout_panel(ModContext*,UiElementHandle pane,void*,ModError*) {
@@ -3175,7 +3182,8 @@ HookAction before_meter_draw(ModContext*, void* args, void*, void*) {
     if (s_activeMeter != nullptr) {
         const bool preview = cfg_bool(g_glowPreview,false);
 
-        if (!cfg_bool(g_actionGlowEnabled,true)) {
+        const ConfigVarHandle actionGlowEnabled = switch_variant(g_actionGlowEnabled);
+        if (!cfg_bool(actionGlowEnabled,true)) {
             s_activeMeter->field_0x608 = 0.0f;
         } else if (preview) {
             s_activeMeter->field_0x608 = 18.0f;
