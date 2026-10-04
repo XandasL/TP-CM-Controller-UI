@@ -1155,6 +1155,10 @@ void reset_layout(ModContext*, void*) {
         svc_config->set_bool(mod_ctx,g_swItemSquareFlipV,false);
         svc_config->set_bool(mod_ctx,g_swItemTriangleFlipH,false);
         svc_config->set_bool(mod_ctx,g_swItemTriangleFlipV,false);
+        // Keep Restore Default UI complete: every registered Switch ConfigVar
+        // must be reset so a DEV recalibration starts from one deterministic state.
+        svc_config->set_bool(mod_ctx,g_swSwordFlipH,false);
+        svc_config->set_bool(mod_ctx,g_swSwordFlipV,false);
         return;
     }
     // Matches the registered defaults captured from the accepted user layout.
