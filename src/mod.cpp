@@ -2386,6 +2386,11 @@ static bool sync_dusklight_face_inputs(ButtonLayoutPreset targetPreset) {
 }
 
 bool base_xy_preset_selected(ModContext*,void*) { return current_layout_preset()==ButtonLayoutPreset::Base; }
+bool switch_base_preset_selected(ModContext*,void*) { return switch_controller_selected_now(); }
+void select_switch_base_preset(ModContext*,void*) {
+    // Switch currently exposes only its native Base layout. Keep the persisted
+    // PlayStation/Xbox preset untouched so it is restored when changing design.
+}
 bool swap_xy_preset_selected(ModContext*,void*) { return current_layout_preset()==ButtonLayoutPreset::SwapXY; }
 bool swap_yb_preset_selected(ModContext*,void*) { return current_layout_preset()==ButtonLayoutPreset::SwapYB; }
 bool swap_xyxb_preset_selected(ModContext*,void*) { return current_layout_preset()==ButtonLayoutPreset::SwapXYXB; }
@@ -2467,52 +2472,54 @@ ModResult build_layout_panel(ModContext*,UiElementHandle pane,void*,ModError*) {
 ModResult build_public_general_panel(ModContext*,UiWindowHandle,UiElementHandle pane,UiElementHandle,void*,ModError*) {
     svc_ui->pane_add_text(mod_ctx,pane,"Simple presentation options. Button positions and scales use the calibrated layout included with the mod.",nullptr);
 
+    svc_ui->pane_add_section(mod_ctx,pane,"Button Layout Preset");
+    svc_ui->pane_add_text(mod_ctx,pane,
+        "Choose the visual layout first. This does not change controller inputs until you press the sync button below.",
+        nullptr);
+
+    UiControlDesc preset=UI_CONTROL_DESC_INIT;
+    preset.kind=UI_CONTROL_BUTTON;
+    preset.label="Base";
     if (switch_controller_selected_now()) {
-        svc_ui->pane_add_section(mod_ctx,pane,"Switch Layout");
+        preset.help_rml="Native Switch B/A/Y/X layout. Additional Switch presets can be added in future versions.";
+        preset.on_pressed=select_switch_base_preset;
+        preset.is_selected=switch_base_preset_selected;
+        svc_ui->pane_add_control(mod_ctx,pane,&preset,nullptr);
+
         svc_ui->pane_add_text(mod_ctx,pane,
-            "Switch uses its own native B/A/Y/X physical layout and a separate calibration profile. PlayStation/Xbox layout presets and input-sync presets are not applied.",
+            "Switch currently provides the Base preset only. Its calibration remains separate from PlayStation/Xbox presets.",
             nullptr);
     } else {
-        svc_ui->pane_add_section(mod_ctx,pane,"Button Layout Preset");
-        svc_ui->pane_add_text(mod_ctx,pane,
-            "Choose the visual layout first. This does not change controller inputs until you press the sync button below.",
-            nullptr);
-    
-        UiControlDesc preset=UI_CONTROL_DESC_INIT;
-        preset.kind=UI_CONTROL_BUTTON;
-        preset.label="Base";
         preset.help_rml="Original TP Classic face-button arrangement.";
         preset.on_pressed=select_base_xy_preset;
         preset.is_selected=base_xy_preset_selected;
         svc_ui->pane_add_control(mod_ctx,pane,&preset,nullptr);
-    
+
         preset.label="Swap X/Y";
         preset.help_rml="Exchange the original GC X and GC Y face assignments.";
         preset.on_pressed=select_swap_xy_preset;
         preset.is_selected=swap_xy_preset_selected;
         svc_ui->pane_add_control(mod_ctx,pane,&preset,nullptr);
-    
+
         preset.label="Swap Y/B";
         preset.help_rml="Exchange the original GC Y and GC B face assignments.";
         preset.on_pressed=select_swap_yb_preset;
         preset.is_selected=swap_yb_preset_selected;
         svc_ui->pane_add_control(mod_ctx,pane,&preset,nullptr);
-    
+
         preset.label="Swap X/Y + X/B";
         preset.help_rml="Use the combined X/Y and X/B face assignment preset.";
         preset.on_pressed=select_swap_xyxb_preset;
         preset.is_selected=swap_xyxb_preset_selected;
         svc_ui->pane_add_control(mod_ctx,pane,&preset,nullptr);
-    
-        svc_ui->pane_add_section(mod_ctx,pane,"Controller Input Sync");
-        svc_ui->pane_add_text(mod_ctx,pane,
-            "After choosing a preset, sync only Port 1 gamepad A/B/X/Y through Dusklight's own Controller mapping. Keyboard, triggers, sticks, D-Pad and other bindings are untouched.",
-            nullptr);
-        add_button(pane,"Sync Controller Inputs with Preset",sync_selected_layout_preset,
-            "Apply the selected visual preset to Dusklight's current Port 1 gamepad face-button bindings.");
-    
-    
     }
+
+    svc_ui->pane_add_section(mod_ctx,pane,"Controller Input Sync");
+    svc_ui->pane_add_text(mod_ctx,pane,
+        "After choosing a preset, sync only Port 1 gamepad A/B/X/Y through Dusklight's own Controller mapping. Keyboard, triggers, sticks, D-Pad and other bindings are untouched.",
+        nullptr);
+    add_button(pane,"Sync Controller Inputs with Preset",sync_selected_layout_preset,
+        "Apply the selected visual preset to Dusklight's current Port 1 gamepad face-button bindings.");
     svc_ui->pane_add_section(mod_ctx,pane,"Decorations");
     add_toggle(pane,"HUD Ornament",g_hudOrnamentEnabled,"Show or hide the decorative ornament on the gameplay HUD.");
     add_toggle(pane,"Menu Prompt Ornament",g_menuPromptOrnament,"Show or hide the ornament used with shared menu prompts.");
