@@ -54,6 +54,7 @@ ConfigVarHandle g_inputSyncLastPreset=0;
 ConfigVarHandle g_inputSyncControllerIndex=0;
 bool s_controllerStyleLocked=false;
 bool s_useXbox=false;
+bool s_useSwitch=false;
 
 // Developer-only Midna diagnostics. This records geometry only; it never
 // changes the HUD. Export from CONTROLLER DEV > Tools after reproducing.
@@ -284,7 +285,438 @@ VisualEditorTarget s_visualEditorTargets[] = {
     {VisualEditorTargetId::DungeonBack,   "Dungeon Map Back",         &g_dungeonMapCircleX, &g_dungeonMapCircleY, &g_dungeonMapCircleScale},
 };
 
+// Switch gets a full shadow copy of the authored visual configuration. This
+// keeps PlayStation/Xbox presets independent while Switch is calibrated in
+// every HUD and menu context.
+ConfigVarHandle g_swWorldR1X=0;
+ConfigVarHandle g_swWorldR1Y=0;
+ConfigVarHandle g_swWorldR1Scale=0;
+ConfigVarHandle g_swWorldAnalogScale=0;
+ConfigVarHandle g_swWorldDpadScale=0;
+ConfigVarHandle g_swWorldArrowScale=0;
+ConfigVarHandle g_swWorldPortalTextScale=0;
+ConfigVarHandle g_swWorldMoveTextScale=0;
+ConfigVarHandle g_swWorldReturnTextScale=0;
+ConfigVarHandle g_swWorldArrowX=0;
+ConfigVarHandle g_swWorldArrowY=0;
+ConfigVarHandle g_swWorldAnalogX=0;
+ConfigVarHandle g_swWorldAnalogY=0;
+ConfigVarHandle g_swWorldDpadX=0;
+ConfigVarHandle g_swWorldDpadY=0;
+ConfigVarHandle g_swWorldPortalTextX=0;
+ConfigVarHandle g_swWorldPortalTextY=0;
+ConfigVarHandle g_swWorldMoveTextX=0;
+ConfigVarHandle g_swWorldMoveTextY=0;
+ConfigVarHandle g_swWorldReturnTextX=0;
+ConfigVarHandle g_swWorldReturnTextY=0;
+ConfigVarHandle g_swTriX=0;
+ConfigVarHandle g_swTriY=0;
+ConfigVarHandle g_swTriScale=0;
+ConfigVarHandle g_swSquareX=0;
+ConfigVarHandle g_swSquareY=0;
+ConfigVarHandle g_swSquareScale=0;
+ConfigVarHandle g_swCircleX=0;
+ConfigVarHandle g_swCircleY=0;
+ConfigVarHandle g_swCircleScale=0;
+ConfigVarHandle g_swCrossX=0;
+ConfigVarHandle g_swCrossY=0;
+ConfigVarHandle g_swCrossScale=0;
+ConfigVarHandle g_swFishingCheckX=0;
+ConfigVarHandle g_swFishingCheckY=0;
+ConfigVarHandle g_swFishingCheckScale=0;
+ConfigVarHandle g_swR1X=0;
+ConfigVarHandle g_swR1Y=0;
+ConfigVarHandle g_swR1Scale=0;
+ConfigVarHandle g_swGuideX=0;
+ConfigVarHandle g_swGuideY=0;
+ConfigVarHandle g_swGuideScale=0;
+ConfigVarHandle g_swDpadX=0;
+ConfigVarHandle g_swDpadY=0;
+ConfigVarHandle g_swDpadScale=0;
+ConfigVarHandle g_swItemTextX=0;
+ConfigVarHandle g_swItemTextY=0;
+ConfigVarHandle g_swItemTextScale=0;
+ConfigVarHandle g_swMapTextX=0;
+ConfigVarHandle g_swMapTextY=0;
+ConfigVarHandle g_swMapTextScale=0;
+ConfigVarHandle g_swItemsAnchorX=0;
+ConfigVarHandle g_swItemsAnchorY=0;
+ConfigVarHandle g_swItemSquareX=0;
+ConfigVarHandle g_swItemSquareY=0;
+ConfigVarHandle g_swItemSquareScale=0;
+ConfigVarHandle g_swItemTriangleX=0;
+ConfigVarHandle g_swItemTriangleY=0;
+ConfigVarHandle g_swItemTriangleScale=0;
+ConfigVarHandle g_swItemCircleX=0;
+ConfigVarHandle g_swItemCircleY=0;
+ConfigVarHandle g_swItemCircleScale=0;
+ConfigVarHandle g_swItemR1X=0;
+ConfigVarHandle g_swItemR1Y=0;
+ConfigVarHandle g_swItemR1Scale=0;
+ConfigVarHandle g_swSwordX=0;
+ConfigVarHandle g_swSwordY=0;
+ConfigVarHandle g_swSwordScale=0;
+ConfigVarHandle g_swMidnaX=0;
+ConfigVarHandle g_swMidnaY=0;
+ConfigVarHandle g_swMidnaScale=0;
+ConfigVarHandle g_swHowlActionX=0;
+ConfigVarHandle g_swHowlActionY=0;
+ConfigVarHandle g_swHowlActionScale=0;
+ConfigVarHandle g_swShopActionX=0;
+ConfigVarHandle g_swShopActionY=0;
+ConfigVarHandle g_swShopActionScale=0;
+ConfigVarHandle g_swHowlBackX=0;
+ConfigVarHandle g_swHowlBackY=0;
+ConfigVarHandle g_swHowlBackScale=0;
+ConfigVarHandle g_swShopBackX=0;
+ConfigVarHandle g_swShopBackY=0;
+ConfigVarHandle g_swShopBackScale=0;
+ConfigVarHandle g_swActionTextX=0;
+ConfigVarHandle g_swActionTextY=0;
+ConfigVarHandle g_swActionTextScale=0;
+ConfigVarHandle g_swDialogActionTextX=0;
+ConfigVarHandle g_swDialogActionTextY=0;
+ConfigVarHandle g_swWhistleActionX=0;
+ConfigVarHandle g_swWhistleActionY=0;
+ConfigVarHandle g_swWhistleActionScale=0;
+ConfigVarHandle g_swWhistleBackX=0;
+ConfigVarHandle g_swWhistleBackY=0;
+ConfigVarHandle g_swWhistleBackScale=0;
+ConfigVarHandle g_swBackTextX=0;
+ConfigVarHandle g_swBackTextY=0;
+ConfigVarHandle g_swBackTextScale=0;
+ConfigVarHandle g_swWolfSenseX=0;
+ConfigVarHandle g_swWolfSenseY=0;
+ConfigVarHandle g_swWolfSenseScale=0;
+ConfigVarHandle g_swWolfDigX=0;
+ConfigVarHandle g_swWolfDigY=0;
+ConfigVarHandle g_swWolfDigScale=0;
+ConfigVarHandle g_swActionGlowX=0;
+ConfigVarHandle g_swActionGlowY=0;
+ConfigVarHandle g_swActionGlowScale=0;
+ConfigVarHandle g_swBackGlowX=0;
+ConfigVarHandle g_swBackGlowY=0;
+ConfigVarHandle g_swBackGlowScale=0;
+ConfigVarHandle g_swWolfXGlowX=0;
+ConfigVarHandle g_swWolfXGlowY=0;
+ConfigVarHandle g_swWolfXGlowScale=0;
+ConfigVarHandle g_swWolfYGlowX=0;
+ConfigVarHandle g_swWolfYGlowY=0;
+ConfigVarHandle g_swWolfYGlowScale=0;
+ConfigVarHandle g_swFileCrossX=0;
+ConfigVarHandle g_swFileCrossY=0;
+ConfigVarHandle g_swFileCircleX=0;
+ConfigVarHandle g_swFileCircleY=0;
+ConfigVarHandle g_swSaveCrossX=0;
+ConfigVarHandle g_swSaveCrossY=0;
+ConfigVarHandle g_swSaveCircleX=0;
+ConfigVarHandle g_swSaveCircleY=0;
+ConfigVarHandle g_swMenuCrossX=0;
+ConfigVarHandle g_swMenuCrossY=0;
+ConfigVarHandle g_swMenuCrossScale=0;
+ConfigVarHandle g_swMenuCircleX=0;
+ConfigVarHandle g_swMenuCircleY=0;
+ConfigVarHandle g_swMenuCircleScale=0;
+ConfigVarHandle g_swMenuConfirmTextX=0;
+ConfigVarHandle g_swMenuConfirmTextY=0;
+ConfigVarHandle g_swMenuConfirmTextScale=0;
+ConfigVarHandle g_swMenuBackTextX=0;
+ConfigVarHandle g_swMenuBackTextY=0;
+ConfigVarHandle g_swMenuBackTextScale=0;
+ConfigVarHandle g_swMenuOrnamentX=0;
+ConfigVarHandle g_swMenuOrnamentY=0;
+ConfigVarHandle g_swMenuOrnamentScale=0;
+ConfigVarHandle g_swMapCrossX=0;
+ConfigVarHandle g_swMapCrossY=0;
+ConfigVarHandle g_swMapCrossScale=0;
+ConfigVarHandle g_swMapCircleX=0;
+ConfigVarHandle g_swMapCircleY=0;
+ConfigVarHandle g_swMapCircleScale=0;
+ConfigVarHandle g_swMapConfirmTextX=0;
+ConfigVarHandle g_swMapConfirmTextY=0;
+ConfigVarHandle g_swMapConfirmTextScale=0;
+ConfigVarHandle g_swMapBackTextX=0;
+ConfigVarHandle g_swMapBackTextY=0;
+ConfigVarHandle g_swMapBackTextScale=0;
+ConfigVarHandle g_swMapOrnamentX=0;
+ConfigVarHandle g_swMapOrnamentY=0;
+ConfigVarHandle g_swMapOrnamentScale=0;
+ConfigVarHandle g_swHudOrnamentX=0;
+ConfigVarHandle g_swHudOrnamentY=0;
+ConfigVarHandle g_swHudOrnamentScale=0;
+ConfigVarHandle g_swWheelSquareX=0;
+ConfigVarHandle g_swWheelSquareY=0;
+ConfigVarHandle g_swWheelSquareScale=0;
+ConfigVarHandle g_swWheelTriangleX=0;
+ConfigVarHandle g_swWheelTriangleY=0;
+ConfigVarHandle g_swWheelTriangleScale=0;
+ConfigVarHandle g_swWheelSelectAnalogX=0;
+ConfigVarHandle g_swWheelSelectAnalogY=0;
+ConfigVarHandle g_swWheelSelectAnalogScale=0;
+ConfigVarHandle g_swWheelDirectAnalogX=0;
+ConfigVarHandle g_swWheelDirectAnalogY=0;
+ConfigVarHandle g_swWheelDirectAnalogScale=0;
+ConfigVarHandle g_swWheelL2X=0;
+ConfigVarHandle g_swWheelL2Y=0;
+ConfigVarHandle g_swWheelL2Scale=0;
+ConfigVarHandle g_swWheelR2X=0;
+ConfigVarHandle g_swWheelR2Y=0;
+ConfigVarHandle g_swWheelR2Scale=0;
+ConfigVarHandle g_swDungeonMapCrossX=0;
+ConfigVarHandle g_swDungeonMapCrossY=0;
+ConfigVarHandle g_swDungeonMapCrossScale=0;
+ConfigVarHandle g_swDungeonMapCircleX=0;
+ConfigVarHandle g_swDungeonMapCircleY=0;
+ConfigVarHandle g_swDungeonMapCircleScale=0;
+ConfigVarHandle g_swDungeonMapConfirmTextX=0;
+ConfigVarHandle g_swDungeonMapConfirmTextY=0;
+ConfigVarHandle g_swDungeonMapConfirmTextScale=0;
+ConfigVarHandle g_swDungeonMapBackTextX=0;
+ConfigVarHandle g_swDungeonMapBackTextY=0;
+ConfigVarHandle g_swDungeonMapBackTextScale=0;
+ConfigVarHandle g_swDpadShadowsEnabled=0;
+ConfigVarHandle g_swWorldArrows=0;
+ConfigVarHandle g_swDpadArrowsEnabled=0;
+ConfigVarHandle g_swDpadMapAnimation=0;
+ConfigVarHandle g_swActionGlowEnabled=0;
+ConfigVarHandle g_swBackGlowEnabled=0;
+ConfigVarHandle g_swGlowPreview=0;
+ConfigVarHandle g_swWolfXGlowEnabled=0;
+ConfigVarHandle g_swWolfYGlowEnabled=0;
+ConfigVarHandle g_swWolfGlowPreview=0;
+ConfigVarHandle g_swBackButtonAnim=0;
+ConfigVarHandle g_swBackTextAnim=0;
+ConfigVarHandle g_swMenuPromptOrnament=0;
+ConfigVarHandle g_swMapOrnamentEnabled=0;
+ConfigVarHandle g_swHudOrnamentEnabled=0;
+ConfigVarHandle g_swItemSquareFlipH=0;
+ConfigVarHandle g_swItemSquareFlipV=0;
+ConfigVarHandle g_swItemTriangleFlipH=0;
+ConfigVarHandle g_swItemTriangleFlipV=0;
+ConfigVarHandle g_swSwordFlipH=0;
+ConfigVarHandle g_swSwordFlipV=0;
+
+int64_t raw_controller_style() {
+    int64_t v=0;
+    if (g_controllerStyle==0 || svc_config->get_int(mod_ctx,g_controllerStyle,&v)!=MOD_OK) return 0;
+    return v;
+}
+bool switch_controller_selected_now() { return raw_controller_style()==2; }
+
+ConfigVarHandle switch_variant(ConfigVarHandle h) {
+    if (!switch_controller_selected_now()) return h;
+    if (h==g_worldR1X) return g_swWorldR1X;
+    if (h==g_worldR1Y) return g_swWorldR1Y;
+    if (h==g_worldR1Scale) return g_swWorldR1Scale;
+    if (h==g_worldAnalogScale) return g_swWorldAnalogScale;
+    if (h==g_worldDpadScale) return g_swWorldDpadScale;
+    if (h==g_worldArrowScale) return g_swWorldArrowScale;
+    if (h==g_WorldPortalTextScale) return g_swWorldPortalTextScale;
+    if (h==g_WorldMoveTextScale) return g_swWorldMoveTextScale;
+    if (h==g_WorldReturnTextScale) return g_swWorldReturnTextScale;
+    if (h==g_worldArrowX) return g_swWorldArrowX;
+    if (h==g_worldArrowY) return g_swWorldArrowY;
+    if (h==g_worldAnalogX) return g_swWorldAnalogX;
+    if (h==g_worldAnalogY) return g_swWorldAnalogY;
+    if (h==g_worldDpadX) return g_swWorldDpadX;
+    if (h==g_worldDpadY) return g_swWorldDpadY;
+    if (h==g_WorldPortalTextX) return g_swWorldPortalTextX;
+    if (h==g_WorldPortalTextY) return g_swWorldPortalTextY;
+    if (h==g_WorldMoveTextX) return g_swWorldMoveTextX;
+    if (h==g_WorldMoveTextY) return g_swWorldMoveTextY;
+    if (h==g_WorldReturnTextX) return g_swWorldReturnTextX;
+    if (h==g_WorldReturnTextY) return g_swWorldReturnTextY;
+    if (h==g_triX) return g_swTriX;
+    if (h==g_triY) return g_swTriY;
+    if (h==g_triScale) return g_swTriScale;
+    if (h==g_squareX) return g_swSquareX;
+    if (h==g_squareY) return g_swSquareY;
+    if (h==g_squareScale) return g_swSquareScale;
+    if (h==g_circleX) return g_swCircleX;
+    if (h==g_circleY) return g_swCircleY;
+    if (h==g_circleScale) return g_swCircleScale;
+    if (h==g_crossX) return g_swCrossX;
+    if (h==g_crossY) return g_swCrossY;
+    if (h==g_crossScale) return g_swCrossScale;
+    if (h==g_fishingCheckX) return g_swFishingCheckX;
+    if (h==g_fishingCheckY) return g_swFishingCheckY;
+    if (h==g_fishingCheckScale) return g_swFishingCheckScale;
+    if (h==g_r1X) return g_swR1X;
+    if (h==g_r1Y) return g_swR1Y;
+    if (h==g_r1Scale) return g_swR1Scale;
+    if (h==g_guideX) return g_swGuideX;
+    if (h==g_guideY) return g_swGuideY;
+    if (h==g_guideScale) return g_swGuideScale;
+    if (h==g_dpadX) return g_swDpadX;
+    if (h==g_dpadY) return g_swDpadY;
+    if (h==g_dpadScale) return g_swDpadScale;
+    if (h==g_itemTextX) return g_swItemTextX;
+    if (h==g_itemTextY) return g_swItemTextY;
+    if (h==g_itemTextScale) return g_swItemTextScale;
+    if (h==g_mapTextX) return g_swMapTextX;
+    if (h==g_mapTextY) return g_swMapTextY;
+    if (h==g_mapTextScale) return g_swMapTextScale;
+    if (h==g_itemsAnchorX) return g_swItemsAnchorX;
+    if (h==g_itemsAnchorY) return g_swItemsAnchorY;
+    if (h==g_itemSquareX) return g_swItemSquareX;
+    if (h==g_itemSquareY) return g_swItemSquareY;
+    if (h==g_itemSquareScale) return g_swItemSquareScale;
+    if (h==g_itemTriangleX) return g_swItemTriangleX;
+    if (h==g_itemTriangleY) return g_swItemTriangleY;
+    if (h==g_itemTriangleScale) return g_swItemTriangleScale;
+    if (h==g_itemCircleX) return g_swItemCircleX;
+    if (h==g_itemCircleY) return g_swItemCircleY;
+    if (h==g_itemCircleScale) return g_swItemCircleScale;
+    if (h==g_itemR1X) return g_swItemR1X;
+    if (h==g_itemR1Y) return g_swItemR1Y;
+    if (h==g_itemR1Scale) return g_swItemR1Scale;
+    if (h==g_swordX) return g_swSwordX;
+    if (h==g_swordY) return g_swSwordY;
+    if (h==g_swordScale) return g_swSwordScale;
+    if (h==g_midnaX) return g_swMidnaX;
+    if (h==g_midnaY) return g_swMidnaY;
+    if (h==g_midnaScale) return g_swMidnaScale;
+    if (h==g_howlActionX) return g_swHowlActionX;
+    if (h==g_howlActionY) return g_swHowlActionY;
+    if (h==g_howlActionScale) return g_swHowlActionScale;
+    if (h==g_shopActionX) return g_swShopActionX;
+    if (h==g_shopActionY) return g_swShopActionY;
+    if (h==g_shopActionScale) return g_swShopActionScale;
+    if (h==g_howlBackX) return g_swHowlBackX;
+    if (h==g_howlBackY) return g_swHowlBackY;
+    if (h==g_howlBackScale) return g_swHowlBackScale;
+    if (h==g_shopBackX) return g_swShopBackX;
+    if (h==g_shopBackY) return g_swShopBackY;
+    if (h==g_shopBackScale) return g_swShopBackScale;
+    if (h==g_actionTextX) return g_swActionTextX;
+    if (h==g_actionTextY) return g_swActionTextY;
+    if (h==g_actionTextScale) return g_swActionTextScale;
+    if (h==g_dialogActionTextX) return g_swDialogActionTextX;
+    if (h==g_dialogActionTextY) return g_swDialogActionTextY;
+    if (h==g_whistleActionX) return g_swWhistleActionX;
+    if (h==g_whistleActionY) return g_swWhistleActionY;
+    if (h==g_whistleActionScale) return g_swWhistleActionScale;
+    if (h==g_whistleBackX) return g_swWhistleBackX;
+    if (h==g_whistleBackY) return g_swWhistleBackY;
+    if (h==g_whistleBackScale) return g_swWhistleBackScale;
+    if (h==g_backTextX) return g_swBackTextX;
+    if (h==g_backTextY) return g_swBackTextY;
+    if (h==g_backTextScale) return g_swBackTextScale;
+    if (h==g_wolfSenseX) return g_swWolfSenseX;
+    if (h==g_wolfSenseY) return g_swWolfSenseY;
+    if (h==g_wolfSenseScale) return g_swWolfSenseScale;
+    if (h==g_wolfDigX) return g_swWolfDigX;
+    if (h==g_wolfDigY) return g_swWolfDigY;
+    if (h==g_wolfDigScale) return g_swWolfDigScale;
+    if (h==g_actionGlowX) return g_swActionGlowX;
+    if (h==g_actionGlowY) return g_swActionGlowY;
+    if (h==g_actionGlowScale) return g_swActionGlowScale;
+    if (h==g_backGlowX) return g_swBackGlowX;
+    if (h==g_backGlowY) return g_swBackGlowY;
+    if (h==g_backGlowScale) return g_swBackGlowScale;
+    if (h==g_wolfXGlowX) return g_swWolfXGlowX;
+    if (h==g_wolfXGlowY) return g_swWolfXGlowY;
+    if (h==g_wolfXGlowScale) return g_swWolfXGlowScale;
+    if (h==g_wolfYGlowX) return g_swWolfYGlowX;
+    if (h==g_wolfYGlowY) return g_swWolfYGlowY;
+    if (h==g_wolfYGlowScale) return g_swWolfYGlowScale;
+    if (h==g_fileCrossX) return g_swFileCrossX;
+    if (h==g_fileCrossY) return g_swFileCrossY;
+    if (h==g_fileCircleX) return g_swFileCircleX;
+    if (h==g_fileCircleY) return g_swFileCircleY;
+    if (h==g_saveCrossX) return g_swSaveCrossX;
+    if (h==g_saveCrossY) return g_swSaveCrossY;
+    if (h==g_saveCircleX) return g_swSaveCircleX;
+    if (h==g_saveCircleY) return g_swSaveCircleY;
+    if (h==g_menuCrossX) return g_swMenuCrossX;
+    if (h==g_menuCrossY) return g_swMenuCrossY;
+    if (h==g_menuCrossScale) return g_swMenuCrossScale;
+    if (h==g_menuCircleX) return g_swMenuCircleX;
+    if (h==g_menuCircleY) return g_swMenuCircleY;
+    if (h==g_menuCircleScale) return g_swMenuCircleScale;
+    if (h==g_menuConfirmTextX) return g_swMenuConfirmTextX;
+    if (h==g_menuConfirmTextY) return g_swMenuConfirmTextY;
+    if (h==g_menuConfirmTextScale) return g_swMenuConfirmTextScale;
+    if (h==g_menuBackTextX) return g_swMenuBackTextX;
+    if (h==g_menuBackTextY) return g_swMenuBackTextY;
+    if (h==g_menuBackTextScale) return g_swMenuBackTextScale;
+    if (h==g_menuOrnamentX) return g_swMenuOrnamentX;
+    if (h==g_menuOrnamentY) return g_swMenuOrnamentY;
+    if (h==g_menuOrnamentScale) return g_swMenuOrnamentScale;
+    if (h==g_mapCrossX) return g_swMapCrossX;
+    if (h==g_mapCrossY) return g_swMapCrossY;
+    if (h==g_mapCrossScale) return g_swMapCrossScale;
+    if (h==g_mapCircleX) return g_swMapCircleX;
+    if (h==g_mapCircleY) return g_swMapCircleY;
+    if (h==g_mapCircleScale) return g_swMapCircleScale;
+    if (h==g_mapConfirmTextX) return g_swMapConfirmTextX;
+    if (h==g_mapConfirmTextY) return g_swMapConfirmTextY;
+    if (h==g_mapConfirmTextScale) return g_swMapConfirmTextScale;
+    if (h==g_mapBackTextX) return g_swMapBackTextX;
+    if (h==g_mapBackTextY) return g_swMapBackTextY;
+    if (h==g_mapBackTextScale) return g_swMapBackTextScale;
+    if (h==g_mapOrnamentX) return g_swMapOrnamentX;
+    if (h==g_mapOrnamentY) return g_swMapOrnamentY;
+    if (h==g_mapOrnamentScale) return g_swMapOrnamentScale;
+    if (h==g_hudOrnamentX) return g_swHudOrnamentX;
+    if (h==g_hudOrnamentY) return g_swHudOrnamentY;
+    if (h==g_hudOrnamentScale) return g_swHudOrnamentScale;
+    if (h==g_wheelSquareX) return g_swWheelSquareX;
+    if (h==g_wheelSquareY) return g_swWheelSquareY;
+    if (h==g_wheelSquareScale) return g_swWheelSquareScale;
+    if (h==g_wheelTriangleX) return g_swWheelTriangleX;
+    if (h==g_wheelTriangleY) return g_swWheelTriangleY;
+    if (h==g_wheelTriangleScale) return g_swWheelTriangleScale;
+    if (h==g_wheelSelectAnalogX) return g_swWheelSelectAnalogX;
+    if (h==g_wheelSelectAnalogY) return g_swWheelSelectAnalogY;
+    if (h==g_wheelSelectAnalogScale) return g_swWheelSelectAnalogScale;
+    if (h==g_wheelDirectAnalogX) return g_swWheelDirectAnalogX;
+    if (h==g_wheelDirectAnalogY) return g_swWheelDirectAnalogY;
+    if (h==g_wheelDirectAnalogScale) return g_swWheelDirectAnalogScale;
+    if (h==g_wheelL2X) return g_swWheelL2X;
+    if (h==g_wheelL2Y) return g_swWheelL2Y;
+    if (h==g_wheelL2Scale) return g_swWheelL2Scale;
+    if (h==g_wheelR2X) return g_swWheelR2X;
+    if (h==g_wheelR2Y) return g_swWheelR2Y;
+    if (h==g_wheelR2Scale) return g_swWheelR2Scale;
+    if (h==g_dungeonMapCrossX) return g_swDungeonMapCrossX;
+    if (h==g_dungeonMapCrossY) return g_swDungeonMapCrossY;
+    if (h==g_dungeonMapCrossScale) return g_swDungeonMapCrossScale;
+    if (h==g_dungeonMapCircleX) return g_swDungeonMapCircleX;
+    if (h==g_dungeonMapCircleY) return g_swDungeonMapCircleY;
+    if (h==g_dungeonMapCircleScale) return g_swDungeonMapCircleScale;
+    if (h==g_dungeonMapConfirmTextX) return g_swDungeonMapConfirmTextX;
+    if (h==g_dungeonMapConfirmTextY) return g_swDungeonMapConfirmTextY;
+    if (h==g_dungeonMapConfirmTextScale) return g_swDungeonMapConfirmTextScale;
+    if (h==g_dungeonMapBackTextX) return g_swDungeonMapBackTextX;
+    if (h==g_dungeonMapBackTextY) return g_swDungeonMapBackTextY;
+    if (h==g_dungeonMapBackTextScale) return g_swDungeonMapBackTextScale;
+    if (h==g_dpadShadowsEnabled) return g_swDpadShadowsEnabled;
+    if (h==g_worldArrows) return g_swWorldArrows;
+    if (h==g_dpadArrowsEnabled) return g_swDpadArrowsEnabled;
+    if (h==g_dpadMapAnimation) return g_swDpadMapAnimation;
+    if (h==g_actionGlowEnabled) return g_swActionGlowEnabled;
+    if (h==g_backGlowEnabled) return g_swBackGlowEnabled;
+    if (h==g_glowPreview) return g_swGlowPreview;
+    if (h==g_wolfXGlowEnabled) return g_swWolfXGlowEnabled;
+    if (h==g_wolfYGlowEnabled) return g_swWolfYGlowEnabled;
+    if (h==g_wolfGlowPreview) return g_swWolfGlowPreview;
+    if (h==g_backButtonAnim) return g_swBackButtonAnim;
+    if (h==g_backTextAnim) return g_swBackTextAnim;
+    if (h==g_menuPromptOrnament) return g_swMenuPromptOrnament;
+    if (h==g_mapOrnamentEnabled) return g_swMapOrnamentEnabled;
+    if (h==g_hudOrnamentEnabled) return g_swHudOrnamentEnabled;
+    if (h==g_itemSquareFlipH) return g_swItemSquareFlipH;
+    if (h==g_itemSquareFlipV) return g_swItemSquareFlipV;
+    if (h==g_itemTriangleFlipH) return g_swItemTriangleFlipH;
+    if (h==g_itemTriangleFlipV) return g_swItemTriangleFlipV;
+    if (h==g_swordFlipH) return g_swSwordFlipH;
+    if (h==g_swordFlipV) return g_swSwordFlipV;
+    return h;
+}
+
 int64_t cfg_int(ConfigVarHandle h, int64_t fallback) {
+    h=switch_variant(h);
     int64_t v=fallback;
     if (h==0 || svc_config->get_int(mod_ctx,h,&v)!=MOD_OK) return fallback;
     return v;
@@ -296,6 +728,7 @@ float cfg_scale(ConfigVarHandle h, float fallback) {
     return static_cast<float>(cfg_int(h, static_cast<int64_t>(fallback*100.0f))) / 100.0f;
 }
 bool cfg_bool(ConfigVarHandle h, bool fallback) {
+    h=switch_variant(h);
     bool v=fallback;
     if (h==0 || svc_config->get_bool(mod_ctx,h,&v)!=MOD_OK) return fallback;
     return v;
@@ -313,6 +746,10 @@ enum class ButtonLayoutPreset : int64_t {
 };
 
 ButtonLayoutPreset current_layout_preset() {
+    // Switch always uses its native B/A/Y/X physical arrangement. The persisted
+    // PS/Xbox preset is left untouched and becomes active again when returning
+    // to those controller designs.
+    if (switch_controller_selected_now()) return ButtonLayoutPreset::Base;
     // Preset selection is a public feature. Only the calibration/editor UI is
     // developer-only; release builds must honor the persisted preset as well.
     if (g_buttonLayoutPreset == 0) return ButtonLayoutPreset::Base;
@@ -328,6 +765,7 @@ bool swap_xy_layout_enabled() {
 
 ConfigVarHandle layout_handle4(ConfigVarHandle base, ConfigVarHandle swapXY,
                                ConfigVarHandle swapYB, ConfigVarHandle swapXYXB) {
+    if (switch_controller_selected_now()) return switch_variant(base);
     switch(current_layout_preset()) {
     case ButtonLayoutPreset::SwapXY:   return swapXY!=0 ? swapXY : base;
     case ButtonLayoutPreset::SwapYB:   return swapYB!=0 ? swapYB : base;
@@ -502,6 +940,7 @@ void apply_layout_schema_migrations() {
         svc_log->info(mod_ctx, "Layout config migrated to latest schema");
 }
 void add_num(UiElementHandle pane,const char* label,ConfigVarHandle h,int64_t mn,int64_t mx,int64_t step,const char* suffix,const char* help) {
+    h=switch_variant(h);
     UiControlDesc c=UI_CONTROL_DESC_INIT;
     c.kind=UI_CONTROL_NUMBER; c.label=label; c.help_rml=help;
     c.binding=UI_BINDING_CONFIG_VAR; c.config_var=h;
@@ -510,6 +949,218 @@ void add_num(UiElementHandle pane,const char* label,ConfigVarHandle h,int64_t mn
 }
 
 void reset_layout(ModContext*, void*) {
+    if (switch_controller_selected_now()) {
+        svc_config->set_int(mod_ctx,g_swWorldR1X,80);
+        svc_config->set_int(mod_ctx,g_swWorldR1Y,180);
+        svc_config->set_int(mod_ctx,g_swWorldR1Scale,100);
+        svc_config->set_int(mod_ctx,g_swWorldAnalogScale,100);
+        svc_config->set_int(mod_ctx,g_swWorldDpadScale,100);
+        svc_config->set_int(mod_ctx,g_swWorldArrowScale,100);
+        svc_config->set_int(mod_ctx,g_swWorldPortalTextScale,75);
+        svc_config->set_int(mod_ctx,g_swWorldMoveTextScale,75);
+        svc_config->set_int(mod_ctx,g_swWorldReturnTextScale,75);
+        svc_config->set_int(mod_ctx,g_swWorldArrowX,-225);
+        svc_config->set_int(mod_ctx,g_swWorldArrowY,-230);
+        svc_config->set_int(mod_ctx,g_swWorldAnalogX,180);
+        svc_config->set_int(mod_ctx,g_swWorldAnalogY,680);
+        svc_config->set_int(mod_ctx,g_swWorldDpadX,260);
+        svc_config->set_int(mod_ctx,g_swWorldDpadY,220);
+        svc_config->set_int(mod_ctx,g_swWorldPortalTextX,-130);
+        svc_config->set_int(mod_ctx,g_swWorldPortalTextY,0);
+        svc_config->set_int(mod_ctx,g_swWorldMoveTextX,270);
+        svc_config->set_int(mod_ctx,g_swWorldMoveTextY,20);
+        svc_config->set_int(mod_ctx,g_swWorldReturnTextX,0);
+        svc_config->set_int(mod_ctx,g_swWorldReturnTextY,20);
+        svc_config->set_int(mod_ctx,g_swTriX,962);
+        svc_config->set_int(mod_ctx,g_swTriY,387);
+        svc_config->set_int(mod_ctx,g_swTriScale,90);
+        svc_config->set_int(mod_ctx,g_swSquareX,1218);
+        svc_config->set_int(mod_ctx,g_swSquareY,119);
+        svc_config->set_int(mod_ctx,g_swSquareScale,90);
+        svc_config->set_int(mod_ctx,g_swCircleX,1245);
+        svc_config->set_int(mod_ctx,g_swCircleY,665);
+        svc_config->set_int(mod_ctx,g_swCircleScale,90);
+        svc_config->set_int(mod_ctx,g_swCrossX,1432);
+        svc_config->set_int(mod_ctx,g_swCrossY,343);
+        svc_config->set_int(mod_ctx,g_swCrossScale,90);
+        svc_config->set_int(mod_ctx,g_swFishingCheckX,190);
+        svc_config->set_int(mod_ctx,g_swFishingCheckY,110);
+        svc_config->set_int(mod_ctx,g_swFishingCheckScale,65);
+        svc_config->set_int(mod_ctx,g_swR1X,1620);
+        svc_config->set_int(mod_ctx,g_swR1Y,-90);
+        svc_config->set_int(mod_ctx,g_swR1Scale,90);
+        svc_config->set_int(mod_ctx,g_swGuideX,870);
+        svc_config->set_int(mod_ctx,g_swGuideY,30);
+        svc_config->set_int(mod_ctx,g_swGuideScale,100);
+        svc_config->set_int(mod_ctx,g_swDpadX,0);
+        svc_config->set_int(mod_ctx,g_swDpadY,0);
+        svc_config->set_int(mod_ctx,g_swDpadScale,100);
+        svc_config->set_int(mod_ctx,g_swItemTextX,0);
+        svc_config->set_int(mod_ctx,g_swItemTextY,0);
+        svc_config->set_int(mod_ctx,g_swItemTextScale,100);
+        svc_config->set_int(mod_ctx,g_swMapTextX,0);
+        svc_config->set_int(mod_ctx,g_swMapTextY,0);
+        svc_config->set_int(mod_ctx,g_swMapTextScale,100);
+        svc_config->set_int(mod_ctx,g_swItemsAnchorX,0);
+        svc_config->set_int(mod_ctx,g_swItemsAnchorY,0);
+        svc_config->set_int(mod_ctx,g_swItemSquareX,-430);
+        svc_config->set_int(mod_ctx,g_swItemSquareY,-640);
+        svc_config->set_int(mod_ctx,g_swItemSquareScale,50);
+        svc_config->set_int(mod_ctx,g_swItemTriangleX,220);
+        svc_config->set_int(mod_ctx,g_swItemTriangleY,230);
+        svc_config->set_int(mod_ctx,g_swItemTriangleScale,50);
+        svc_config->set_int(mod_ctx,g_swItemCircleX,0);
+        svc_config->set_int(mod_ctx,g_swItemCircleY,0);
+        svc_config->set_int(mod_ctx,g_swItemCircleScale,100);
+        svc_config->set_int(mod_ctx,g_swItemR1X,0);
+        svc_config->set_int(mod_ctx,g_swItemR1Y,0);
+        svc_config->set_int(mod_ctx,g_swItemR1Scale,100);
+        svc_config->set_int(mod_ctx,g_swSwordX,40);
+        svc_config->set_int(mod_ctx,g_swSwordY,-13);
+        svc_config->set_int(mod_ctx,g_swSwordScale,50);
+        svc_config->set_int(mod_ctx,g_swMidnaX,80);
+        svc_config->set_int(mod_ctx,g_swMidnaY,-90);
+        svc_config->set_int(mod_ctx,g_swMidnaScale,65);
+        svc_config->set_int(mod_ctx,g_swHowlActionX,710);
+        svc_config->set_int(mod_ctx,g_swHowlActionY,580);
+        svc_config->set_int(mod_ctx,g_swHowlActionScale,65);
+        svc_config->set_int(mod_ctx,g_swShopActionX,700);
+        svc_config->set_int(mod_ctx,g_swShopActionY,570);
+        svc_config->set_int(mod_ctx,g_swShopActionScale,65);
+        svc_config->set_int(mod_ctx,g_swHowlBackX,640);
+        svc_config->set_int(mod_ctx,g_swHowlBackY,550);
+        svc_config->set_int(mod_ctx,g_swHowlBackScale,65);
+        svc_config->set_int(mod_ctx,g_swShopBackX,640);
+        svc_config->set_int(mod_ctx,g_swShopBackY,550);
+        svc_config->set_int(mod_ctx,g_swShopBackScale,65);
+        svc_config->set_int(mod_ctx,g_swActionTextX,520);
+        svc_config->set_int(mod_ctx,g_swActionTextY,-35);
+        svc_config->set_int(mod_ctx,g_swActionTextScale,55);
+        svc_config->set_int(mod_ctx,g_swDialogActionTextX,200);
+        svc_config->set_int(mod_ctx,g_swDialogActionTextY,480);
+        svc_config->set_int(mod_ctx,g_swWhistleActionX,710);
+        svc_config->set_int(mod_ctx,g_swWhistleActionY,585);
+        svc_config->set_int(mod_ctx,g_swWhistleActionScale,55);
+        svc_config->set_int(mod_ctx,g_swWhistleBackX,640);
+        svc_config->set_int(mod_ctx,g_swWhistleBackY,555);
+        svc_config->set_int(mod_ctx,g_swWhistleBackScale,55);
+        svc_config->set_int(mod_ctx,g_swBackTextX,550);
+        svc_config->set_int(mod_ctx,g_swBackTextY,-90);
+        svc_config->set_int(mod_ctx,g_swBackTextScale,55);
+        svc_config->set_int(mod_ctx,g_swWolfSenseX,-670);
+        svc_config->set_int(mod_ctx,g_swWolfSenseY,-760);
+        svc_config->set_int(mod_ctx,g_swWolfSenseScale,55);
+        svc_config->set_int(mod_ctx,g_swWolfDigX,490);
+        svc_config->set_int(mod_ctx,g_swWolfDigY,575);
+        svc_config->set_int(mod_ctx,g_swWolfDigScale,55);
+        svc_config->set_int(mod_ctx,g_swActionGlowX,-30);
+        svc_config->set_int(mod_ctx,g_swActionGlowY,-25);
+        svc_config->set_int(mod_ctx,g_swActionGlowScale,50);
+        svc_config->set_int(mod_ctx,g_swBackGlowX,10);
+        svc_config->set_int(mod_ctx,g_swBackGlowY,30);
+        svc_config->set_int(mod_ctx,g_swBackGlowScale,100);
+        svc_config->set_int(mod_ctx,g_swWolfXGlowX,5);
+        svc_config->set_int(mod_ctx,g_swWolfXGlowY,-55);
+        svc_config->set_int(mod_ctx,g_swWolfXGlowScale,50);
+        svc_config->set_int(mod_ctx,g_swWolfYGlowX,-70);
+        svc_config->set_int(mod_ctx,g_swWolfYGlowY,20);
+        svc_config->set_int(mod_ctx,g_swWolfYGlowScale,50);
+        svc_config->set_int(mod_ctx,g_swFileCrossX,15);
+        svc_config->set_int(mod_ctx,g_swFileCrossY,0);
+        svc_config->set_int(mod_ctx,g_swFileCircleX,10);
+        svc_config->set_int(mod_ctx,g_swFileCircleY,30);
+        svc_config->set_int(mod_ctx,g_swSaveCrossX,15);
+        svc_config->set_int(mod_ctx,g_swSaveCrossY,0);
+        svc_config->set_int(mod_ctx,g_swSaveCircleX,20);
+        svc_config->set_int(mod_ctx,g_swSaveCircleY,25);
+        svc_config->set_int(mod_ctx,g_swMenuCrossX,-122);
+        svc_config->set_int(mod_ctx,g_swMenuCrossY,30);
+        svc_config->set_int(mod_ctx,g_swMenuCrossScale,70);
+        svc_config->set_int(mod_ctx,g_swMenuCircleX,3);
+        svc_config->set_int(mod_ctx,g_swMenuCircleY,-10);
+        svc_config->set_int(mod_ctx,g_swMenuCircleScale,100);
+        svc_config->set_int(mod_ctx,g_swMenuConfirmTextX,-40);
+        svc_config->set_int(mod_ctx,g_swMenuConfirmTextY,60);
+        svc_config->set_int(mod_ctx,g_swMenuConfirmTextScale,60);
+        svc_config->set_int(mod_ctx,g_swMenuBackTextX,60);
+        svc_config->set_int(mod_ctx,g_swMenuBackTextY,10);
+        svc_config->set_int(mod_ctx,g_swMenuBackTextScale,60);
+        svc_config->set_int(mod_ctx,g_swMenuOrnamentX,-290);
+        svc_config->set_int(mod_ctx,g_swMenuOrnamentY,50);
+        svc_config->set_int(mod_ctx,g_swMenuOrnamentScale,75);
+        svc_config->set_int(mod_ctx,g_swMapCrossX,-115);
+        svc_config->set_int(mod_ctx,g_swMapCrossY,8);
+        svc_config->set_int(mod_ctx,g_swMapCrossScale,75);
+        svc_config->set_int(mod_ctx,g_swMapCircleX,15);
+        svc_config->set_int(mod_ctx,g_swMapCircleY,-13);
+        svc_config->set_int(mod_ctx,g_swMapCircleScale,90);
+        svc_config->set_int(mod_ctx,g_swMapConfirmTextX,-20);
+        svc_config->set_int(mod_ctx,g_swMapConfirmTextY,20);
+        svc_config->set_int(mod_ctx,g_swMapConfirmTextScale,75);
+        svc_config->set_int(mod_ctx,g_swMapBackTextX,100);
+        svc_config->set_int(mod_ctx,g_swMapBackTextY,0);
+        svc_config->set_int(mod_ctx,g_swMapBackTextScale,75);
+        svc_config->set_int(mod_ctx,g_swMapOrnamentX,-300);
+        svc_config->set_int(mod_ctx,g_swMapOrnamentY,0);
+        svc_config->set_int(mod_ctx,g_swMapOrnamentScale,75);
+        svc_config->set_int(mod_ctx,g_swHudOrnamentX,20);
+        svc_config->set_int(mod_ctx,g_swHudOrnamentY,20);
+        svc_config->set_int(mod_ctx,g_swHudOrnamentScale,100);
+        svc_config->set_int(mod_ctx,g_swWheelSquareX,-170);
+        svc_config->set_int(mod_ctx,g_swWheelSquareY,-10);
+        svc_config->set_int(mod_ctx,g_swWheelSquareScale,87);
+        svc_config->set_int(mod_ctx,g_swWheelTriangleX,-100);
+        svc_config->set_int(mod_ctx,g_swWheelTriangleY,-40);
+        svc_config->set_int(mod_ctx,g_swWheelTriangleScale,90);
+        svc_config->set_int(mod_ctx,g_swWheelSelectAnalogX,50);
+        svc_config->set_int(mod_ctx,g_swWheelSelectAnalogY,0);
+        svc_config->set_int(mod_ctx,g_swWheelSelectAnalogScale,90);
+        svc_config->set_int(mod_ctx,g_swWheelDirectAnalogX,100);
+        svc_config->set_int(mod_ctx,g_swWheelDirectAnalogY,0);
+        svc_config->set_int(mod_ctx,g_swWheelDirectAnalogScale,90);
+        svc_config->set_int(mod_ctx,g_swWheelL2X,250);
+        svc_config->set_int(mod_ctx,g_swWheelL2Y,-10);
+        svc_config->set_int(mod_ctx,g_swWheelL2Scale,90);
+        svc_config->set_int(mod_ctx,g_swWheelR2X,-130);
+        svc_config->set_int(mod_ctx,g_swWheelR2Y,0);
+        svc_config->set_int(mod_ctx,g_swWheelR2Scale,100);
+        svc_config->set_int(mod_ctx,g_swDungeonMapCrossX,-120);
+        svc_config->set_int(mod_ctx,g_swDungeonMapCrossY,30);
+        svc_config->set_int(mod_ctx,g_swDungeonMapCrossScale,70);
+        svc_config->set_int(mod_ctx,g_swDungeonMapCircleX,0);
+        svc_config->set_int(mod_ctx,g_swDungeonMapCircleY,-10);
+        svc_config->set_int(mod_ctx,g_swDungeonMapCircleScale,100);
+        svc_config->set_int(mod_ctx,g_swDungeonMapConfirmTextX,-50);
+        svc_config->set_int(mod_ctx,g_swDungeonMapConfirmTextY,60);
+        svc_config->set_int(mod_ctx,g_swDungeonMapConfirmTextScale,75);
+        svc_config->set_int(mod_ctx,g_swDungeonMapBackTextX,70);
+        svc_config->set_int(mod_ctx,g_swDungeonMapBackTextY,10);
+        svc_config->set_int(mod_ctx,g_swDungeonMapBackTextScale,75);
+        svc_config->set_bool(mod_ctx,g_swDpadShadowsEnabled,true);
+        svc_config->set_bool(mod_ctx,g_swWorldArrows,true);
+        svc_config->set_bool(mod_ctx,g_swDpadArrowsEnabled,true);
+        svc_config->set_bool(mod_ctx,g_swDpadMapAnimation,true);
+        svc_config->set_bool(mod_ctx,g_swActionGlowEnabled,true);
+        svc_config->set_bool(mod_ctx,g_swBackGlowEnabled,true);
+        svc_config->set_bool(mod_ctx,g_swGlowPreview,false);
+        svc_config->set_bool(mod_ctx,g_swWolfXGlowEnabled,true);
+        svc_config->set_bool(mod_ctx,g_swWolfYGlowEnabled,true);
+        svc_config->set_bool(mod_ctx,g_swWolfGlowPreview,false);
+        svc_config->set_bool(mod_ctx,g_swBackButtonAnim,false);
+        svc_config->set_bool(mod_ctx,g_swBackTextAnim,false);
+        svc_config->set_bool(mod_ctx,g_swMenuPromptOrnament,true);
+        svc_config->set_bool(mod_ctx,g_swMapOrnamentEnabled,true);
+        svc_config->set_bool(mod_ctx,g_swHudOrnamentEnabled,true);
+        svc_config->set_bool(mod_ctx,g_swItemSquareFlipH,false);
+        svc_config->set_bool(mod_ctx,g_swItemSquareFlipV,false);
+        svc_config->set_bool(mod_ctx,g_swItemTriangleFlipH,false);
+        svc_config->set_bool(mod_ctx,g_swItemTriangleFlipV,false);
+        // Keep Restore Default UI complete: every registered Switch ConfigVar
+        // must be reset so a DEV recalibration starts from one deterministic state.
+        svc_config->set_bool(mod_ctx,g_swSwordFlipH,false);
+        svc_config->set_bool(mod_ctx,g_swSwordFlipV,false);
+        return;
+    }
     // Matches the registered defaults captured from the accepted user layout.
     if (g_buttonLayoutPreset != 0) svc_config->set_int(mod_ctx,g_buttonLayoutPreset,0);
     svc_config->set_int(mod_ctx,g_worldR1X,80);
@@ -763,6 +1414,7 @@ void reset_layout(ModContext*, void*) {
     }
 }
 void add_toggle(UiElementHandle pane,const char* label,ConfigVarHandle h,const char* help) {
+    h=switch_variant(h);
     UiControlDesc c=UI_CONTROL_DESC_INIT;
     c.kind=UI_CONTROL_TOGGLE; c.label=label; c.help_rml=help;
     c.binding=UI_BINDING_CONFIG_VAR; c.config_var=h;
@@ -803,11 +1455,20 @@ void export_calibration(ModContext*,void*) {
     }
 
     std::string json;
-    json.reserve(8192);
+    json.reserve(32768);
     json += "{\n";
     json += "  \"format\": \"tp-classic-controller-ui-calibration\",\n";
-    json += "  \"version\": 1,\n";
-    json += "  \"activePreset\": \"";
+    json += "  \"version\": 2,\n";
+    json += "  \"activeControllerDesign\": \"";
+    switch(raw_controller_style()) {
+    case 1: json += "xbox"; break;
+    case 2: json += "switch"; break;
+    default: json += "playstation"; break;
+    }
+    json += "\",\n";
+    json += "  \"profiles\": {\n";
+    json += "    \"playstationXbox\": {\n";
+    json += "      \"activePreset\": \"";
     switch(current_layout_preset()) {
     case ButtonLayoutPreset::SwapXY: json += "swapXY"; break;
     case ButtonLayoutPreset::SwapYB: json += "swapYB"; break;
@@ -816,7 +1477,7 @@ void export_calibration(ModContext*,void*) {
     }
     json += "\",\n";
 
-    json += "  \"base\": {\n";
+    json += "      \"base\": {\n";
     bool first=true;
     json_int(json,"hudY.x",g_triX,first); json_int(json,"hudY.y",g_triY,first); json_int(json,"hudY.scale",g_triScale,first);
     json_int(json,"hudX.x",g_squareX,first); json_int(json,"hudX.y",g_squareY,first); json_int(json,"hudX.scale",g_squareScale,first);
@@ -840,7 +1501,7 @@ void export_calibration(ModContext*,void*) {
     json_bool(json,"digGlow.enabled",g_wolfYGlowEnabled,first);
     json_int(json,"wheelX.x",g_wheelSquareX,first); json_int(json,"wheelX.y",g_wheelSquareY,first); json_int(json,"wheelX.scale",g_wheelSquareScale,first);
     json_int(json,"wheelY.x",g_wheelTriangleX,first); json_int(json,"wheelY.y",g_wheelTriangleY,first); json_int(json,"wheelY.scale",g_wheelTriangleScale,first);
-    json += "\n  },\n";
+    json += "\n      },\n";
 
     json += "  \"swapXY\": {\n";
     first=true;
@@ -866,7 +1527,7 @@ void export_calibration(ModContext*,void*) {
     json_bool(json,"digGlow.enabled",g_swapWolfYGlowEnabled,first);
     json_int(json,"wheelX.x",g_swapWheelSquareX,first); json_int(json,"wheelX.y",g_swapWheelSquareY,first); json_int(json,"wheelX.scale",g_swapWheelSquareScale,first);
     json_int(json,"wheelY.x",g_swapWheelTriangleX,first); json_int(json,"wheelY.y",g_swapWheelTriangleY,first); json_int(json,"wheelY.scale",g_swapWheelTriangleScale,first);
-    json += "\n  },\n";
+    json += "\n      },\n";
 
     json += "  \"swapYB\": {\n";
     first=true;
@@ -895,7 +1556,7 @@ void export_calibration(ModContext*,void*) {
     json_int(json,"digGlow.x",g_ybWolfYGlowX,first); json_int(json,"digGlow.y",g_ybWolfYGlowY,first); json_int(json,"digGlow.scale",g_ybWolfYGlowScale,first);
     json_int(json,"wheelX.x",g_ybWheelSquareX,first); json_int(json,"wheelX.y",g_ybWheelSquareY,first); json_int(json,"wheelX.scale",g_ybWheelSquareScale,first);
     json_int(json,"wheelY.x",g_ybWheelTriangleX,first); json_int(json,"wheelY.y",g_ybWheelTriangleY,first); json_int(json,"wheelY.scale",g_ybWheelTriangleScale,first);
-    json += "\n  },\n";
+    json += "\n      },\n";
 
     json += "  \"swapXYXB\": {\n";
     first=true;
@@ -924,7 +1585,7 @@ void export_calibration(ModContext*,void*) {
     json_int(json,"digGlow.x",g_xyxbWolfYGlowX,first); json_int(json,"digGlow.y",g_xyxbWolfYGlowY,first); json_int(json,"digGlow.scale",g_xyxbWolfYGlowScale,first);
     json_int(json,"wheelX.x",g_xyxbWheelSquareX,first); json_int(json,"wheelX.y",g_xyxbWheelSquareY,first); json_int(json,"wheelX.scale",g_xyxbWheelSquareScale,first);
     json_int(json,"wheelY.x",g_xyxbWheelTriangleX,first); json_int(json,"wheelY.y",g_xyxbWheelTriangleY,first); json_int(json,"wheelY.scale",g_xyxbWheelTriangleScale,first);
-    json += "\n  },\n";
+    json += "\n      },\n";
 
     json += "  \"shared\": {\n";
     first=true;
@@ -935,7 +1596,222 @@ void export_calibration(ModContext*,void*) {
     json_int(json,"itemsAnchor.x",g_itemsAnchorX,first); json_int(json,"itemsAnchor.y",g_itemsAnchorY,first);
     json_int(json,"wheelL2.x",g_wheelL2X,first); json_int(json,"wheelL2.y",g_wheelL2Y,first); json_int(json,"wheelL2.scale",g_wheelL2Scale,first);
     json_int(json,"wheelR2.x",g_wheelR2X,first); json_int(json,"wheelR2.y",g_wheelR2Y,first); json_int(json,"wheelR2.scale",g_wheelR2Scale,first);
-    json += "\n  }\n";
+    json += "\n      }\n";
+    json += "    },\n";
+    json += "    \"switch\": {\n";
+    json += "      \"activePreset\": \"base\",\n";
+    json += "      \"base\": {\n";
+    first=true;
+    json_int(json,"worldR1X",g_swWorldR1X,first);
+    json_int(json,"worldR1Y",g_swWorldR1Y,first);
+    json_int(json,"worldR1Scale",g_swWorldR1Scale,first);
+    json_int(json,"worldAnalogScale",g_swWorldAnalogScale,first);
+    json_int(json,"worldDpadScale",g_swWorldDpadScale,first);
+    json_int(json,"worldArrowScale",g_swWorldArrowScale,first);
+    json_int(json,"WorldPortalTextScale",g_swWorldPortalTextScale,first);
+    json_int(json,"WorldMoveTextScale",g_swWorldMoveTextScale,first);
+    json_int(json,"WorldReturnTextScale",g_swWorldReturnTextScale,first);
+    json_int(json,"worldArrowX",g_swWorldArrowX,first);
+    json_int(json,"worldArrowY",g_swWorldArrowY,first);
+    json_int(json,"worldAnalogX",g_swWorldAnalogX,first);
+    json_int(json,"worldAnalogY",g_swWorldAnalogY,first);
+    json_int(json,"worldDpadX",g_swWorldDpadX,first);
+    json_int(json,"worldDpadY",g_swWorldDpadY,first);
+    json_int(json,"WorldPortalTextX",g_swWorldPortalTextX,first);
+    json_int(json,"WorldPortalTextY",g_swWorldPortalTextY,first);
+    json_int(json,"WorldMoveTextX",g_swWorldMoveTextX,first);
+    json_int(json,"WorldMoveTextY",g_swWorldMoveTextY,first);
+    json_int(json,"WorldReturnTextX",g_swWorldReturnTextX,first);
+    json_int(json,"WorldReturnTextY",g_swWorldReturnTextY,first);
+    json_int(json,"triX",g_swTriX,first);
+    json_int(json,"triY",g_swTriY,first);
+    json_int(json,"triScale",g_swTriScale,first);
+    json_int(json,"squareX",g_swSquareX,first);
+    json_int(json,"squareY",g_swSquareY,first);
+    json_int(json,"squareScale",g_swSquareScale,first);
+    json_int(json,"circleX",g_swCircleX,first);
+    json_int(json,"circleY",g_swCircleY,first);
+    json_int(json,"circleScale",g_swCircleScale,first);
+    json_int(json,"crossX",g_swCrossX,first);
+    json_int(json,"crossY",g_swCrossY,first);
+    json_int(json,"crossScale",g_swCrossScale,first);
+    json_int(json,"fishingCheckX",g_swFishingCheckX,first);
+    json_int(json,"fishingCheckY",g_swFishingCheckY,first);
+    json_int(json,"fishingCheckScale",g_swFishingCheckScale,first);
+    json_int(json,"r1X",g_swR1X,first);
+    json_int(json,"r1Y",g_swR1Y,first);
+    json_int(json,"r1Scale",g_swR1Scale,first);
+    json_int(json,"guideX",g_swGuideX,first);
+    json_int(json,"guideY",g_swGuideY,first);
+    json_int(json,"guideScale",g_swGuideScale,first);
+    json_int(json,"dpadX",g_swDpadX,first);
+    json_int(json,"dpadY",g_swDpadY,first);
+    json_int(json,"dpadScale",g_swDpadScale,first);
+    json_int(json,"itemTextX",g_swItemTextX,first);
+    json_int(json,"itemTextY",g_swItemTextY,first);
+    json_int(json,"itemTextScale",g_swItemTextScale,first);
+    json_int(json,"mapTextX",g_swMapTextX,first);
+    json_int(json,"mapTextY",g_swMapTextY,first);
+    json_int(json,"mapTextScale",g_swMapTextScale,first);
+    json_int(json,"itemsAnchorX",g_swItemsAnchorX,first);
+    json_int(json,"itemsAnchorY",g_swItemsAnchorY,first);
+    json_int(json,"itemSquareX",g_swItemSquareX,first);
+    json_int(json,"itemSquareY",g_swItemSquareY,first);
+    json_int(json,"itemSquareScale",g_swItemSquareScale,first);
+    json_int(json,"itemTriangleX",g_swItemTriangleX,first);
+    json_int(json,"itemTriangleY",g_swItemTriangleY,first);
+    json_int(json,"itemTriangleScale",g_swItemTriangleScale,first);
+    json_int(json,"itemCircleX",g_swItemCircleX,first);
+    json_int(json,"itemCircleY",g_swItemCircleY,first);
+    json_int(json,"itemCircleScale",g_swItemCircleScale,first);
+    json_int(json,"itemR1X",g_swItemR1X,first);
+    json_int(json,"itemR1Y",g_swItemR1Y,first);
+    json_int(json,"itemR1Scale",g_swItemR1Scale,first);
+    json_int(json,"swordX",g_swSwordX,first);
+    json_int(json,"swordY",g_swSwordY,first);
+    json_int(json,"swordScale",g_swSwordScale,first);
+    json_int(json,"midnaX",g_swMidnaX,first);
+    json_int(json,"midnaY",g_swMidnaY,first);
+    json_int(json,"midnaScale",g_swMidnaScale,first);
+    json_int(json,"howlActionX",g_swHowlActionX,first);
+    json_int(json,"howlActionY",g_swHowlActionY,first);
+    json_int(json,"howlActionScale",g_swHowlActionScale,first);
+    json_int(json,"shopActionX",g_swShopActionX,first);
+    json_int(json,"shopActionY",g_swShopActionY,first);
+    json_int(json,"shopActionScale",g_swShopActionScale,first);
+    json_int(json,"howlBackX",g_swHowlBackX,first);
+    json_int(json,"howlBackY",g_swHowlBackY,first);
+    json_int(json,"howlBackScale",g_swHowlBackScale,first);
+    json_int(json,"shopBackX",g_swShopBackX,first);
+    json_int(json,"shopBackY",g_swShopBackY,first);
+    json_int(json,"shopBackScale",g_swShopBackScale,first);
+    json_int(json,"actionTextX",g_swActionTextX,first);
+    json_int(json,"actionTextY",g_swActionTextY,first);
+    json_int(json,"actionTextScale",g_swActionTextScale,first);
+    json_int(json,"dialogActionTextX",g_swDialogActionTextX,first);
+    json_int(json,"dialogActionTextY",g_swDialogActionTextY,first);
+    json_int(json,"whistleActionX",g_swWhistleActionX,first);
+    json_int(json,"whistleActionY",g_swWhistleActionY,first);
+    json_int(json,"whistleActionScale",g_swWhistleActionScale,first);
+    json_int(json,"whistleBackX",g_swWhistleBackX,first);
+    json_int(json,"whistleBackY",g_swWhistleBackY,first);
+    json_int(json,"whistleBackScale",g_swWhistleBackScale,first);
+    json_int(json,"backTextX",g_swBackTextX,first);
+    json_int(json,"backTextY",g_swBackTextY,first);
+    json_int(json,"backTextScale",g_swBackTextScale,first);
+    json_int(json,"wolfSenseX",g_swWolfSenseX,first);
+    json_int(json,"wolfSenseY",g_swWolfSenseY,first);
+    json_int(json,"wolfSenseScale",g_swWolfSenseScale,first);
+    json_int(json,"wolfDigX",g_swWolfDigX,first);
+    json_int(json,"wolfDigY",g_swWolfDigY,first);
+    json_int(json,"wolfDigScale",g_swWolfDigScale,first);
+    json_int(json,"actionGlowX",g_swActionGlowX,first);
+    json_int(json,"actionGlowY",g_swActionGlowY,first);
+    json_int(json,"actionGlowScale",g_swActionGlowScale,first);
+    json_int(json,"backGlowX",g_swBackGlowX,first);
+    json_int(json,"backGlowY",g_swBackGlowY,first);
+    json_int(json,"backGlowScale",g_swBackGlowScale,first);
+    json_int(json,"wolfXGlowX",g_swWolfXGlowX,first);
+    json_int(json,"wolfXGlowY",g_swWolfXGlowY,first);
+    json_int(json,"wolfXGlowScale",g_swWolfXGlowScale,first);
+    json_int(json,"wolfYGlowX",g_swWolfYGlowX,first);
+    json_int(json,"wolfYGlowY",g_swWolfYGlowY,first);
+    json_int(json,"wolfYGlowScale",g_swWolfYGlowScale,first);
+    json_int(json,"fileCrossX",g_swFileCrossX,first);
+    json_int(json,"fileCrossY",g_swFileCrossY,first);
+    json_int(json,"fileCircleX",g_swFileCircleX,first);
+    json_int(json,"fileCircleY",g_swFileCircleY,first);
+    json_int(json,"saveCrossX",g_swSaveCrossX,first);
+    json_int(json,"saveCrossY",g_swSaveCrossY,first);
+    json_int(json,"saveCircleX",g_swSaveCircleX,first);
+    json_int(json,"saveCircleY",g_swSaveCircleY,first);
+    json_int(json,"menuCrossX",g_swMenuCrossX,first);
+    json_int(json,"menuCrossY",g_swMenuCrossY,first);
+    json_int(json,"menuCrossScale",g_swMenuCrossScale,first);
+    json_int(json,"menuCircleX",g_swMenuCircleX,first);
+    json_int(json,"menuCircleY",g_swMenuCircleY,first);
+    json_int(json,"menuCircleScale",g_swMenuCircleScale,first);
+    json_int(json,"menuConfirmTextX",g_swMenuConfirmTextX,first);
+    json_int(json,"menuConfirmTextY",g_swMenuConfirmTextY,first);
+    json_int(json,"menuConfirmTextScale",g_swMenuConfirmTextScale,first);
+    json_int(json,"menuBackTextX",g_swMenuBackTextX,first);
+    json_int(json,"menuBackTextY",g_swMenuBackTextY,first);
+    json_int(json,"menuBackTextScale",g_swMenuBackTextScale,first);
+    json_int(json,"menuOrnamentX",g_swMenuOrnamentX,first);
+    json_int(json,"menuOrnamentY",g_swMenuOrnamentY,first);
+    json_int(json,"menuOrnamentScale",g_swMenuOrnamentScale,first);
+    json_int(json,"mapCrossX",g_swMapCrossX,first);
+    json_int(json,"mapCrossY",g_swMapCrossY,first);
+    json_int(json,"mapCrossScale",g_swMapCrossScale,first);
+    json_int(json,"mapCircleX",g_swMapCircleX,first);
+    json_int(json,"mapCircleY",g_swMapCircleY,first);
+    json_int(json,"mapCircleScale",g_swMapCircleScale,first);
+    json_int(json,"mapConfirmTextX",g_swMapConfirmTextX,first);
+    json_int(json,"mapConfirmTextY",g_swMapConfirmTextY,first);
+    json_int(json,"mapConfirmTextScale",g_swMapConfirmTextScale,first);
+    json_int(json,"mapBackTextX",g_swMapBackTextX,first);
+    json_int(json,"mapBackTextY",g_swMapBackTextY,first);
+    json_int(json,"mapBackTextScale",g_swMapBackTextScale,first);
+    json_int(json,"mapOrnamentX",g_swMapOrnamentX,first);
+    json_int(json,"mapOrnamentY",g_swMapOrnamentY,first);
+    json_int(json,"mapOrnamentScale",g_swMapOrnamentScale,first);
+    json_int(json,"hudOrnamentX",g_swHudOrnamentX,first);
+    json_int(json,"hudOrnamentY",g_swHudOrnamentY,first);
+    json_int(json,"hudOrnamentScale",g_swHudOrnamentScale,first);
+    json_int(json,"wheelSquareX",g_swWheelSquareX,first);
+    json_int(json,"wheelSquareY",g_swWheelSquareY,first);
+    json_int(json,"wheelSquareScale",g_swWheelSquareScale,first);
+    json_int(json,"wheelTriangleX",g_swWheelTriangleX,first);
+    json_int(json,"wheelTriangleY",g_swWheelTriangleY,first);
+    json_int(json,"wheelTriangleScale",g_swWheelTriangleScale,first);
+    json_int(json,"wheelSelectAnalogX",g_swWheelSelectAnalogX,first);
+    json_int(json,"wheelSelectAnalogY",g_swWheelSelectAnalogY,first);
+    json_int(json,"wheelSelectAnalogScale",g_swWheelSelectAnalogScale,first);
+    json_int(json,"wheelDirectAnalogX",g_swWheelDirectAnalogX,first);
+    json_int(json,"wheelDirectAnalogY",g_swWheelDirectAnalogY,first);
+    json_int(json,"wheelDirectAnalogScale",g_swWheelDirectAnalogScale,first);
+    json_int(json,"wheelL2X",g_swWheelL2X,first);
+    json_int(json,"wheelL2Y",g_swWheelL2Y,first);
+    json_int(json,"wheelL2Scale",g_swWheelL2Scale,first);
+    json_int(json,"wheelR2X",g_swWheelR2X,first);
+    json_int(json,"wheelR2Y",g_swWheelR2Y,first);
+    json_int(json,"wheelR2Scale",g_swWheelR2Scale,first);
+    json_int(json,"dungeonMapCrossX",g_swDungeonMapCrossX,first);
+    json_int(json,"dungeonMapCrossY",g_swDungeonMapCrossY,first);
+    json_int(json,"dungeonMapCrossScale",g_swDungeonMapCrossScale,first);
+    json_int(json,"dungeonMapCircleX",g_swDungeonMapCircleX,first);
+    json_int(json,"dungeonMapCircleY",g_swDungeonMapCircleY,first);
+    json_int(json,"dungeonMapCircleScale",g_swDungeonMapCircleScale,first);
+    json_int(json,"dungeonMapConfirmTextX",g_swDungeonMapConfirmTextX,first);
+    json_int(json,"dungeonMapConfirmTextY",g_swDungeonMapConfirmTextY,first);
+    json_int(json,"dungeonMapConfirmTextScale",g_swDungeonMapConfirmTextScale,first);
+    json_int(json,"dungeonMapBackTextX",g_swDungeonMapBackTextX,first);
+    json_int(json,"dungeonMapBackTextY",g_swDungeonMapBackTextY,first);
+    json_int(json,"dungeonMapBackTextScale",g_swDungeonMapBackTextScale,first);
+    json_bool(json,"dpadShadowsEnabled",g_swDpadShadowsEnabled,first);
+    json_bool(json,"worldMapArrowsEnabled",g_swWorldArrows,first);
+    json_bool(json,"dpadArrowsEnabled",g_swDpadArrowsEnabled,first);
+    json_bool(json,"dpadMapAnimation",g_swDpadMapAnimation,first);
+    json_bool(json,"actionGlowEnabled",g_swActionGlowEnabled,first);
+    json_bool(json,"backGlowEnabled",g_swBackGlowEnabled,first);
+    json_bool(json,"glowAdjustmentPreview",g_swGlowPreview,first);
+    json_bool(json,"wolfXGlowEnabled",g_swWolfXGlowEnabled,first);
+    json_bool(json,"wolfYGlowEnabled",g_swWolfYGlowEnabled,first);
+    json_bool(json,"wolfGlowPreview",g_swWolfGlowPreview,first);
+    json_bool(json,"backButtonAnimation",g_swBackButtonAnim,first);
+    json_bool(json,"backTextAnimation",g_swBackTextAnim,first);
+    json_bool(json,"menuPromptOrnament",g_swMenuPromptOrnament,first);
+    json_bool(json,"mapOrnamentEnabled",g_swMapOrnamentEnabled,first);
+    json_bool(json,"hudOrnamentEnabled",g_swHudOrnamentEnabled,first);
+    json_bool(json,"itemSquareFlipH",g_swItemSquareFlipH,first);
+    json_bool(json,"itemSquareFlipV",g_swItemSquareFlipV,first);
+    json_bool(json,"itemTriangleFlipH",g_swItemTriangleFlipH,first);
+    json_bool(json,"itemTriangleFlipV",g_swItemTriangleFlipV,first);
+    json_bool(json,"swordFlipH",g_swSwordFlipH,first);
+    json_bool(json,"swordFlipV",g_swSwordFlipV,first);
+    json += "\n      }\n";
+    json += "    }\n";
+    json += "  }\n";
     json += "}\n";
 
     std::string path=dataDir;
@@ -1157,21 +2033,29 @@ ModResult build_swap_xyxb_preset_panel(ModContext*,UiWindowHandle,UiElementHandl
 }
 
 ModResult build_base_xy_preset_panel(ModContext*,UiWindowHandle,UiElementHandle pane,UiElementHandle,void*,ModError*) {
-    svc_ui->pane_add_text(mod_ctx,pane,
-        "Base X/Y layout. Activate this preset before calibrating these controls.",
-        nullptr);
-    UiControlDesc activate=UI_CONTROL_DESC_INIT;
-    activate.kind=UI_CONTROL_BUTTON;
-    activate.label="Use Base Preset";
-    activate.on_pressed=select_base_xy_preset;
-    activate.is_selected=base_xy_preset_selected;
-    svc_ui->pane_add_control(mod_ctx,pane,&activate,nullptr);
+    if (switch_controller_selected_now()) {
+        svc_ui->pane_add_text(mod_ctx,pane,
+            "Switch-only calibration. These values are stored separately from every PlayStation/Xbox preset.",
+            nullptr);
+    } else {
+        svc_ui->pane_add_text(mod_ctx,pane,
+            "Base X/Y layout. Activate this preset before calibrating these controls.",
+            nullptr);
+        UiControlDesc activate=UI_CONTROL_DESC_INIT;
+        activate.kind=UI_CONTROL_BUTTON;
+        activate.label="Use Base Preset";
+        activate.on_pressed=select_base_xy_preset;
+        activate.is_selected=base_xy_preset_selected;
+        svc_ui->pane_add_control(mod_ctx,pane,&activate,nullptr);
+    }
 
-    svc_ui->pane_add_section(mod_ctx,pane,"HUD - Y (GC) / Square (PS) / X (XB)");
+    svc_ui->pane_add_section(mod_ctx,pane,
+        switch_controller_selected_now() ? "HUD - Y (GC) / X (Switch)" : "HUD - Y (GC) / Square (PS) / X (XB)");
     add_num(pane,"Y Slot - X",g_triX,0,2500,10," /10 px","Base-preset position of the original GC Y slot.");
     add_num(pane,"Y Slot - Y",g_triY,-1000,2000,10," /10 px","Base-preset position of the original GC Y slot.");
     add_num(pane,"Y Slot - Scale",g_triScale,50,200,1,"%","Base-preset Y-slot scale.");
-    svc_ui->pane_add_section(mod_ctx,pane,"HUD - X (GC) / Triangle (PS) / Y (XB)");
+    svc_ui->pane_add_section(mod_ctx,pane,
+        switch_controller_selected_now() ? "HUD - X (GC) / Y (Switch)" : "HUD - X (GC) / Triangle (PS) / Y (XB)");
     add_num(pane,"X Slot - X",g_squareX,0,2500,10," /10 px","Base-preset position of the original GC X slot.");
     add_num(pane,"X Slot - Y",g_squareY,-1000,2000,10," /10 px","Base-preset position of the original GC X slot.");
     add_num(pane,"X Slot - Scale",g_squareScale,50,200,1,"%","Base-preset X-slot scale.");
@@ -1604,7 +2488,7 @@ ModResult build_settings_11_panel(ModContext*,UiWindowHandle,UiElementHandle pan
         nullptr);
     add_button(pane,"Export Midna Diagnostic",export_midna_diagnostic,
         "Writes midna_diagnostic.txt to the mod data folder. Send that file for analysis.");
-        svc_ui->pane_add_section(mod_ctx,pane,"Visual HUD Editor");
+    svc_ui->pane_add_section(mod_ctx,pane,"Visual HUD Editor");
     add_toggle(pane,"Enable Visual HUD Editor",g_visualHudEditorEnabled,
         "Developer-only visual editing mode. The editor is restricted to a whitelist of TP Classic elements with known X/Y/Scale config handles.");
     svc_ui->pane_add_text(mod_ctx,pane,
@@ -1629,13 +2513,17 @@ ModResult build_dialogue_panel(ModContext*,UiWindowHandle,UiElementHandle pane,U
 }
 
 bool controller_style_locked(ModContext*,void*) { return s_controllerStyleLocked; }
-bool playstation_selected(ModContext*,void*) { return cfg_int(g_controllerStyle,0)!=1; }
-bool xbox_selected(ModContext*,void*) { return cfg_int(g_controllerStyle,0)==1; }
+bool playstation_selected(ModContext*,void*) { return raw_controller_style()==0; }
+bool xbox_selected(ModContext*,void*) { return raw_controller_style()==1; }
+bool switch_selected(ModContext*,void*) { return raw_controller_style()==2; }
 void select_playstation(ModContext*,void*) {
     if (!s_controllerStyleLocked) svc_config->set_int(mod_ctx,g_controllerStyle,0);
 }
 void select_xbox(ModContext*,void*) {
     if (!s_controllerStyleLocked) svc_config->set_int(mod_ctx,g_controllerStyle,1);
+}
+void select_switch(ModContext*,void*) {
+    if (!s_controllerStyleLocked) svc_config->set_int(mod_ctx,g_controllerStyle,2);
 }
 
 
@@ -1658,7 +2546,7 @@ static void input_preset_sources(int preset,int out[4]) {
     }
 }
 
-static bool sync_dusklight_face_inputs(ButtonLayoutPreset targetPreset) {
+static bool sync_dusklight_face_inputs(ButtonLayoutPreset targetPreset,bool switchNativeLayout) {
     const s32 controllerIndex=PADGetIndexForPort(PAD_CHAN0);
     if (controllerIndex < 0)
         return false;
@@ -1681,23 +2569,26 @@ static bool sync_dusklight_face_inputs(ButtonLayoutPreset targetPreset) {
     for (int i=0;i<4;++i)
         if (faces[i]==nullptr) return false;
 
-    const int target=layout_preset_index(targetPreset);
-    int old=(int)cfg_int(g_inputSyncLastPreset,-1);
-    const int savedController=(int)cfg_int(g_inputSyncControllerIndex,-1);
+    // Dusklight stores gamepad face buttons using SDL's positional native-button
+    // indices: South=0, East=1, West=2, North=3. Apply an absolute mapping
+    // instead of permuting whatever happens to be configured already. This makes
+    // Sync Controller Inputs authoritative even after A/B/X/Y were edited by hand.
+    constexpr u32 kNativeSouth=0;
+    constexpr u32 kNativeEast=1;
+    constexpr u32 kNativeWest=2;
+    constexpr u32 kNativeNorth=3;
 
-    if (savedController != controllerIndex || old<0 || old>3)
-        old=0;
+    const int target=switchNativeLayout ? 0 : layout_preset_index(targetPreset);
 
-    u32 current[4]={
-        faces[0]->nativeButton, faces[1]->nativeButton,
-        faces[2]->nativeButton, faces[3]->nativeButton,
+    // PlayStation/Xbox Base follows Cross/A, Circle/B, Triangle/Y, Square/X.
+    // Switch Base follows its native physical labels: A=right, B=bottom,
+    // X=top, Y=left.
+    u32 base[4]={
+        switchNativeLayout ? kNativeEast : kNativeSouth, // GC A
+        switchNativeLayout ? kNativeSouth : kNativeEast, // GC B
+        kNativeNorth, // GC X
+        kNativeWest,  // GC Y
     };
-
-    int oldSources[4];
-    input_preset_sources(old,oldSources);
-    u32 base[4]={current[0],current[1],current[2],current[3]};
-    for (int targetSlot=0;targetSlot<4;++targetSlot)
-        base[oldSources[targetSlot]]=current[targetSlot];
 
     int newSources[4];
     input_preset_sources(target,newSources);
@@ -1713,10 +2604,13 @@ static bool sync_dusklight_face_inputs(ButtonLayoutPreset targetPreset) {
 
     if (svc_log!=nullptr) {
         const char* name="Base";
-        if (target==1) name="Swap X/Y";
-        else if (target==2) name="Swap Y/B";
-        else if (target==3) name="Swap X/Y + X/B";
+        if (!switchNativeLayout) {
+            if (target==1) name="Swap X/Y";
+            else if (target==2) name="Swap Y/B";
+            else if (target==3) name="Swap X/Y + X/B";
+        }
         std::string msg="Controller face-button mapping synced through Dusklight: ";
+        if (switchNativeLayout) msg+="Switch ";
         msg+=name;
         svc_log->info(mod_ctx,msg.c_str());
     }
@@ -1724,6 +2618,11 @@ static bool sync_dusklight_face_inputs(ButtonLayoutPreset targetPreset) {
 }
 
 bool base_xy_preset_selected(ModContext*,void*) { return current_layout_preset()==ButtonLayoutPreset::Base; }
+bool switch_base_preset_selected(ModContext*,void*) { return switch_controller_selected_now(); }
+void select_switch_base_preset(ModContext*,void*) {
+    // Switch currently exposes only its native Base layout. Keep the persisted
+    // PlayStation/Xbox preset untouched so it is restored when changing design.
+}
 bool swap_xy_preset_selected(ModContext*,void*) { return current_layout_preset()==ButtonLayoutPreset::SwapXY; }
 bool swap_yb_preset_selected(ModContext*,void*) { return current_layout_preset()==ButtonLayoutPreset::SwapYB; }
 bool swap_xyxb_preset_selected(ModContext*,void*) { return current_layout_preset()==ButtonLayoutPreset::SwapXYXB; }
@@ -1741,8 +2640,9 @@ void select_swap_xyxb_preset(ModContext*,void*) {
 }
 
 void sync_selected_layout_preset(ModContext*,void*) {
-    const ButtonLayoutPreset preset=current_layout_preset();
-    if (!sync_dusklight_face_inputs(preset) && svc_log!=nullptr) {
+    const bool switchNativeLayout=switch_controller_selected_now();
+    const ButtonLayoutPreset preset=switchNativeLayout ? ButtonLayoutPreset::Base : current_layout_preset();
+    if (!sync_dusklight_face_inputs(preset,switchNativeLayout) && svc_log!=nullptr) {
         svc_log->warn(mod_ctx,
             "Controller input sync skipped: no gamepad mapping is active on Port 1. Keyboard bindings were not changed.");
     }
@@ -1759,20 +2659,27 @@ void toggle_public_back_animation(ModContext*,void*) {
 }
 
 bool public_hud_glows_selected(ModContext*,void*) {
+    const ConfigVarHandle actionEnabled = switch_variant(g_actionGlowEnabled);
     const ConfigVarHandle backEnabled =
         layout_handle4(g_backGlowEnabled,g_backGlowEnabled,g_ybBackGlowEnabled,g_xyxbBackGlowEnabled);
-    return cfg_bool(g_actionGlowEnabled,true) &&
+    const ConfigVarHandle wolfXEnabled =
+        layout_handle4(g_wolfXGlowEnabled,g_swapWolfXGlowEnabled,g_ybWolfXGlowEnabled,g_xyxbWolfXGlowEnabled);
+    const ConfigVarHandle wolfYEnabled =
+        layout_handle4(g_wolfYGlowEnabled,g_swapWolfYGlowEnabled,g_ybWolfYGlowEnabled,g_xyxbWolfYGlowEnabled);
+    return cfg_bool(actionEnabled,true) &&
            cfg_bool(backEnabled,true) &&
-           cfg_bool(g_wolfXGlowEnabled,true) &&
-           cfg_bool(g_wolfYGlowEnabled,true);
+           cfg_bool(wolfXEnabled,true) &&
+           cfg_bool(wolfYEnabled,true);
 }
 void toggle_public_hud_glows(ModContext*,void*) {
     const bool next = !public_hud_glows_selected(nullptr,nullptr);
-    svc_config->set_bool(mod_ctx,g_actionGlowEnabled,next);
+    svc_config->set_bool(mod_ctx,switch_variant(g_actionGlowEnabled),next);
     svc_config->set_bool(mod_ctx,
         layout_handle4(g_backGlowEnabled,g_backGlowEnabled,g_ybBackGlowEnabled,g_xyxbBackGlowEnabled),next);
-    svc_config->set_bool(mod_ctx,g_wolfXGlowEnabled,next);
-    svc_config->set_bool(mod_ctx,g_wolfYGlowEnabled,next);
+    svc_config->set_bool(mod_ctx,
+        layout_handle4(g_wolfXGlowEnabled,g_swapWolfXGlowEnabled,g_ybWolfXGlowEnabled,g_xyxbWolfXGlowEnabled),next);
+    svc_config->set_bool(mod_ctx,
+        layout_handle4(g_wolfYGlowEnabled,g_swapWolfYGlowEnabled,g_ybWolfYGlowEnabled,g_xyxbWolfYGlowEnabled),next);
 }
 
 ModResult build_layout_panel(ModContext*,UiElementHandle pane,void*,ModError*) {
@@ -1785,6 +2692,8 @@ ModResult build_layout_panel(ModContext*,UiElementHandle pane,void*,ModError*) {
     style.label="PlayStation"; style.on_pressed=select_playstation; style.is_selected=playstation_selected;
     svc_ui->pane_add_control(mod_ctx,pane,&style,nullptr);
     style.label="Xbox"; style.on_pressed=select_xbox; style.is_selected=xbox_selected;
+    svc_ui->pane_add_control(mod_ctx,pane,&style,nullptr);
+    style.label="Switch"; style.on_pressed=select_switch; style.is_selected=switch_selected;
     svc_ui->pane_add_control(mod_ctx,pane,&style,nullptr);
 
     svc_ui->pane_add_text(mod_ctx,pane,"Open the CONTROLLER UI tab in-game for visual options.",nullptr);
@@ -1804,28 +2713,39 @@ ModResult build_public_general_panel(ModContext*,UiWindowHandle,UiElementHandle 
     UiControlDesc preset=UI_CONTROL_DESC_INIT;
     preset.kind=UI_CONTROL_BUTTON;
     preset.label="Base";
-    preset.help_rml="Original TP Classic face-button arrangement.";
-    preset.on_pressed=select_base_xy_preset;
-    preset.is_selected=base_xy_preset_selected;
-    svc_ui->pane_add_control(mod_ctx,pane,&preset,nullptr);
+    if (switch_controller_selected_now()) {
+        preset.help_rml="Native Switch B/A/Y/X layout. Additional Switch presets can be added in future versions.";
+        preset.on_pressed=select_switch_base_preset;
+        preset.is_selected=switch_base_preset_selected;
+        svc_ui->pane_add_control(mod_ctx,pane,&preset,nullptr);
 
-    preset.label="Swap X/Y";
-    preset.help_rml="Exchange the original GC X and GC Y face assignments.";
-    preset.on_pressed=select_swap_xy_preset;
-    preset.is_selected=swap_xy_preset_selected;
-    svc_ui->pane_add_control(mod_ctx,pane,&preset,nullptr);
+        svc_ui->pane_add_text(mod_ctx,pane,
+            "Switch currently provides the Base preset only. Its calibration remains separate from PlayStation/Xbox presets.",
+            nullptr);
+    } else {
+        preset.help_rml="Original TP Classic face-button arrangement.";
+        preset.on_pressed=select_base_xy_preset;
+        preset.is_selected=base_xy_preset_selected;
+        svc_ui->pane_add_control(mod_ctx,pane,&preset,nullptr);
 
-    preset.label="Swap Y/B";
-    preset.help_rml="Exchange the original GC Y and GC B face assignments.";
-    preset.on_pressed=select_swap_yb_preset;
-    preset.is_selected=swap_yb_preset_selected;
-    svc_ui->pane_add_control(mod_ctx,pane,&preset,nullptr);
+        preset.label="Swap X/Y";
+        preset.help_rml="Exchange the original GC X and GC Y face assignments.";
+        preset.on_pressed=select_swap_xy_preset;
+        preset.is_selected=swap_xy_preset_selected;
+        svc_ui->pane_add_control(mod_ctx,pane,&preset,nullptr);
 
-    preset.label="Swap X/Y + X/B";
-    preset.help_rml="Use the combined X/Y and X/B face assignment preset.";
-    preset.on_pressed=select_swap_xyxb_preset;
-    preset.is_selected=swap_xyxb_preset_selected;
-    svc_ui->pane_add_control(mod_ctx,pane,&preset,nullptr);
+        preset.label="Swap Y/B";
+        preset.help_rml="Exchange the original GC Y and GC B face assignments.";
+        preset.on_pressed=select_swap_yb_preset;
+        preset.is_selected=swap_yb_preset_selected;
+        svc_ui->pane_add_control(mod_ctx,pane,&preset,nullptr);
+
+        preset.label="Swap X/Y + X/B";
+        preset.help_rml="Use the combined X/Y and X/B face assignment preset.";
+        preset.on_pressed=select_swap_xyxb_preset;
+        preset.is_selected=swap_xyxb_preset_selected;
+        svc_ui->pane_add_control(mod_ctx,pane,&preset,nullptr);
+    }
 
     svc_ui->pane_add_section(mod_ctx,pane,"Controller Input Sync");
     svc_ui->pane_add_text(mod_ctx,pane,
@@ -1833,7 +2753,6 @@ ModResult build_public_general_panel(ModContext*,UiWindowHandle,UiElementHandle 
         nullptr);
     add_button(pane,"Sync Controller Inputs with Preset",sync_selected_layout_preset,
         "Apply the selected visual preset to Dusklight's current Port 1 gamepad face-button bindings.");
-
     svc_ui->pane_add_section(mod_ctx,pane,"Decorations");
     add_toggle(pane,"HUD Ornament",g_hudOrnamentEnabled,"Show or hide the decorative ornament on the gameplay HUD.");
     add_toggle(pane,"Menu Prompt Ornament",g_menuPromptOrnament,"Show or hide the ornament used with shared menu prompts.");
@@ -1897,13 +2816,14 @@ void on_layout_window_closed(ModContext*,UiWindowHandle,void*) {
 void open_layout_window(ModContext*,void*) {
     if(g_layoutWindow!=0) return;
     static UiTabDesc tabs[17];
-    const char* titles[17] = {
+    const bool sw=switch_controller_selected_now();
+    const char* normalTitles[17] = {
         "BASE PRESET", "SWAP X/Y PRESET", "SWAP Y/B PRESET", "SWAP X/Y + X/B",
         "Shared HUD", "Shared Items", "HUD Text", "Dialogue", "Shared Wolf",
         "Shops", "Fishing", "Shared Item Wheel", "Menus", "World Map",
         "Dungeon Map", "Save", "Tools"
     };
-    decltype(tabs[0].build) builders[17] = {
+    decltype(tabs[0].build) normalBuilders[17] = {
         build_base_xy_preset_panel, build_swap_xy_preset_panel,
         build_swap_yb_preset_panel, build_swap_xyxb_preset_panel,
         build_settings_0_panel, build_settings_1_panel, build_settings_2_panel,
@@ -1912,13 +2832,28 @@ void open_layout_window(ModContext*,void*) {
         build_settings_8_panel, build_settings_9_panel, build_settings_10_panel,
         build_settings_11_panel
     };
-    for (int i=0;i<17;i++) {
+    const char* switchTitles[14] = {
+        "SWITCH PROFILE", "Switch HUD", "Switch Items", "Switch HUD Text",
+        "Switch Dialogue", "Switch Wolf", "Switch Shops", "Switch Fishing",
+        "Switch Item Wheel", "Switch Menus", "Switch World Map",
+        "Switch Dungeon Map", "Switch Save", "Tools"
+    };
+    decltype(tabs[0].build) switchBuilders[14] = {
+        build_base_xy_preset_panel,
+        build_settings_0_panel, build_settings_1_panel, build_settings_2_panel,
+        build_dialogue_panel, build_settings_3_panel, build_settings_4_panel,
+        build_settings_5_panel, build_settings_6_panel, build_settings_7_panel,
+        build_settings_8_panel, build_settings_9_panel, build_settings_10_panel,
+        build_settings_11_panel
+    };
+    const int count=sw ? 14 : 17;
+    for (int i=0;i<count;i++) {
         tabs[i]=UI_TAB_DESC_INIT;
-        tabs[i].title=titles[i];
-        tabs[i].build=builders[i];
+        tabs[i].title=sw ? switchTitles[i] : normalTitles[i];
+        tabs[i].build=sw ? switchBuilders[i] : normalBuilders[i];
     }
     UiWindowDesc d=UI_WINDOW_DESC_INIT;
-    d.tabs=tabs; d.tab_count=17; d.on_closed=on_layout_window_closed;
+    d.tabs=tabs; d.tab_count=count; d.on_closed=on_layout_window_closed;
     svc_ui->window_push(mod_ctx,&d,&g_layoutWindow);
 }
 
@@ -2038,36 +2973,58 @@ void set_bounds(J2DPane* pane, float x, float y, float w, float h) {
     pane->resize(w, h);
 }
 
-struct ControllerTexture { ResourceBuffer* playstation; const char* xboxPath; ResourceBuffer xbox; };
+// Internal resource slots retain their historical PlayStation-oriented names.
+// Switch resources are semantic instead: A stays A, B stays B, X stays X and
+// Y stays Y. The switch_* calibration owns the Nintendo physical placement;
+// no PS/Xbox face swap is used to reinterpret the Switch artwork.
+struct ControllerTexture {
+    ResourceBuffer* playstation;
+    const char* xboxPath;
+    ResourceBuffer xbox;
+    const char* switchPath;
+    ResourceBuffer switchTexture;
+};
 ControllerTexture s_controllerTextures[]={
-    {&s_cross, "xbox/cross.bti", RESOURCE_BUFFER_INIT},
-    {&s_circle, "xbox/circle.bti", RESOURCE_BUFFER_INIT},
-    {&s_square, "xbox/square.bti", RESOURCE_BUFFER_INIT},
-    {&s_triangle, "xbox/triangle.bti", RESOURCE_BUFFER_INIT},
-    {&s_r1, "xbox/r1.bti", RESOURCE_BUFFER_INIT},
-    {&s_r1_hud, "xbox/r1_hud.bti", RESOURCE_BUFFER_INIT},
-    {&s_analog, "xbox/l3.bti", RESOURCE_BUFFER_INIT},
-    {&s_animated_analog_base, "xbox/animated_analog_base.bti", RESOURCE_BUFFER_INIT},
-    {&s_skill_l3, "xbox/skill_l3.bti", RESOURCE_BUFFER_INIT},
-    {&s_shop_l3_right, "xbox/shop_l3_right.bti", RESOURCE_BUFFER_INIT},
-    {&s_r3, "xbox/r3.bti", RESOURCE_BUFFER_INIT},
-    {&s_l2, "xbox/l2.bti", RESOURCE_BUFFER_INIT},
-    {&s_r2, "xbox/r2.bti", RESOURCE_BUFFER_INIT},
-    {&s_options, "xbox/options.bti", RESOURCE_BUFFER_INIT},
-    {&s_dpad, "xbox/dpad.bti", RESOURCE_BUFFER_INIT}
+    {&s_cross, "xbox/cross.bti", RESOURCE_BUFFER_INIT, "switch/a.bti", RESOURCE_BUFFER_INIT},
+    {&s_circle, "xbox/circle.bti", RESOURCE_BUFFER_INIT, "switch/b.bti", RESOURCE_BUFFER_INIT},
+    {&s_square, "xbox/square.bti", RESOURCE_BUFFER_INIT, "switch/y.bti", RESOURCE_BUFFER_INIT},
+    {&s_triangle, "xbox/triangle.bti", RESOURCE_BUFFER_INIT, "switch/x.bti", RESOURCE_BUFFER_INIT},
+    {&s_r1, "xbox/r1.bti", RESOURCE_BUFFER_INIT, "switch/r.bti", RESOURCE_BUFFER_INIT},
+    {&s_r1_hud, "xbox/r1_hud.bti", RESOURCE_BUFFER_INIT, "switch/r.bti", RESOURCE_BUFFER_INIT},
+    {&s_analog, "xbox/l3.bti", RESOURCE_BUFFER_INIT, "switch/l_stick.bti", RESOURCE_BUFFER_INIT},
+    {&s_animated_analog_base, "xbox/animated_analog_base.bti", RESOURCE_BUFFER_INIT, "xbox/animated_analog_base.bti", RESOURCE_BUFFER_INIT},
+    {&s_skill_l3, "xbox/skill_l3.bti", RESOURCE_BUFFER_INIT, "xbox/skill_l3.bti", RESOURCE_BUFFER_INIT},
+    {&s_shop_l3_right, "xbox/shop_l3_right.bti", RESOURCE_BUFFER_INIT, "xbox/shop_l3_right.bti", RESOURCE_BUFFER_INIT},
+    {&s_r3, "xbox/r3.bti", RESOURCE_BUFFER_INIT, "switch/r_stick.bti", RESOURCE_BUFFER_INIT},
+    {&s_l2, "xbox/l2.bti", RESOURCE_BUFFER_INIT, "switch/zl.bti", RESOURCE_BUFFER_INIT},
+    {&s_r2, "xbox/r2.bti", RESOURCE_BUFFER_INIT, "switch/zr.bti", RESOURCE_BUFFER_INIT},
+    {&s_options, "xbox/options.bti", RESOURCE_BUFFER_INIT, "switch/plus.bti", RESOURCE_BUFFER_INIT},
+    {&s_dpad, "xbox/dpad.bti", RESOURCE_BUFFER_INIT, "switch/dpad.bti", RESOURCE_BUFFER_INIT}
 };
 
 const ResTIMG* resource_timg(const ResourceBuffer& requested) {
     // Latch once, before any replacement texture can be attached to a game pane.
-    // Both packs remain allocated; no live reload or pointer invalidation occurs.
+    // All controller packs remain allocated; no live reload or pointer invalidation occurs.
     if (!s_controllerStyleLocked) {
-        s_useXbox=cfg_int(g_controllerStyle,0)==1;
+        const int64_t style=raw_controller_style();
+        s_useXbox=style==1;
+        s_useSwitch=style==2;
         s_controllerStyleLocked=true;
-        if(svc_log) svc_log->info(mod_ctx,s_useXbox ? "Controller design locked: Xbox" : "Controller design locked: PlayStation");
+        if(svc_log) {
+            const char* name=s_useSwitch ? "Switch" : (s_useXbox ? "Xbox" : "PlayStation");
+            std::string msg="Controller design locked: ";
+            msg+=name;
+            svc_log->info(mod_ctx,msg.c_str());
+        }
     }
     const ResourceBuffer* selected=&requested;
-    if(s_useXbox) for(auto& texture:s_controllerTextures)
-        if(texture.playstation==&requested) { selected=&texture.xbox; break; }
+    if (s_useSwitch) {
+        for(auto& texture:s_controllerTextures)
+            if(texture.playstation==&requested) { selected=&texture.switchTexture; break; }
+    } else if (s_useXbox) {
+        for(auto& texture:s_controllerTextures)
+            if(texture.playstation==&requested) { selected=&texture.xbox; break; }
+    }
     const ResourceBuffer& buffer=*selected;
     if (buffer.data == nullptr || buffer.size < 0x20) return nullptr;
     return reinterpret_cast<const ResTIMG*>(buffer.data);
@@ -2465,7 +3422,8 @@ HookAction before_meter_draw(ModContext*, void* args, void*, void*) {
     if (s_activeMeter != nullptr) {
         const bool preview = cfg_bool(g_glowPreview,false);
 
-        if (!cfg_bool(g_actionGlowEnabled,true)) {
+        const ConfigVarHandle actionGlowEnabled = switch_variant(g_actionGlowEnabled);
+        if (!cfg_bool(actionGlowEnabled,true)) {
             s_activeMeter->field_0x608 = 0.0f;
         } else if (preview) {
             s_activeMeter->field_0x608 = 18.0f;
@@ -3455,7 +4413,10 @@ void after_meter_draw(ModContext*, void* args, void*, void*) {
 
 void free_resources() {
     if (svc_resource == nullptr) return;
-    for(auto& texture:s_controllerTextures) svc_resource->free(mod_ctx,&texture.xbox);
+    for(auto& texture:s_controllerTextures) {
+        svc_resource->free(mod_ctx,&texture.xbox);
+        svc_resource->free(mod_ctx,&texture.switchTexture);
+    }
     svc_resource->free(mod_ctx, &s_cross);
     svc_resource->free(mod_ctx, &s_circle);
     svc_resource->free(mod_ctx, &s_square);
@@ -5823,7 +6784,7 @@ void after_screen_draw(ModContext*, void* args, void*, void*) {
 ModResult mod_initialize(ModError* error) {
     ModResult styleResult=reg_int("controllerStyle",0,g_controllerStyle,error);
     if(styleResult!=MOD_OK) return styleResult;
-    s_controllerStyleLocked=false; s_useXbox=false;
+    s_controllerStyleLocked=false; s_useXbox=false; s_useSwitch=false;
     // Persisted live layout editor values. X/Y are stored as tenths of a pixel;
     // scale is stored as percent to use Dusklight's native integer steppers.
     struct R { const char* n; int64_t d; ConfigVarHandle* h; };
@@ -5944,6 +6905,227 @@ ModResult mod_initialize(ModError* error) {
     for (auto& v:dungeonVars) {
         ModResult rr=reg_int(v.n,v.d,*v.h,error);
         if(rr!=MOD_OK) return rr;
+    }
+
+
+    // Switch has a complete independent copy of Base/shared visual values.
+    // It starts from the accepted layout, then can be calibrated without
+    // mutating PlayStation/Xbox configuration.
+    {
+        R switchVars[]={
+            {"switch_worldR1X",80,&g_swWorldR1X},
+            {"switch_worldR1Y",180,&g_swWorldR1Y},
+            {"switch_worldR1Scale",100,&g_swWorldR1Scale},
+            {"switch_worldAnalogScale",100,&g_swWorldAnalogScale},
+            {"switch_worldDpadScale",100,&g_swWorldDpadScale},
+            {"switch_worldArrowScale",100,&g_swWorldArrowScale},
+            {"switch_WorldPortalTextScale",75,&g_swWorldPortalTextScale},
+            {"switch_WorldMoveTextScale",75,&g_swWorldMoveTextScale},
+            {"switch_WorldReturnTextScale",75,&g_swWorldReturnTextScale},
+            {"switch_worldArrowX",-225,&g_swWorldArrowX},
+            {"switch_worldArrowY",-230,&g_swWorldArrowY},
+            {"switch_worldAnalogX",180,&g_swWorldAnalogX},
+            {"switch_worldAnalogY",680,&g_swWorldAnalogY},
+            {"switch_worldDpadX",260,&g_swWorldDpadX},
+            {"switch_worldDpadY",220,&g_swWorldDpadY},
+            {"switch_WorldPortalTextX",-130,&g_swWorldPortalTextX},
+            {"switch_WorldPortalTextY",0,&g_swWorldPortalTextY},
+            {"switch_WorldMoveTextX",270,&g_swWorldMoveTextX},
+            {"switch_WorldMoveTextY",20,&g_swWorldMoveTextY},
+            {"switch_WorldReturnTextX",0,&g_swWorldReturnTextX},
+            {"switch_WorldReturnTextY",20,&g_swWorldReturnTextY},
+            {"switch_triX",962,&g_swTriX},
+            {"switch_triY",387,&g_swTriY},
+            {"switch_triScale",90,&g_swTriScale},
+            {"switch_squareX",1218,&g_swSquareX},
+            {"switch_squareY",119,&g_swSquareY},
+            {"switch_squareScale",90,&g_swSquareScale},
+            {"switch_circleX",1245,&g_swCircleX},
+            {"switch_circleY",665,&g_swCircleY},
+            {"switch_circleScale",90,&g_swCircleScale},
+            {"switch_crossX",1432,&g_swCrossX},
+            {"switch_crossY",343,&g_swCrossY},
+            {"switch_crossScale",90,&g_swCrossScale},
+            {"switch_fishingCheckX",190,&g_swFishingCheckX},
+            {"switch_fishingCheckY",110,&g_swFishingCheckY},
+            {"switch_fishingCheckScale",65,&g_swFishingCheckScale},
+            {"switch_r1X",1620,&g_swR1X},
+            {"switch_r1Y",-90,&g_swR1Y},
+            {"switch_r1Scale",90,&g_swR1Scale},
+            {"switch_guideX",870,&g_swGuideX},
+            {"switch_guideY",30,&g_swGuideY},
+            {"switch_guideScale",100,&g_swGuideScale},
+            {"switch_dpadX",0,&g_swDpadX},
+            {"switch_dpadY",0,&g_swDpadY},
+            {"switch_dpadScale",100,&g_swDpadScale},
+            {"switch_itemTextX",0,&g_swItemTextX},
+            {"switch_itemTextY",0,&g_swItemTextY},
+            {"switch_itemTextScale",100,&g_swItemTextScale},
+            {"switch_mapTextX",0,&g_swMapTextX},
+            {"switch_mapTextY",0,&g_swMapTextY},
+            {"switch_mapTextScale",100,&g_swMapTextScale},
+            {"switch_itemsAnchorX",0,&g_swItemsAnchorX},
+            {"switch_itemsAnchorY",0,&g_swItemsAnchorY},
+            {"switch_itemSquareX",-430,&g_swItemSquareX},
+            {"switch_itemSquareY",-640,&g_swItemSquareY},
+            {"switch_itemSquareScale",50,&g_swItemSquareScale},
+            {"switch_itemTriangleX",220,&g_swItemTriangleX},
+            {"switch_itemTriangleY",230,&g_swItemTriangleY},
+            {"switch_itemTriangleScale",50,&g_swItemTriangleScale},
+            {"switch_itemCircleX",0,&g_swItemCircleX},
+            {"switch_itemCircleY",0,&g_swItemCircleY},
+            {"switch_itemCircleScale",100,&g_swItemCircleScale},
+            {"switch_itemR1X",0,&g_swItemR1X},
+            {"switch_itemR1Y",0,&g_swItemR1Y},
+            {"switch_itemR1Scale",100,&g_swItemR1Scale},
+            {"switch_swordX",40,&g_swSwordX},
+            {"switch_swordY",-13,&g_swSwordY},
+            {"switch_swordScale",50,&g_swSwordScale},
+            {"switch_midnaX",80,&g_swMidnaX},
+            {"switch_midnaY",-90,&g_swMidnaY},
+            {"switch_midnaScale",65,&g_swMidnaScale},
+            {"switch_howlActionX",710,&g_swHowlActionX},
+            {"switch_howlActionY",580,&g_swHowlActionY},
+            {"switch_howlActionScale",65,&g_swHowlActionScale},
+            {"switch_shopActionX",700,&g_swShopActionX},
+            {"switch_shopActionY",570,&g_swShopActionY},
+            {"switch_shopActionScale",65,&g_swShopActionScale},
+            {"switch_howlBackX",640,&g_swHowlBackX},
+            {"switch_howlBackY",550,&g_swHowlBackY},
+            {"switch_howlBackScale",65,&g_swHowlBackScale},
+            {"switch_shopBackX",640,&g_swShopBackX},
+            {"switch_shopBackY",550,&g_swShopBackY},
+            {"switch_shopBackScale",65,&g_swShopBackScale},
+            {"switch_actionTextX",520,&g_swActionTextX},
+            {"switch_actionTextY",-35,&g_swActionTextY},
+            {"switch_actionTextScale",55,&g_swActionTextScale},
+            {"switch_dialogActionTextX",200,&g_swDialogActionTextX},
+            {"switch_dialogActionTextY",480,&g_swDialogActionTextY},
+            {"switch_whistleActionX",710,&g_swWhistleActionX},
+            {"switch_whistleActionY",585,&g_swWhistleActionY},
+            {"switch_whistleActionScale",55,&g_swWhistleActionScale},
+            {"switch_whistleBackX",640,&g_swWhistleBackX},
+            {"switch_whistleBackY",555,&g_swWhistleBackY},
+            {"switch_whistleBackScale",55,&g_swWhistleBackScale},
+            {"switch_backTextX",550,&g_swBackTextX},
+            {"switch_backTextY",-90,&g_swBackTextY},
+            {"switch_backTextScale",55,&g_swBackTextScale},
+            {"switch_wolfSenseX",-670,&g_swWolfSenseX},
+            {"switch_wolfSenseY",-760,&g_swWolfSenseY},
+            {"switch_wolfSenseScale",55,&g_swWolfSenseScale},
+            {"switch_wolfDigX",490,&g_swWolfDigX},
+            {"switch_wolfDigY",575,&g_swWolfDigY},
+            {"switch_wolfDigScale",55,&g_swWolfDigScale},
+            {"switch_actionGlowX",-30,&g_swActionGlowX},
+            {"switch_actionGlowY",-25,&g_swActionGlowY},
+            {"switch_actionGlowScale",50,&g_swActionGlowScale},
+            {"switch_backGlowX",10,&g_swBackGlowX},
+            {"switch_backGlowY",30,&g_swBackGlowY},
+            {"switch_backGlowScale",100,&g_swBackGlowScale},
+            {"switch_wolfXGlowX",5,&g_swWolfXGlowX},
+            {"switch_wolfXGlowY",-55,&g_swWolfXGlowY},
+            {"switch_wolfXGlowScale",50,&g_swWolfXGlowScale},
+            {"switch_wolfYGlowX",-70,&g_swWolfYGlowX},
+            {"switch_wolfYGlowY",20,&g_swWolfYGlowY},
+            {"switch_wolfYGlowScale",50,&g_swWolfYGlowScale},
+            {"switch_fileCrossX",15,&g_swFileCrossX},
+            {"switch_fileCrossY",0,&g_swFileCrossY},
+            {"switch_fileCircleX",10,&g_swFileCircleX},
+            {"switch_fileCircleY",30,&g_swFileCircleY},
+            {"switch_saveCrossX",15,&g_swSaveCrossX},
+            {"switch_saveCrossY",0,&g_swSaveCrossY},
+            {"switch_saveCircleX",20,&g_swSaveCircleX},
+            {"switch_saveCircleY",25,&g_swSaveCircleY},
+            {"switch_menuCrossX",-122,&g_swMenuCrossX},
+            {"switch_menuCrossY",30,&g_swMenuCrossY},
+            {"switch_menuCrossScale",70,&g_swMenuCrossScale},
+            {"switch_menuCircleX",3,&g_swMenuCircleX},
+            {"switch_menuCircleY",-10,&g_swMenuCircleY},
+            {"switch_menuCircleScale",100,&g_swMenuCircleScale},
+            {"switch_menuConfirmTextX",-40,&g_swMenuConfirmTextX},
+            {"switch_menuConfirmTextY",60,&g_swMenuConfirmTextY},
+            {"switch_menuConfirmTextScale",60,&g_swMenuConfirmTextScale},
+            {"switch_menuBackTextX",60,&g_swMenuBackTextX},
+            {"switch_menuBackTextY",10,&g_swMenuBackTextY},
+            {"switch_menuBackTextScale",60,&g_swMenuBackTextScale},
+            {"switch_menuOrnamentX",-290,&g_swMenuOrnamentX},
+            {"switch_menuOrnamentY",50,&g_swMenuOrnamentY},
+            {"switch_menuOrnamentScale",75,&g_swMenuOrnamentScale},
+            {"switch_mapCrossX",-115,&g_swMapCrossX},
+            {"switch_mapCrossY",8,&g_swMapCrossY},
+            {"switch_mapCrossScale",75,&g_swMapCrossScale},
+            {"switch_mapCircleX",15,&g_swMapCircleX},
+            {"switch_mapCircleY",-13,&g_swMapCircleY},
+            {"switch_mapCircleScale",90,&g_swMapCircleScale},
+            {"switch_mapConfirmTextX",-20,&g_swMapConfirmTextX},
+            {"switch_mapConfirmTextY",20,&g_swMapConfirmTextY},
+            {"switch_mapConfirmTextScale",75,&g_swMapConfirmTextScale},
+            {"switch_mapBackTextX",100,&g_swMapBackTextX},
+            {"switch_mapBackTextY",0,&g_swMapBackTextY},
+            {"switch_mapBackTextScale",75,&g_swMapBackTextScale},
+            {"switch_mapOrnamentX",-300,&g_swMapOrnamentX},
+            {"switch_mapOrnamentY",0,&g_swMapOrnamentY},
+            {"switch_mapOrnamentScale",75,&g_swMapOrnamentScale},
+            {"switch_hudOrnamentX",20,&g_swHudOrnamentX},
+            {"switch_hudOrnamentY",20,&g_swHudOrnamentY},
+            {"switch_hudOrnamentScale",100,&g_swHudOrnamentScale},
+            {"switch_wheelSquareX",-170,&g_swWheelSquareX},
+            {"switch_wheelSquareY",-10,&g_swWheelSquareY},
+            {"switch_wheelSquareScale",87,&g_swWheelSquareScale},
+            {"switch_wheelTriangleX",-100,&g_swWheelTriangleX},
+            {"switch_wheelTriangleY",-40,&g_swWheelTriangleY},
+            {"switch_wheelTriangleScale",90,&g_swWheelTriangleScale},
+            {"switch_wheelSelectAnalogX",50,&g_swWheelSelectAnalogX},
+            {"switch_wheelSelectAnalogY",0,&g_swWheelSelectAnalogY},
+            {"switch_wheelSelectAnalogScale",90,&g_swWheelSelectAnalogScale},
+            {"switch_wheelDirectAnalogX",100,&g_swWheelDirectAnalogX},
+            {"switch_wheelDirectAnalogY",0,&g_swWheelDirectAnalogY},
+            {"switch_wheelDirectAnalogScale",90,&g_swWheelDirectAnalogScale},
+            {"switch_wheelL2X",250,&g_swWheelL2X},
+            {"switch_wheelL2Y",-10,&g_swWheelL2Y},
+            {"switch_wheelL2Scale",90,&g_swWheelL2Scale},
+            {"switch_wheelR2X",-130,&g_swWheelR2X},
+            {"switch_wheelR2Y",0,&g_swWheelR2Y},
+            {"switch_wheelR2Scale",100,&g_swWheelR2Scale},
+            {"switch_dungeonMapCrossX",-120,&g_swDungeonMapCrossX},
+            {"switch_dungeonMapCrossY",30,&g_swDungeonMapCrossY},
+            {"switch_dungeonMapCrossScale",70,&g_swDungeonMapCrossScale},
+            {"switch_dungeonMapCircleX",0,&g_swDungeonMapCircleX},
+            {"switch_dungeonMapCircleY",-10,&g_swDungeonMapCircleY},
+            {"switch_dungeonMapCircleScale",100,&g_swDungeonMapCircleScale},
+            {"switch_dungeonMapConfirmTextX",-50,&g_swDungeonMapConfirmTextX},
+            {"switch_dungeonMapConfirmTextY",60,&g_swDungeonMapConfirmTextY},
+            {"switch_dungeonMapConfirmTextScale",75,&g_swDungeonMapConfirmTextScale},
+            {"switch_dungeonMapBackTextX",70,&g_swDungeonMapBackTextX},
+            {"switch_dungeonMapBackTextY",10,&g_swDungeonMapBackTextY},
+            {"switch_dungeonMapBackTextScale",75,&g_swDungeonMapBackTextScale}
+        };
+        for (auto& v:switchVars) {
+            ModResult rr=reg_int(v.n,v.d,*v.h,error);
+            if(rr!=MOD_OK) return rr;
+        }
+        ModResult rr=MOD_OK;
+        rr=reg_bool("switch_dpadShadowsEnabled",true,g_swDpadShadowsEnabled,error); if(rr!=MOD_OK) return rr;
+        rr=reg_bool("switch_worldMapArrowsEnabled",true,g_swWorldArrows,error); if(rr!=MOD_OK) return rr;
+        rr=reg_bool("switch_dpadArrowsEnabled",true,g_swDpadArrowsEnabled,error); if(rr!=MOD_OK) return rr;
+        rr=reg_bool("switch_dpadMapAnimation",true,g_swDpadMapAnimation,error); if(rr!=MOD_OK) return rr;
+        rr=reg_bool("switch_actionGlowEnabled",true,g_swActionGlowEnabled,error); if(rr!=MOD_OK) return rr;
+        rr=reg_bool("switch_backGlowEnabled",true,g_swBackGlowEnabled,error); if(rr!=MOD_OK) return rr;
+        rr=reg_bool("switch_glowAdjustmentPreview",false,g_swGlowPreview,error); if(rr!=MOD_OK) return rr;
+        rr=reg_bool("switch_wolfXGlowEnabled",true,g_swWolfXGlowEnabled,error); if(rr!=MOD_OK) return rr;
+        rr=reg_bool("switch_wolfYGlowEnabled",true,g_swWolfYGlowEnabled,error); if(rr!=MOD_OK) return rr;
+        rr=reg_bool("switch_wolfGlowPreview",false,g_swWolfGlowPreview,error); if(rr!=MOD_OK) return rr;
+        rr=reg_bool("switch_backButtonAnimation",false,g_swBackButtonAnim,error); if(rr!=MOD_OK) return rr;
+        rr=reg_bool("switch_backTextAnimation",false,g_swBackTextAnim,error); if(rr!=MOD_OK) return rr;
+        rr=reg_bool("switch_menuPromptOrnament",true,g_swMenuPromptOrnament,error); if(rr!=MOD_OK) return rr;
+        rr=reg_bool("switch_mapOrnamentEnabled",true,g_swMapOrnamentEnabled,error); if(rr!=MOD_OK) return rr;
+        rr=reg_bool("switch_hudOrnamentEnabled",true,g_swHudOrnamentEnabled,error); if(rr!=MOD_OK) return rr;
+        rr=reg_bool("switch_itemSquareFlipH",false,g_swItemSquareFlipH,error); if(rr!=MOD_OK) return rr;
+        rr=reg_bool("switch_itemSquareFlipV",false,g_swItemSquareFlipV,error); if(rr!=MOD_OK) return rr;
+        rr=reg_bool("switch_itemTriangleFlipH",false,g_swItemTriangleFlipH,error); if(rr!=MOD_OK) return rr;
+        rr=reg_bool("switch_itemTriangleFlipV",false,g_swItemTriangleFlipV,error); if(rr!=MOD_OK) return rr;
+        rr=reg_bool("switch_swordFlipH",false,g_swSwordFlipH,error); if(rr!=MOD_OK) return rr;
+        rr=reg_bool("switch_swordFlipV",false,g_swSwordFlipV,error); if(rr!=MOD_OK) return rr;
     }
 
     // Hidden migration marker: not exposed in the UI, only persisted in config.json.
@@ -6125,6 +7307,10 @@ ModResult mod_initialize(ModError* error) {
         if(!load_button_texture(texture.xboxPath,&texture.xbox)) {
             free_resources();
             return mods::set_error(error,MOD_UNAVAILABLE,"failed to load Xbox controller texture");
+        }
+        if(!load_button_texture(texture.switchPath,&texture.switchTexture)) {
+            free_resources();
+            return mods::set_error(error,MOD_UNAVAILABLE,"failed to load Switch controller texture");
         }
     }
 

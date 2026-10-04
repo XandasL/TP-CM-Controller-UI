@@ -3,7 +3,7 @@
   "name": "TP Classic Modern Controller UI",
   "version": "@PROJECT_VERSION@",
   "author": "XandasLegend",
-  "description": "Modern PlayStation and Xbox controller prompts, reimagined in the style of Twilight Princess, with customizable HUD, menu, dialogue and map elements.",
+  "description": "Modern PlayStation, Xbox and Nintendo Switch controller prompts, reimagined in the style of Twilight Princess, with customizable HUD, menus, dialogue and map elements.",
   "icon": "res/icon.png",
   "banner": "res/banner.png"
 }
