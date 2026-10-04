@@ -1015,8 +1015,8 @@ void reset_layout(ModContext*, void*) {
         svc_config->set_int(mod_ctx,g_swItemR1X,0);
         svc_config->set_int(mod_ctx,g_swItemR1Y,0);
         svc_config->set_int(mod_ctx,g_swItemR1Scale,100);
-        svc_config->set_int(mod_ctx,g_swSwordX,83);
-        svc_config->set_int(mod_ctx,g_swSwordY,-52);
+        svc_config->set_int(mod_ctx,g_swSwordX,14);
+        svc_config->set_int(mod_ctx,g_swSwordY,-40);
         svc_config->set_int(mod_ctx,g_swSwordScale,50);
         svc_config->set_int(mod_ctx,g_swMidnaX,80);
         svc_config->set_int(mod_ctx,g_swMidnaY,-90);
@@ -6745,8 +6745,8 @@ ModResult mod_initialize(ModError* error) {
             {"switch_itemR1X",0,&g_swItemR1X},
             {"switch_itemR1Y",0,&g_swItemR1Y},
             {"switch_itemR1Scale",100,&g_swItemR1Scale},
-            {"switch_swordX",83,&g_swSwordX},
-            {"switch_swordY",-52,&g_swSwordY},
+            {"switch_swordX",14,&g_swSwordX},
+            {"switch_swordY",-40,&g_swSwordY},
             {"switch_swordScale",50,&g_swSwordScale},
             {"switch_midnaX",80,&g_swMidnaX},
             {"switch_midnaY",-90,&g_swMidnaY},
