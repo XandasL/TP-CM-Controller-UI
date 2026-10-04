@@ -2546,7 +2546,7 @@ static void input_preset_sources(int preset,int out[4]) {
     }
 }
 
-static bool sync_dusklight_face_inputs(ButtonLayoutPreset targetPreset) {
+static bool sync_dusklight_face_inputs(ButtonLayoutPreset targetPreset,bool switchNativeLayout) {
     const s32 controllerIndex=PADGetIndexForPort(PAD_CHAN0);
     if (controllerIndex < 0)
         return false;
@@ -2569,23 +2569,26 @@ static bool sync_dusklight_face_inputs(ButtonLayoutPreset targetPreset) {
     for (int i=0;i<4;++i)
         if (faces[i]==nullptr) return false;
 
-    const int target=layout_preset_index(targetPreset);
-    int old=(int)cfg_int(g_inputSyncLastPreset,-1);
-    const int savedController=(int)cfg_int(g_inputSyncControllerIndex,-1);
+    // Dusklight stores gamepad face buttons using SDL's positional native-button
+    // indices: South=0, East=1, West=2, North=3. Apply an absolute mapping
+    // instead of permuting whatever happens to be configured already. This makes
+    // Sync Controller Inputs authoritative even after A/B/X/Y were edited by hand.
+    constexpr u32 kNativeSouth=0;
+    constexpr u32 kNativeEast=1;
+    constexpr u32 kNativeWest=2;
+    constexpr u32 kNativeNorth=3;
 
-    if (savedController != controllerIndex || old<0 || old>3)
-        old=0;
+    const int target=switchNativeLayout ? 0 : layout_preset_index(targetPreset);
 
-    u32 current[4]={
-        faces[0]->nativeButton, faces[1]->nativeButton,
-        faces[2]->nativeButton, faces[3]->nativeButton,
+    // PlayStation/Xbox Base follows Cross/A, Circle/B, Triangle/Y, Square/X.
+    // Switch Base follows its native physical labels: A=right, B=bottom,
+    // X=top, Y=left.
+    u32 base[4]={
+        switchNativeLayout ? kNativeEast : kNativeSouth, // GC A
+        switchNativeLayout ? kNativeSouth : kNativeEast, // GC B
+        kNativeNorth, // GC X
+        kNativeWest,  // GC Y
     };
-
-    int oldSources[4];
-    input_preset_sources(old,oldSources);
-    u32 base[4]={current[0],current[1],current[2],current[3]};
-    for (int targetSlot=0;targetSlot<4;++targetSlot)
-        base[oldSources[targetSlot]]=current[targetSlot];
 
     int newSources[4];
     input_preset_sources(target,newSources);
@@ -2601,10 +2604,13 @@ static bool sync_dusklight_face_inputs(ButtonLayoutPreset targetPreset) {
 
     if (svc_log!=nullptr) {
         const char* name="Base";
-        if (target==1) name="Swap X/Y";
-        else if (target==2) name="Swap Y/B";
-        else if (target==3) name="Swap X/Y + X/B";
+        if (!switchNativeLayout) {
+            if (target==1) name="Swap X/Y";
+            else if (target==2) name="Swap Y/B";
+            else if (target==3) name="Swap X/Y + X/B";
+        }
         std::string msg="Controller face-button mapping synced through Dusklight: ";
+        if (switchNativeLayout) msg+="Switch ";
         msg+=name;
         svc_log->info(mod_ctx,msg.c_str());
     }
@@ -2634,8 +2640,9 @@ void select_swap_xyxb_preset(ModContext*,void*) {
 }
 
 void sync_selected_layout_preset(ModContext*,void*) {
-    const ButtonLayoutPreset preset=current_layout_preset();
-    if (!sync_dusklight_face_inputs(preset) && svc_log!=nullptr) {
+    const bool switchNativeLayout=switch_controller_selected_now();
+    const ButtonLayoutPreset preset=switchNativeLayout ? ButtonLayoutPreset::Base : current_layout_preset();
+    if (!sync_dusklight_face_inputs(preset,switchNativeLayout) && svc_log!=nullptr) {
         svc_log->warn(mod_ctx,
             "Controller input sync skipped: no gamepad mapping is active on Port 1. Keyboard bindings were not changed.");
     }
