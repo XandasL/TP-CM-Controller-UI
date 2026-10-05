@@ -16,11 +16,6 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      - name: Convert banner to PNG once
-        run: |
-          python -m pip install --disable-pip-version-check pillow
-          python tools/convert_banner.py
-
       - name: Upload shared banner
         uses: actions/upload-artifact@v7
         with:
@@ -30,6 +25,7 @@ jobs:
 
   build:
     name: Build ${{matrix.platform}}
+    if: github.ref != 'refs/heads/twilit-compat-rebuild'
     needs: prepare
     runs-on: ${{matrix.runner}}
     strategy:
@@ -104,7 +100,7 @@ jobs:
       - name: Configure CMake
         shell: bash
         run: |
-          args=(-G Ninja -DCMAKE_BUILD_TYPE=RelWithDebInfo ${{matrix.cmake_args}})
+          args=(-G Ninja -DCMAKE_BUILD_TYPE=Release ${{matrix.cmake_args}})
           if [[ -n "${{matrix.android_ndk}}" ]]; then
             args+=(-DCMAKE_TOOLCHAIN_FILE="$ANDROID_HOME/ndk/${{matrix.android_ndk}}/build/cmake/android.toolchain.cmake"
                    -DANDROID_ABI=arm64-v8a -DANDROID_PLATFORM=android-28)
@@ -114,6 +110,26 @@ jobs:
       - name: Build
         run: cmake --build build --parallel
 
+      - name: Verify release ELF ABI
+        if: startsWith(matrix.platform, 'linux-') || matrix.platform == 'android-aarch64'
+        shell: bash
+        run: |
+          lib=$(find build -type f -name 'tp_classic_modern_controller_ui.so' -print -quit)
+          if [[ -z "$lib" ]]; then
+            echo "Could not find built mod shared library"
+            exit 1
+          fi
+
+          if readelf -S "$lib" | grep -q '\.debug_info'; then
+            echo "Release library unexpectedly contains .debug_info"
+            exit 1
+          fi
+
+          if ! readelf -Ws "$lib" | grep '_Z18dComIfGp_getPlayeri' | grep -q ' UND '; then
+            echo "dComIfGp_getPlayer is not an imported game ABI function"
+            exit 1
+          fi
+
       - name: Upload artifact
         uses: actions/upload-artifact@v7
         with:
@@ -121,8 +137,61 @@ jobs:
           path: build/mods/*.dusk
           if-no-files-found: error
 
+  dev-build:
+    name: Build dev windows-amd64
+    if: github.ref == 'refs/heads/twilit-compat-rebuild'
+    needs: prepare
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Download shared banner
+        uses: actions/download-artifact@v8
+        with:
+          name: shared-banner-png
+          path: res
+
+      - name: Remove JPG banner source from distributable resources
+        shell: bash
+        run: rm -f res/banner.jpg
+
+      - name: Read pinned Dusklight version
+        id: dusklight
+        shell: bash
+        run: echo "version=$(sed -n 's/.*set(DUSKLIGHT_VERSION "\([^"]*\)").*/\1/p' CMakeLists.txt)" >> "$GITHUB_OUTPUT"
+
+      - name: Cache Dusklight sources
+        uses: actions/cache@v6
+        with:
+          path: dusklight
+          key: dusklight-Windows-${{steps.dusklight.outputs.version}}
+
+      - name: Enable Visual Studio environment
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: amd64
+
+      - name: Install ninja
+        run: choco install ninja
+
+      - name: Configure CMake (Developer)
+        shell: bash
+        run: cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=RelWithDebInfo -DTP_CLASSIC_DEV_OPTIONS=ON
+
+      - name: Build
+        run: cmake --build build --parallel
+
+      - name: Upload dev artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: mod-dev-windows-amd64
+          path: build/mods/*.dusk
+          if-no-files-found: error
+
   combine:
     name: Combine bundles
+    if: github.ref != 'refs/heads/twilit-compat-rebuild'
     needs: build
     runs-on: ubuntu-latest
     permissions:
