@@ -46,6 +46,15 @@ add_mod(tp_classic_modern_controller_ui
     RES_DIR res
 )
 
+# Android Release builds may retain DWARF sections even when compiled without DEBUG.
+# Strip debug-only sections before the packaging target copies the native library.
+if (ANDROID AND CMAKE_BUILD_TYPE STREQUAL "Release")
+    add_custom_command(TARGET tp_classic_modern_controller_ui POST_BUILD
+        COMMAND "${CMAKE_STRIP}" --strip-debug "$<TARGET_FILE:tp_classic_modern_controller_ui>"
+        VERBATIM
+    )
+endif ()
+
 if (TP_CLASSIC_DEV_OPTIONS)
     target_compile_definitions(tp_classic_modern_controller_ui PRIVATE TP_CLASSIC_DEV_OPTIONS=1)
 endif ()
