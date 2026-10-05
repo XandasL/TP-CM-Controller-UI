@@ -17,7 +17,7 @@ option(TP_CLASSIC_DEV_OPTIONS "Enable internal HUD calibration/editor controls" 
 # Pin the same Dusklight SDK revision used and tested during development.
 # The official mod-template workflow will compile this source for every supported platform.
 if (NOT DUSKLIGHT_VERSION)
-    set(DUSKLIGHT_VERSION "d281c34a65568ee7be2319985f3a290c0ef65abc")
+    set(DUSKLIGHT_VERSION "2d70c24b377f62cde01c6bddfb64791940d5664d")
 endif ()
 
 include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/FetchDusklight.cmake")
