@@ -21,8 +21,8 @@ The GameCube column below represents the **original in-game controls used as the
 
 | Original GameCube Control | PlayStation | Xbox | Nintendo Switch |
 | --- | --- | --- | --- |
-| A | Cross | A | A |
-| B | Circle | B | B |
+| A | Cross | A | B |
+| B | Circle | B | A |
 | X | Triangle | Y | X |
 | Y | Square | X | Y |
 | Z | R1 | RB | R |
