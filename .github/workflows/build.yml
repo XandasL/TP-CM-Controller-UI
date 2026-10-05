@@ -120,7 +120,7 @@ jobs:
             exit 1
           fi
 
-          if readelf -S "$lib" | grep -q '\\.debug_info'; then
+          if readelf -S "$lib" | grep -q '\.debug_info'; then
             echo "Release library unexpectedly contains .debug_info"
             exit 1
           fi
