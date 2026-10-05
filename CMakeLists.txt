@@ -4,10 +4,10 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 if (NOT DEFINED CMAKE_BUILD_TYPE AND NOT DEFINED ENV{CMAKE_BUILD_TYPE})
-    set(CMAKE_BUILD_TYPE "RelWithDebInfo" CACHE STRING "Build type")
+    set(CMAKE_BUILD_TYPE "Release" CACHE STRING "Build type")
 endif ()
 
-project(tp_classic_modern_controller_ui VERSION 1.3.1 LANGUAGES CXX)
+project(tp_classic_modern_controller_ui VERSION 1.3.2 LANGUAGES CXX)
 
 # Internal calibration UI. Public/release builds leave this OFF so users get
 # the authored layout while developers can still expose every positioning
@@ -17,7 +17,7 @@ option(TP_CLASSIC_DEV_OPTIONS "Enable internal HUD calibration/editor controls" 
 # Pin the same Dusklight SDK revision used and tested during development.
 # The official mod-template workflow will compile this source for every supported platform.
 if (NOT DUSKLIGHT_VERSION)
-    set(DUSKLIGHT_VERSION "d281c34a65568ee7be2319985f3a290c0ef65abc")
+    set(DUSKLIGHT_VERSION "2d70c24b377f62cde01c6bddfb64791940d5664d")
 endif ()
 
 include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/FetchDusklight.cmake")
